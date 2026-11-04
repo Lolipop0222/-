@@ -11,6 +11,7 @@ const PAGE_SIZE = 1000; // NEIS 최대값 (문서 2장)
 const SCHOOL_NAME = "대전고등학교";
 const officeCode = () => process.env.NEIS_OFFICE_CODE || "G10"; // 대전광역시교육청
 
+// 값은 대부분 문자열. MLSV_FGR(급식인원)처럼 숫자로 오는 필드도 있지만 쓰지 않는다
 type NeisRow = Record<string, string>;
 type NeisResult = { CODE: string; MESSAGE: string };
 

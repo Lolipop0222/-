@@ -108,7 +108,7 @@ export default function CalendarPage() {
                 <Flag size={16} className={e.holiday ? "text-danger" : "text-accent"} />
                 <span className="flex-1">{e.name}</span>
                 {e.holiday && <Badge tone="danger">쉬는 날</Badge>}
-                {e.grades.length > 0 && e.grades.length < 3 && <Badge>{e.grades.join("·")}학년</Badge>}
+                {e.grades.length > 0 && e.grades.length < 3 && !e.name.includes("학년") && <Badge>{e.grades.join("·")}학년</Badge>}
               </p>
             ))}
             {selAssess.map((a) => (
@@ -176,11 +176,12 @@ function MealRow({ title, meal }: { title: string; meal?: Meal }) {
         <p className="text-[14px] leading-relaxed">
           {meal.dishes.map((d, i) => (
             <span key={i}>
-              {i > 0 && <span className="text-faint"> · </span>}
+              {/* 메뉴와 뒤따르는 점을 한 덩어리로 — 줄 맨 앞에 점이 오지 않게 */}
               <span className="whitespace-nowrap">
                 {d.name}
                 {d.allergens && <sup className="num ml-0.5 text-[9px] text-faint">{d.allergens.join(".")}</sup>}
-              </span>
+                {i < meal.dishes.length - 1 && <span className="text-faint"> ·</span>}
+              </span>{" "}
             </span>
           ))}
         </p>
