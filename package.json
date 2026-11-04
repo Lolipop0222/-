@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "wordmaster": "node scripts/split-wordmaster.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",

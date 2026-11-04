@@ -98,15 +98,6 @@ export const assessments = [
   { id: "a3", subject: "탐구" as Subject, date: "2026-11-04", title: "화학 실험 보고서", target: "2학년" },
 ];
 
-// school_cache — 학사일정
-export const schoolEvents: Record<string, string[]> = {
-  "2026-10-09": ["한글날"],
-  "2026-10-15": ["2학기 중간고사 성적 확인"],
-  "2026-10-30": ["개교기념일"],
-  "2026-11-18": ["수능 예비소집"],
-  "2026-11-19": ["2027학년도 수능"],
-};
-
 // words / reviews
 export type Word = { id: string; book: string; day: number; en: string; ko: string; pos: string; box: 1 | 2 | 3 | 4 | 5 };
 

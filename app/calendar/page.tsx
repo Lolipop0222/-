@@ -5,8 +5,8 @@ import { ChevronLeft, ChevronRight, ClipboardList, Flag, Plus, Utensils } from "
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { WEEKDAYS, fromYmd, ymd } from "@/lib/format";
 import { MEAL_LABEL, type Meal } from "@/lib/meals";
-import { SUBJECT_COLOR, assessments, schoolEvents } from "@/lib/mock";
-import { useMonthMeals } from "@/lib/useMonthMeals";
+import { SUBJECT_COLOR, assessments } from "@/lib/mock";
+import { useMonthMeals, useMonthSchedule } from "@/lib/useMonthly";
 import { useToday } from "@/lib/useToday";
 
 export default function CalendarPage() {
@@ -14,7 +14,9 @@ export default function CalendarPage() {
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const shown = today ? new Date(today.getFullYear(), today.getMonth() + offset, 1) : null;
-  const monthMeals = useMonthMeals(shown ? ymd(shown).slice(0, 7).replace("-", "") : null);
+  const ym = shown ? ymd(shown).slice(0, 7).replace("-", "") : null;
+  const monthMeals = useMonthMeals(ym);
+  const schedule = useMonthSchedule(ym);
 
   if (!today) return <PageHeader title="캘린더" sub="급식 · 학사일정 · 수행평가" />;
 
@@ -35,7 +37,7 @@ export default function CalendarPage() {
   const selMeals = monthMeals?.meals[selKey];
   // 식단이 들어온 달인지 (급식 없는 날 vs 아직 안 나온 달 구분)
   const hasMonthMenu = monthMeals ? Object.keys(monthMeals.meals).length > 0 : false;
-  const selEvents = schoolEvents[selKey] ?? [];
+  const selEvents = schedule?.events[selKey] ?? [];
   const selAssess = assessments.filter((a) => a.date === selKey);
 
   return (
@@ -70,7 +72,8 @@ export default function CalendarPage() {
               const key = ymd(d);
               const isToday = key === todayKey;
               const isSel = key === selKey;
-              const hasEvent = !!schoolEvents[key];
+              const events = schedule?.events[key] ?? [];
+              const holiday = events.some((e) => e.holiday);
               const dayAssess = assessments.filter((a) => a.date === key);
               const dow = d.getDay();
               return (
@@ -79,11 +82,11 @@ export default function CalendarPage() {
                   onClick={() => setSelected(key)}
                   className={`flex aspect-square flex-col items-center justify-center rounded-xl text-[15px] transition-colors ${
                     isSel ? "bg-accent font-bold text-bg" : isToday ? "bg-accent-soft font-bold text-accent" : ""
-                  } ${!isSel && !isToday && (dow === 0 || hasEvent) ? "text-danger/80" : ""}`}
+                  } ${!isSel && !isToday && (dow === 0 || holiday) ? "text-danger/80" : ""}`}
                 >
                   <span className="num">{d.getDate()}</span>
                   <span className="mt-0.5 flex h-1.5 gap-0.5">
-                    {hasEvent && <span className={`size-1.5 rounded-full ${isSel ? "bg-bg" : "bg-danger"}`} />}
+                    {events.length > 0 && <span className={`size-1.5 rounded-full ${isSel ? "bg-bg" : holiday ? "bg-danger" : "bg-accent"}`} />}
                     {dayAssess.map((a) => (
                       <span key={a.id} className="size-1.5 rounded-full" style={{ background: isSel ? "var(--bg)" : SUBJECT_COLOR[a.subject] }} />
                     ))}
@@ -101,9 +104,11 @@ export default function CalendarPage() {
         {(selEvents.length > 0 || selAssess.length > 0) && (
           <Card className="space-y-3">
             {selEvents.map((e) => (
-              <p key={e} className="flex items-center gap-2.5 text-[15px]">
-                <Flag size={16} className="text-danger" />
-                {e}
+              <p key={e.name} className="flex items-center gap-2.5 text-[15px]">
+                <Flag size={16} className={e.holiday ? "text-danger" : "text-accent"} />
+                <span className="flex-1">{e.name}</span>
+                {e.holiday && <Badge tone="danger">쉬는 날</Badge>}
+                {e.grades.length > 0 && e.grades.length < 3 && <Badge>{e.grades.join("·")}학년</Badge>}
               </p>
             ))}
             {selAssess.map((a) => (

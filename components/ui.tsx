@@ -88,20 +88,24 @@ export function Segmented<T extends string>({
   );
 }
 
+const BUTTON_TONE = { accent: "bg-accent", live: "bg-live", danger: "bg-danger" } as const;
+
 export function PrimaryButton({
   children,
   href,
   onClick,
   className = "",
   disabled,
+  tone = "accent",
 }: {
   children: ReactNode;
   href?: string;
   onClick?: () => void;
   className?: string;
   disabled?: boolean;
+  tone?: keyof typeof BUTTON_TONE;
 }) {
-  const cls = `flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[16px] font-bold text-bg transition active:scale-[0.98] disabled:opacity-40 ${className}`;
+  const cls = `flex h-14 w-full items-center justify-center gap-2 rounded-2xl ${BUTTON_TONE[tone]} text-[16px] font-bold text-bg transition active:scale-[0.98] disabled:opacity-40 ${className}`;
   if (href) {
     return (
       <Link href={href} className={cls}>

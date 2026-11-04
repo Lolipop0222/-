@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Utensils } from "lucide-react";
 import { ymd } from "@/lib/format";
 import { MEAL_LABEL } from "@/lib/meals";
-import { useMonthMeals } from "@/lib/useMonthMeals";
+import { useMonthMeals } from "@/lib/useMonthly";
 import { useToday } from "@/lib/useToday";
 
 // 흰밥은 빼고 반찬만 보여준다

@@ -10,11 +10,12 @@
 | --- | --- | --- |
 | 홈 | `/` | 오늘 급식 한 줄, 공지 배너, 오늘 공부 시간, 이번 주 합계, 전교 순위, 오늘 복습할 단어, 스터디그룹, 수행평가 |
 | 일품타 | `/timer` | 과목 선택 → 시작/정지 타이머(검정 배경·큰 숫자), 이탈 감지, 주간 순위(전교/학년/반/그룹, 내 순위 ±3명) |
-| 워마 | `/words` | 오늘 복습, 상자 5단계 분포, 단어장·DAY 목록 |
+| 워마 | `/words` | 오늘 복습, 워드마스터 수능 2000 DAY 1–50 (DAY별 최고 점수), 상자 5단계 분포 |
+| | `/words/day/[1-50]` | 워마 퀴즈: 뜻 고르기(4지선다) / 빈칸 채우기(단어 상자 10개, 기본·응용·심화), 결과·틀린 것만 다시 |
 | | `/words/review` | 4지선다 복습 퀴즈 + 결과 |
 | | `/words/add` | 손으로 단어 입력 |
 | | `/words/scan` | 사진 스캔 → 인식 결과 확인·수정 |
-| 캘린더 | `/calendar` | 월 달력, 날짜별 급식·학사일정·수행평가 |
+| 캘린더 | `/calendar` | 월 달력, 날짜별 급식(NEIS)·학사일정(NEIS)·수행평가 |
 | 내정보 | `/me` | 프로필·아바타·포인트, 스터디그룹(초대코드), 설정, 개인정보 처리방침(`/me/privacy`) |
 | | `/login` | 이메일 + 가입 초대코드 |
 
@@ -47,6 +48,10 @@ npm run dev
 - `lib/neis.ts` — NEIS 급식 조회 (서버 전용, 몇 시간씩 캐시)
 - `app/api/meals/[month]/route.ts` — 한 달 급식 API (`/api/meals/202611`)
 - `lib/meals.ts` — 2026년 11월 식단표 (NEIS가 안 될 때 대신 씀)
+- `app/api/schedule/[month]/route.ts` — 한 달 학사일정 API (NEIS, 토요휴업일 제외)
+- `data/wordmaster/` — 워드마스터 수능 2000 원본 데이터와 설명(README, Supabase 스키마·적재 스크립트)
+- `public/wordmaster/day-NN.json` — 위 데이터를 DAY별로 나눈 것. 원본을 고치면 `npm run wordmaster`
+- `lib/wordmaster.ts`, `components/WordQuiz.tsx` — 워마 퀴즈 문제 만들기·화면
 - `lib/format.ts` — 시간·날짜 표시 함수
 
 ## 다음 단계 (계획서 5장)

@@ -80,3 +80,37 @@ export async function getMonthMeals(yyyymm: string): Promise<Record<string, Meal
   }
   return out;
 }
+
+export type SchoolEvent = { name: string; holiday: boolean; grades: number[] };
+/** /api/schedule/[month] 응답 */
+export type ScheduleResponse = { source: "neis" | "none"; events: Record<string, SchoolEvent[]> };
+
+// 매주 토요일마다 들어 있어서 달력에 띄우면 소음만 된다
+const SKIP_EVENTS = new Set(["토요휴업일"]);
+const GRADE_FIELDS = ["ONE_GRADE_EVENT_YN", "TW_GRADE_EVENT_YN", "THREE_GRADE_EVENT_YN"];
+
+/** 한 달 학사일정. yyyymm = "202611" → { "2026-11-19": [{ name: "대학수학능력시험", holiday: true, grades: [1,2,3] }] } */
+export async function getMonthSchedule(yyyymm: string): Promise<Record<string, SchoolEvent[]>> {
+  "use cache";
+  cacheLife("hours");
+
+  const school = await getSchoolCode();
+  const rows = await neis("SchoolSchedule", {
+    ATPT_OFCDC_SC_CODE: OFFICE_CODE,
+    SD_SCHUL_CODE: school,
+    AA_FROM_YMD: `${yyyymm}01`,
+    AA_TO_YMD: `${yyyymm}31`,
+  });
+
+  const out: Record<string, SchoolEvent[]> = {};
+  for (const r of rows) {
+    const name = r.EVENT_NM?.trim();
+    if (!name || SKIP_EVENTS.has(name)) continue;
+    const ymd = `${r.AA_YMD.slice(0, 4)}-${r.AA_YMD.slice(4, 6)}-${r.AA_YMD.slice(6, 8)}`;
+    const grades = GRADE_FIELDS.flatMap((f, i) => (r[f] === "Y" ? [i + 1] : []));
+    const holiday = r.SBTR_DD_SC_NM === "휴업일" || r.SBTR_DD_SC_NM === "공휴일";
+    const list = (out[ymd] ??= []);
+    if (!list.some((e) => e.name === name)) list.push({ name, holiday, grades });
+  }
+  return out;
+}
