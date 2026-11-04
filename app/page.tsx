@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight, Play, Trophy, Utensils } from "lucide-react";
+import { BookOpen, ChevronRight, Play, Trophy } from "lucide-react";
 import EventBanner from "@/components/EventBanner";
 import TodayLabel from "@/components/TodayLabel";
+import TodayMealLine from "@/components/TodayMealLine";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui";
 import { hm } from "@/lib/format";
 import {
@@ -10,7 +11,6 @@ import {
   myGroup,
   rankingAround,
   reviewToday,
-  todayMeal,
   todayStudy,
   weekStudy,
 } from "@/lib/mock";
@@ -29,14 +29,7 @@ export default function HomePage() {
 
       <div className="space-y-4 px-5">
         {/* 오늘 급식 한 줄 */}
-        <Link href="/calendar" className="flex items-center gap-3 rounded-2xl bg-surface-2 px-4 py-3">
-          <Utensils size={18} className="shrink-0 text-warn" />
-          <p className="min-w-0 flex-1 truncate text-[14px]">
-            <span className="mr-2 font-semibold text-muted">점심</span>
-            {todayMeal.lunch.slice(1, 4).join(" · ")}
-          </p>
-          <ChevronRight size={16} className="shrink-0 text-faint" />
-        </Link>
+        <TodayMealLine />
 
         <EventBanner />
 

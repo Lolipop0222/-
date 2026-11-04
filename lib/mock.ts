@@ -86,16 +86,10 @@ export function rankingAround(scope: RankingScope): { top: RankRow[]; around: Ra
 // events (홈 배너)
 export const EVENT_CATEGORIES = ["학생회", "반", "입시"] as const;
 export const events = [
-  { id: "e1", category: "학생회", title: "11월 모의고사 대비 야자 간식 나눔", body: "11/18(화) 야자 2교시 쉬는 시간, 학생회실 앞", color: "#7c8cff" },
+  { id: "e1", category: "학생회", title: "11월 모의고사 대비 야자 간식 나눔", body: "11/17(화) 야자 2교시 쉬는 시간, 학생회실 앞", color: "#7c8cff" },
   { id: "e2", category: "입시", title: "2027 수시 원서접수 일정 정리", body: "대학별 접수 마감일을 한 번에 확인하세요", color: "#3ddc84" },
   { id: "e3", category: "반", title: "2-3 영어 수행평가 범위 공지", body: "Lesson 5–6 본문, 서술형 3문항", color: "#ffb547" },
 ] as const;
-
-// school_cache — 급식
-export const todayMeal = {
-  lunch: ["현미밥", "돼지고기김치찌개", "치즈떡볶이", "고구마맛탕", "깍두기", "요구르트"],
-  dinner: ["카레라이스", "유부장국", "치킨너겟", "양배추샐러드", "배추김치"],
-};
 
 // assessments — 수행평가
 export const assessments = [
@@ -109,8 +103,8 @@ export const schoolEvents: Record<string, string[]> = {
   "2026-10-09": ["한글날"],
   "2026-10-15": ["2학기 중간고사 성적 확인"],
   "2026-10-30": ["개교기념일"],
-  "2026-11-12": ["2027 수능 (휴업)"],
-  "2026-11-18": ["11월 전국연합학력평가"],
+  "2026-11-18": ["수능 예비소집"],
+  "2026-11-19": ["2027학년도 수능"],
 };
 
 // words / reviews

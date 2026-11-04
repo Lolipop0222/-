@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Flag, Plus, Utensils } from "lucide-react";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { WEEKDAYS, fromYmd, ymd } from "@/lib/format";
-import { SUBJECT_COLOR, assessments, schoolEvents, todayMeal } from "@/lib/mock";
+import { MEAL_LABEL, meals, type Meal } from "@/lib/meals";
+import { SUBJECT_COLOR, assessments, schoolEvents } from "@/lib/mock";
 import { useToday } from "@/lib/useToday";
 
 export default function CalendarPage() {
@@ -28,7 +29,10 @@ export default function CalendarPage() {
   const selKey = selected ?? (offset === 0 ? todayKey : ymd(base));
   const selDate = fromYmd(selKey);
   const selDow = selDate.getDay();
-  const isWeekend = selDow === 0 || selDow === 6;
+  const selMeals = meals[selKey];
+  // 식단표가 들어온 달인지 (없는 날 vs 아직 안 받은 달 구분)
+  const monthPrefix = selKey.slice(0, 7);
+  const hasMonthMenu = Object.keys(meals).some((k) => k.startsWith(monthPrefix));
   const selEvents = schoolEvents[selKey] ?? [];
   const selAssess = assessments.filter((a) => a.date === selKey);
 
@@ -116,13 +120,14 @@ export default function CalendarPage() {
           <p className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
             <Utensils size={16} className="text-warn" /> 급식
           </p>
-          {isWeekend ? (
-            <p className="text-[14px] text-faint">급식이 없는 날이에요</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <Meal title="중식" items={todayMeal.lunch} />
-              <Meal title="석식" items={todayMeal.dinner} />
+          {selMeals ? (
+            <div className="space-y-2.5">
+              {(Object.keys(MEAL_LABEL) as (keyof typeof MEAL_LABEL)[]).map((k) => (
+                <MealRow key={k} title={MEAL_LABEL[k]} meal={selMeals[k]} />
+              ))}
             </div>
+          ) : (
+            <p className="text-[14px] text-faint">{hasMonthMenu ? "급식이 없는 날이에요" : "아직 이 달 식단표가 없어요"}</p>
           )}
         </Card>
 
@@ -134,15 +139,20 @@ export default function CalendarPage() {
   );
 }
 
-function Meal({ title, items }: { title: string; items: string[] }) {
+function MealRow({ title, meal }: { title: string; meal?: Meal }) {
   return (
-    <div className="rounded-xl bg-surface-2 p-3">
-      <p className="mb-1.5 text-[12px] font-semibold text-muted">{title}</p>
-      <ul className="space-y-0.5 text-[14px] leading-relaxed">
-        {items.map((m) => (
-          <li key={m}>{m}</li>
-        ))}
-      </ul>
+    <div className="rounded-xl bg-surface-2 px-3.5 py-3">
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[12px] font-semibold text-muted">{title}</p>
+        {meal?.kcal && <p className="num text-[11px] text-faint">{meal.kcal} kcal</p>}
+      </div>
+      {meal?.note ? (
+        <p className="text-[14px] font-semibold text-warn">{meal.note}</p>
+      ) : meal ? (
+        <p className="text-[14px] leading-relaxed">{meal.items.join(" · ")}</p>
+      ) : (
+        <p className="text-[14px] text-faint">없음</p>
+      )}
     </div>
   );
 }
