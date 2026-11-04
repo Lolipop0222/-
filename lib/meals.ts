@@ -1,11 +1,14 @@
 /**
  * 2026년 11월 대전고 식단표 (조식·중식·석식).
  * 학교에서 받은 한글 파일(2026.11 식단표)을 옮겨 적은 것. 알레르기 번호는 뺐다.
- * 나중에 NEIS에서 매일 받아와 school_cache에 저장하는 방식으로 바꾼다 (계획서 6.5).
+ * 평소에는 NEIS에서 받아오고(lib/neis.ts), NEIS가 안 되거나 비어 있을 때 이 데이터를 쓴다.
  */
 
 export type Meal = { items: string[]; kcal?: number; note?: string };
 export type MealDay = { breakfast?: Meal; lunch?: Meal; dinner?: Meal };
+
+/** /api/meals/[month] 응답. source: 어디서 가져왔는지 */
+export type MealsResponse = { source: "neis" | "file" | "none"; meals: Record<string, MealDay> };
 
 export const MEAL_LABEL = { breakfast: "조식", lunch: "중식", dinner: "석식" } as const;
 

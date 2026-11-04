@@ -27,6 +27,16 @@ npm run dev
 
 브라우저에서 http://localhost:3000 — 휴대폰 화면 기준(개발자 도구의 모바일 보기)으로 확인한다.
 
+## 환경변수 (키)
+
+키는 **코드에 넣지 않는다.** `.env.example`을 참고해서
+
+- 내 컴퓨터: `.env.local` 파일에 `NEIS_API_KEY=발급받은키`
+- 배포: Vercel → 프로젝트 → Settings → Environment Variables 에 `NEIS_API_KEY` 추가 후 다시 배포
+
+키가 없거나 NEIS가 응답하지 않으면 급식은 `lib/meals.ts`(학교 식단표 파일을 옮긴 것)로 대신 보여준다.
+캘린더 급식 카드 오른쪽 위에 지금 데이터가 어디서 왔는지(NEIS / 학교 식단표 파일) 작게 표시된다.
+
 ## 파일 구조
 
 - `app/` — 화면(페이지)들. 폴더 이름이 곧 주소
@@ -34,6 +44,9 @@ npm run dev
 - `components/ui.tsx` — 공통 디자인 부품. 새 화면도 이걸로 만든다
 - `app/globals.css` — 색상 규칙(디자인 토큰). 색은 여기서만 정한다
 - `lib/mock.ts` — 가짜 데이터. 계획서 3장 테이블 구조와 같은 모양
+- `lib/neis.ts` — NEIS 급식 조회 (서버 전용, 몇 시간씩 캐시)
+- `app/api/meals/[month]/route.ts` — 한 달 급식 API (`/api/meals/202611`)
+- `lib/meals.ts` — 2026년 11월 식단표 (NEIS가 안 될 때 대신 씀)
 - `lib/format.ts` — 시간·날짜 표시 함수
 
 ## 다음 단계 (계획서 5장)

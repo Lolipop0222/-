@@ -4,14 +4,17 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Flag, Plus, Utensils } from "lucide-react";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { WEEKDAYS, fromYmd, ymd } from "@/lib/format";
-import { MEAL_LABEL, meals, type Meal } from "@/lib/meals";
+import { MEAL_LABEL, type Meal } from "@/lib/meals";
 import { SUBJECT_COLOR, assessments, schoolEvents } from "@/lib/mock";
+import { useMonthMeals } from "@/lib/useMonthMeals";
 import { useToday } from "@/lib/useToday";
 
 export default function CalendarPage() {
   const today = useToday();
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const shown = today ? new Date(today.getFullYear(), today.getMonth() + offset, 1) : null;
+  const monthMeals = useMonthMeals(shown ? ymd(shown).slice(0, 7).replace("-", "") : null);
 
   if (!today) return <PageHeader title="캘린더" sub="급식 · 학사일정 · 수행평가" />;
 
@@ -29,10 +32,9 @@ export default function CalendarPage() {
   const selKey = selected ?? (offset === 0 ? todayKey : ymd(base));
   const selDate = fromYmd(selKey);
   const selDow = selDate.getDay();
-  const selMeals = meals[selKey];
-  // 식단표가 들어온 달인지 (없는 날 vs 아직 안 받은 달 구분)
-  const monthPrefix = selKey.slice(0, 7);
-  const hasMonthMenu = Object.keys(meals).some((k) => k.startsWith(monthPrefix));
+  const selMeals = monthMeals?.meals[selKey];
+  // 식단이 들어온 달인지 (급식 없는 날 vs 아직 안 나온 달 구분)
+  const hasMonthMenu = monthMeals ? Object.keys(monthMeals.meals).length > 0 : false;
   const selEvents = schoolEvents[selKey] ?? [];
   const selAssess = assessments.filter((a) => a.date === selKey);
 
@@ -43,13 +45,13 @@ export default function CalendarPage() {
       <div className="space-y-4 px-5">
         <Card className="px-3 pb-3">
           <div className="mb-2 flex items-center justify-between px-1">
-            <button aria-label="이전 달" onClick={() => setOffset((o) => o - 1)} className="grid size-9 place-items-center rounded-full text-muted active:bg-surface-2">
+            <button aria-label="이전 달" onClick={() => { setOffset((o) => o - 1); setSelected(null); }} className="grid size-9 place-items-center rounded-full text-muted active:bg-surface-2">
               <ChevronLeft size={20} />
             </button>
             <p className="num text-[17px] font-bold">
               {year}년 {month + 1}월
             </p>
-            <button aria-label="다음 달" onClick={() => setOffset((o) => o + 1)} className="grid size-9 place-items-center rounded-full text-muted active:bg-surface-2">
+            <button aria-label="다음 달" onClick={() => { setOffset((o) => o + 1); setSelected(null); }} className="grid size-9 place-items-center rounded-full text-muted active:bg-surface-2">
               <ChevronRight size={20} />
             </button>
           </div>
@@ -117,10 +119,17 @@ export default function CalendarPage() {
         )}
 
         <Card>
-          <p className="mb-3 flex items-center gap-2 text-[15px] font-semibold">
-            <Utensils size={16} className="text-warn" /> 급식
-          </p>
-          {selMeals ? (
+          <div className="mb-3 flex items-center justify-between">
+            <p className="flex items-center gap-2 text-[15px] font-semibold">
+              <Utensils size={16} className="text-warn" /> 급식
+            </p>
+            {monthMeals && monthMeals.source !== "none" && (
+              <span className="text-[11px] text-faint">{monthMeals.source === "neis" ? "NEIS" : "학교 식단표 파일"}</span>
+            )}
+          </div>
+          {!monthMeals ? (
+            <p className="text-[14px] text-faint">불러오는 중…</p>
+          ) : selMeals ? (
             <div className="space-y-2.5">
               {(Object.keys(MEAL_LABEL) as (keyof typeof MEAL_LABEL)[]).map((k) => (
                 <MealRow key={k} title={MEAL_LABEL[k]} meal={selMeals[k]} />

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { ChevronRight, Utensils } from "lucide-react";
 import { ymd } from "@/lib/format";
-import { MEAL_LABEL, meals } from "@/lib/meals";
+import { MEAL_LABEL } from "@/lib/meals";
+import { useMonthMeals } from "@/lib/useMonthMeals";
 import { useToday } from "@/lib/useToday";
 
 // 흰밥은 빼고 반찬만 보여준다
@@ -12,7 +13,9 @@ const PLAIN_RICE = /^(찹쌀|찰보리|찰옥수수|찰흑미|찰현미|기장|1
 /** 홈 상단 "오늘 점심" 한 줄. 점심이 없는 날은 그날 있는 다른 끼니를 보여준다 */
 export default function TodayMealLine() {
   const today = useToday();
-  const day = today ? meals[ymd(today)] : undefined;
+  const key0 = today ? ymd(today) : null;
+  const month = useMonthMeals(key0 ? key0.slice(0, 7).replace("-", "") : null);
+  const day = key0 && month ? month.meals[key0] : undefined;
   const key = day ? (["lunch", "dinner", "breakfast"] as const).find((k) => day[k]) : undefined;
   const meal = key && day ? day[key] : undefined;
 
@@ -20,7 +23,7 @@ export default function TodayMealLine() {
     <Link href="/calendar" className="flex items-center gap-3 rounded-2xl bg-surface-2 px-4 py-3">
       <Utensils size={18} className="shrink-0 text-warn" />
       <p className="min-w-0 flex-1 truncate text-[14px]">
-        {!today ? (
+        {!month ? (
           <span className="invisible">급식</span>
         ) : meal && key ? (
           <>
