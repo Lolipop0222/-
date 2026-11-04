@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 안드로이드 프로젝트·빌드 결과물
+    "android/**",
+    ".apk-web/**",
+    "dist/**",
   ]),
 ]);
 

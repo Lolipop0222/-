@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, ClipboardList, Flag, Plus, Utensils } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, Utensils } from "lucide-react";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { WEEKDAYS, fromYmd, ymd } from "@/lib/format";
 import { ALLERGENS, MEAL_LABEL, type Meal } from "@/lib/meals";
-import { SUBJECT_COLOR, assessments } from "@/lib/mock";
 import { useMonthMeals, useMonthSchedule } from "@/lib/useMonthly";
 import { useToday } from "@/lib/useToday";
 
@@ -18,7 +17,7 @@ export default function CalendarPage() {
   const monthMeals = useMonthMeals(ym);
   const schedule = useMonthSchedule(ym);
 
-  if (!today) return <PageHeader title="캘린더" sub="급식 · 학사일정 · 수행평가" />;
+  if (!today) return <PageHeader title="캘린더" sub="급식 · 학사일정" />;
 
   const base = new Date(today.getFullYear(), today.getMonth() + offset, 1);
   const year = base.getFullYear();
@@ -38,11 +37,10 @@ export default function CalendarPage() {
   // 식단이 들어온 달인지 (급식 없는 날 vs 아직 안 나온 달 구분)
   const hasMonthMenu = monthMeals ? Object.keys(monthMeals.meals).length > 0 : false;
   const selEvents = schedule?.events[selKey] ?? [];
-  const selAssess = assessments.filter((a) => a.date === selKey);
 
   return (
     <>
-      <PageHeader title="캘린더" sub="급식 · 학사일정 · 수행평가" />
+      <PageHeader title="캘린더" sub="급식 · 학사일정" />
 
       <div className="space-y-4 px-5">
         <Card className="px-3 pb-3">
@@ -74,7 +72,6 @@ export default function CalendarPage() {
               const isSel = key === selKey;
               const events = schedule?.events[key] ?? [];
               const holiday = events.some((e) => e.holiday);
-              const dayAssess = assessments.filter((a) => a.date === key);
               const dow = d.getDay();
               return (
                 <button
@@ -87,9 +84,6 @@ export default function CalendarPage() {
                   <span className="num">{d.getDate()}</span>
                   <span className="mt-0.5 flex h-1.5 gap-0.5">
                     {events.length > 0 && <span className={`size-1.5 rounded-full ${isSel ? "bg-bg" : holiday ? "bg-danger" : "bg-accent"}`} />}
-                    {dayAssess.map((a) => (
-                      <span key={a.id} className="size-1.5 rounded-full" style={{ background: isSel ? "var(--bg)" : SUBJECT_COLOR[a.subject] }} />
-                    ))}
                   </span>
                 </button>
               );
@@ -101,7 +95,7 @@ export default function CalendarPage() {
           {selDate.getMonth() + 1}월 {selDate.getDate()}일 ({WEEKDAYS[selDow]})
         </h2>
 
-        {(selEvents.length > 0 || selAssess.length > 0) && (
+        {selEvents.length > 0 && (
           <Card className="space-y-3">
             {selEvents.map((e) => (
               <p key={e.name} className="flex items-center gap-2.5 text-[15px]">
@@ -109,15 +103,6 @@ export default function CalendarPage() {
                 <span className="flex-1">{e.name}</span>
                 {e.holiday && <Badge tone="danger">쉬는 날</Badge>}
                 {e.grades.length > 0 && e.grades.length < 3 && !e.name.includes("학년") && <Badge>{e.grades.join("·")}학년</Badge>}
-              </p>
-            ))}
-            {selAssess.map((a) => (
-              <p key={a.id} className="flex items-center gap-2.5 text-[15px]">
-                <ClipboardList size={16} style={{ color: SUBJECT_COLOR[a.subject] }} />
-                <span className="flex-1">
-                  <span className="text-muted">{a.subject}</span> {a.title}
-                </span>
-                <Badge>{a.target}</Badge>
               </p>
             ))}
           </Card>
@@ -154,10 +139,6 @@ export default function CalendarPage() {
             <p className="text-[14px] text-faint">{hasMonthMenu ? "급식이 없는 날이에요" : "아직 이 달 식단표가 없어요"}</p>
           )}
         </Card>
-
-        <button className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-line py-3.5 text-[14px] text-muted">
-          <Plus size={16} /> 수행평가 등록 <span className="text-faint">(반장·과목부장)</span>
-        </button>
       </div>
     </>
   );

@@ -91,13 +91,6 @@ export const events = [
   { id: "e3", category: "반", title: "2-3 영어 수행평가 범위 공지", body: "Lesson 5–6 본문, 서술형 3문항", color: "#ffb547" },
 ] as const;
 
-// assessments — 수행평가
-export const assessments = [
-  { id: "a1", subject: "영어" as Subject, date: "2026-10-23", title: "Lesson 5–6 서술형", target: "2-3" },
-  { id: "a2", subject: "국어" as Subject, date: "2026-10-28", title: "현대시 감상문 제출", target: "2-3" },
-  { id: "a3", subject: "탐구" as Subject, date: "2026-11-04", title: "화학 실험 보고서", target: "2학년" },
-];
-
 // words / reviews
 export type Word = { id: string; book: string; day: number; en: string; ko: string; pos: string; box: 1 | 2 | 3 | 4 | 5 };
 

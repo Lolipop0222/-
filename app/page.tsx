@@ -7,7 +7,6 @@ import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui";
 import { hm } from "@/lib/format";
 import {
   SUBJECT_COLOR,
-  assessments,
   myGroup,
   rankingAround,
   reviewToday,
@@ -132,22 +131,6 @@ export default function HomePage() {
               지금 <span className="font-semibold text-live">{studyingNow}명</span> 공부 중
             </p>
           </div>
-        </Card>
-
-        {/* 수행평가 */}
-        <Card>
-          <SectionTitle href="/calendar">다가오는 수행평가</SectionTitle>
-          <ul className="space-y-3">
-            {assessments.slice(0, 2).map((a) => (
-              <li key={a.id} className="flex items-center gap-3">
-                <span className="size-2 rounded-full" style={{ background: SUBJECT_COLOR[a.subject] }} />
-                <span className="flex-1 text-[14px]">
-                  <span className="text-muted">{a.subject}</span> {a.title}
-                </span>
-                <span className="num text-[13px] text-muted">{a.date.slice(5).replace("-", "/")}</span>
-              </li>
-            ))}
-          </ul>
         </Card>
       </div>
     </>

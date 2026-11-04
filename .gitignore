@@ -42,3 +42,7 @@ next-env.d.ts
 
 # 예시 파일은 올린다
 !.env.example
+
+# 안드로이드 빌드 결과물
+/.apk-web
+/dist

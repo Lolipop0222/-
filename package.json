@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "wordmaster": "node scripts/split-wordmaster.mjs"
+    "wordmaster": "node scripts/split-wordmaster.mjs",
+    "apk": "node scripts/build-apk.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.61.0",
@@ -16,6 +17,8 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -23,6 +26,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@capacitor/core": "^8.6.0"
   }
 }
