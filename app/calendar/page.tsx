@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Flag, Plus, Utensils } from "lucide-react";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { WEEKDAYS, fromYmd, ymd } from "@/lib/format";
-import { MEAL_LABEL, type Meal } from "@/lib/meals";
+import { ALLERGENS, MEAL_LABEL, type Meal } from "@/lib/meals";
 import { SUBJECT_COLOR, assessments } from "@/lib/mock";
 import { useMonthMeals, useMonthSchedule } from "@/lib/useMonthly";
 import { useToday } from "@/lib/useToday";
@@ -135,11 +135,21 @@ export default function CalendarPage() {
           {!monthMeals ? (
             <p className="text-[14px] text-faint">불러오는 중…</p>
           ) : selMeals ? (
-            <div className="space-y-2.5">
-              {(Object.keys(MEAL_LABEL) as (keyof typeof MEAL_LABEL)[]).map((k) => (
-                <MealRow key={k} title={MEAL_LABEL[k]} meal={selMeals[k]} />
-              ))}
-            </div>
+            <>
+              <div className="space-y-2.5">
+                {(Object.keys(MEAL_LABEL) as (keyof typeof MEAL_LABEL)[]).map((k) => (
+                  <MealRow key={k} title={MEAL_LABEL[k]} meal={selMeals[k]} />
+                ))}
+              </div>
+              <details className="mt-3 text-[12px] text-faint">
+                <summary className="cursor-pointer">알레르기 번호 안내</summary>
+                <p className="mt-1.5 leading-relaxed">
+                  {Object.entries(ALLERGENS)
+                    .map(([n, name]) => `${n} ${name}`)
+                    .join(" · ")}
+                </p>
+              </details>
+            </>
           ) : (
             <p className="text-[14px] text-faint">{hasMonthMenu ? "급식이 없는 날이에요" : "아직 이 달 식단표가 없어요"}</p>
           )}
@@ -163,7 +173,17 @@ function MealRow({ title, meal }: { title: string; meal?: Meal }) {
       {meal?.note ? (
         <p className="text-[14px] font-semibold text-warn">{meal.note}</p>
       ) : meal ? (
-        <p className="text-[14px] leading-relaxed">{meal.items.join(" · ")}</p>
+        <p className="text-[14px] leading-relaxed">
+          {meal.dishes.map((d, i) => (
+            <span key={i}>
+              {i > 0 && <span className="text-faint"> · </span>}
+              <span className="whitespace-nowrap">
+                {d.name}
+                {d.allergens && <sup className="num ml-0.5 text-[9px] text-faint">{d.allergens.join(".")}</sup>}
+              </span>
+            </span>
+          ))}
+        </p>
       ) : (
         <p className="text-[14px] text-faint">없음</p>
       )}

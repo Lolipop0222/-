@@ -45,7 +45,9 @@ npm run dev
 - `components/ui.tsx` — 공통 디자인 부품. 새 화면도 이걸로 만든다
 - `app/globals.css` — 색상 규칙(디자인 토큰). 색은 여기서만 정한다
 - `lib/mock.ts` — 가짜 데이터. 계획서 3장 테이블 구조와 같은 모양
-- `lib/neis.ts` — NEIS 급식 조회 (서버 전용, 몇 시간씩 캐시)
+- `docs/NEIS_API.md` — NEIS API 명세. NEIS 코드는 이 문서를 기준으로 쓴다
+- `scripts/test-neis.mjs` — 인증키·학교코드 확인용 (`node scripts/test-neis.mjs`)
+- `lib/neis.ts` — NEIS 급식·학사일정 조회 (서버 전용, 페이지 반복·오류 코드 처리, 몇 시간씩 캐시)
 - `app/api/meals/[month]/route.ts` — 한 달 급식 API (`/api/meals/202611`)
 - `lib/meals.ts` — 2026년 11월 식단표 (NEIS가 안 될 때 대신 씀)
 - `app/api/schedule/[month]/route.ts` — 한 달 학사일정 API (NEIS, 토요휴업일 제외)

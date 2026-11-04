@@ -8,7 +8,7 @@ import { useMonthMeals } from "@/lib/useMonthly";
 import { useToday } from "@/lib/useToday";
 
 // 흰밥은 빼고 반찬만 보여준다
-const PLAIN_RICE = /^(찹쌀|찰보리|찰옥수수|찰흑미|찰현미|기장|15곡혼합|미니)밥$/;
+const PLAIN_RICE = /^(백미|쌀|현미|흑미|보리|잡곡|기장|귀리|수수|찹쌀|찰보리|찰옥수수|찰흑미|찰현미|혼합잡곡|\d+곡혼합|미니)밥$/;
 
 /** 홈 상단 "오늘 점심" 한 줄. 점심이 없는 날은 그날 있는 다른 끼니를 보여준다 */
 export default function TodayMealLine() {
@@ -28,7 +28,7 @@ export default function TodayMealLine() {
         ) : meal && key ? (
           <>
             <span className="mr-2 font-semibold text-muted">{MEAL_LABEL[key]}</span>
-            {meal.note ?? meal.items.filter((i) => !PLAIN_RICE.test(i)).join(" · ")}
+            {meal.note ?? meal.dishes.map((d) => d.name).filter((n) => !PLAIN_RICE.test(n)).join(" · ")}
           </>
         ) : (
           <span className="text-muted">오늘은 급식이 없어요</span>
