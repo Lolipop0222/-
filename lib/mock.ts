@@ -3,14 +3,6 @@
  * 모양은 계획서 3장의 테이블 구조를 그대로 따른다 — 나중에 Supabase 조회 결과로 바꿔 끼운다.
  */
 
-// events (홈 배너)
-export const EVENT_CATEGORIES = ["학생회", "반", "입시"] as const;
-export const events = [
-  { id: "e1", category: "학생회", title: "11월 모의고사 대비 야자 간식 나눔", body: "11/17(화) 야자 2교시 쉬는 시간, 학생회실 앞", color: "#7c8cff" },
-  { id: "e2", category: "입시", title: "2027 수시 원서접수 일정 정리", body: "대학별 접수 마감일을 한 번에 확인하세요", color: "#3ddc84" },
-  { id: "e3", category: "반", title: "2-3 영어 수행평가 범위 공지", body: "Lesson 5–6 본문, 서술형 3문항", color: "#ffb547" },
-] as const;
-
 // words / reviews
 export type Word = { id: string; book: string; day: number; en: string; ko: string; pos: string; box: 1 | 2 | 3 | 4 | 5 };
 

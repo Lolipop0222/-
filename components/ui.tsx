@@ -151,3 +151,23 @@ export function ListRow({
     <button className={`${cls} w-full text-left`}>{inner}</button>
   );
 }
+
+/** 아이콘 + 입력칸 한 줄 (로그인·비밀번호 화면) */
+export function InputRow({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <label className="flex h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 text-[16px] focus-within:border-accent">
+      <span className="text-muted">{icon}</span>
+      {children}
+    </label>
+  );
+}
+
+export const inputCls = "h-full w-full bg-transparent outline-none placeholder:text-faint";
+
+export function ErrorText({ children }: { children: ReactNode }) {
+  return <p className="rounded-xl bg-danger-soft px-4 py-3 text-[14px] text-danger">{children}</p>;
+}
+
+export function InfoText({ children }: { children: ReactNode }) {
+  return <p className="rounded-xl bg-live-soft px-4 py-3 text-[14px] text-live">{children}</p>;
+}

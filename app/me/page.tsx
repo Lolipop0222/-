@@ -1,10 +1,12 @@
 "use client";
 
-import { LogOut, Palette, Shield, Trash2, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Trash2, Users } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { Badge, Card, ListRow, PageHeader } from "@/components/ui";
+import { isAdmin } from "@/lib/account";
 import { hm } from "@/lib/format";
 import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
@@ -14,6 +16,15 @@ export default function MePage() {
   const { summary } = useStudy();
   const top = RANKED_SUBJECTS.reduce((a, b) => (summary.weekBySubject[b] > summary.weekBySubject[a] ? b : a));
   const hasTop = summary.weekBySubject[top] >= 60;
+  // 관리자 메뉴는 관리자에게만 보인다 (실제 권한은 DB가 확인)
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    isAdmin().then((v) => alive && setAdmin(v));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <>
@@ -40,7 +51,10 @@ export default function MePage() {
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
           <ListRow icon={<Users size={20} />} label="스터디그룹" value="준비 중" />
           <ListRow icon={<Palette size={20} />} label="아바타 꾸미기" value="준비 중" />
+          <ListRow icon={<MessageCircleQuestion size={20} />} label="문의함" href="/me/inquiry" />
+          <ListRow icon={<KeyRound size={20} />} label="비밀번호·복구 코드" href="/me/security" />
           <ListRow icon={<Shield size={20} />} label="개인정보 처리방침" href="/me/privacy" />
+          {admin && <ListRow icon={<ShieldCheck size={20} />} label="관리자" href="/me/admin" />}
         </Card>
 
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
@@ -48,11 +62,11 @@ export default function MePage() {
             <LogOut size={20} className="text-muted" />
             <span className="flex-1 text-[15px]">로그아웃</span>
           </button>
-          <ListRow icon={<Trash2 size={20} />} label="계정 삭제" value="준비 중" />
+          <ListRow icon={<Trash2 size={20} />} label="계정 삭제" href="/me/delete" danger />
         </Card>
 
         <p className="flex items-center justify-center gap-2 pb-2 text-[12px] text-faint">
-          대고 일품타 <Badge>v0.2</Badge>
+          대고 일품타 <Badge>v0.3</Badge>
         </p>
       </div>
     </>

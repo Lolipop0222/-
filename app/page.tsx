@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { BookOpen, ChevronRight } from "lucide-react";
-import EventBanner from "@/components/EventBanner";
 import HomeDday from "@/components/HomeDday";
 import HomePlanner from "@/components/HomePlanner";
+import HomeRecoveryNudge from "@/components/HomeRecoveryNudge";
 import HomeStudy from "@/components/HomeStudy";
 import TodayLabel from "@/components/TodayLabel";
 import TodayMealLine from "@/components/TodayMealLine";
@@ -20,7 +20,7 @@ export default function HomePage() {
 
         <HomeDday />
 
-        <EventBanner />
+        <HomeRecoveryNudge />
 
         <HomeStudy />
 

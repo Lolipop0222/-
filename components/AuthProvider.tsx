@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase, type Profile } from "@/lib/supabase";
@@ -29,19 +29,24 @@ export function useProfile(): Profile {
 }
 
 // 로그인하지 않아도 볼 수 있는 화면
-const PUBLIC_PATHS = ["/login", "/me/privacy"];
+const PUBLIC_PATHS = ["/login", "/login/reset", "/me/privacy"];
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: "loading" });
   const router = useRouter();
   const pathname = usePathname();
 
+  // 로그인·로그아웃이 빠르게 이어질 때(계정 삭제 등) 늦게 끝난 예전 조회가 최신 상태를 덮지 않게
+  const loadSeq = useRef(0);
+
   const load = useCallback(async (user: User | null) => {
+    const seq = ++loadSeq.current;
     if (!user) {
       setState({ status: "signedOut" });
       return;
     }
     const { data, error } = await supabase().from("profiles").select("id, nickname, grade, class_no").eq("id", user.id).maybeSingle();
+    if (seq !== loadSeq.current) return;
     if (error) {
       // 인터넷이 끊긴 경우 등 — 로그인 상태는 유지하고 프로필만 다시 시도하게 둔다
       console.error("[auth] 프로필 불러오기 실패", error);

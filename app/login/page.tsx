@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { Hash, KeyRound, Lock, Mail, Timer, UserRound } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { PrimaryButton, Segmented } from "@/components/ui";
+import { ErrorText, InputRow, PrimaryButton, Segmented, inputCls } from "@/components/ui";
+import { MIN_PASSWORD } from "@/lib/account";
 import { koreanError, supabase } from "@/lib/supabase";
 
 const MODES = ["로그인", "가입"] as const;
@@ -32,16 +34,18 @@ export default function LoginPage() {
   const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && code.trim().length > 0;
   const canSubmit = profileOnly
     ? profileValid
-    : email.includes("@") && password.length >= 6 && (mode === "로그인" || profileValid);
+    : email.includes("@") && password.length >= (mode === "가입" ? MIN_PASSWORD : 6) && (mode === "로그인" || profileValid);
 
   async function createProfile() {
-    const { error } = await supabase().rpc("create_profile", {
+    const { data, error } = await supabase().rpc("create_profile", {
       p_nickname: nickname.trim(),
       p_grade: GRADES.indexOf(grade) + 1,
       p_class_no: Number(classNo),
       p_invite_code: code.trim(),
     });
     if (error) throw error;
+    // 초대코드가 틀리면 DB가 오류 대신 빈 값을 준다 (틀린 횟수를 기록해 마구 넣어 보기를 막으려고)
+    if (!(data as { id?: string } | null)?.id) throw new Error("초대코드가 맞지 않습니다");
     await auth.refreshProfile();
   }
 
@@ -102,7 +106,7 @@ export default function LoginPage() {
                 autoComplete={mode === "가입" ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호 (6자 이상)"
+                placeholder={mode === "가입" ? `비밀번호 (${MIN_PASSWORD}자 이상)` : "비밀번호"}
                 className={inputCls}
               />
             </InputRow>
@@ -131,12 +135,18 @@ export default function LoginPage() {
           </>
         )}
 
-        {error && <p className="rounded-xl bg-danger-soft px-4 py-3 text-[14px] text-danger">{error}</p>}
+        {error && <ErrorText>{error}</ErrorText>}
 
         <div className="pt-3">
           <PrimaryButton disabled={!canSubmit || busy}>{busy ? "잠시만요…" : profileOnly ? "시작하기" : mode === "로그인" ? "로그인" : "가입하고 시작하기"}</PrimaryButton>
         </div>
       </form>
+
+      {!profileOnly && mode === "로그인" && (
+        <Link href="/login/reset" className="mt-5 self-center text-[14px] text-muted underline-offset-4 active:underline">
+          비밀번호를 잊었어요
+        </Link>
+      )}
 
       {profileOnly && (
         <button onClick={() => auth.signOut()} className="mt-4 text-[14px] text-muted">
@@ -144,16 +154,5 @@ export default function LoginPage() {
         </button>
       )}
     </div>
-  );
-}
-
-const inputCls = "h-full w-full bg-transparent outline-none placeholder:text-faint";
-
-function InputRow({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <label className="flex h-14 items-center gap-3 rounded-2xl border border-line bg-surface px-4 text-[16px] focus-within:border-accent">
-      <span className="text-muted">{icon}</span>
-      {children}
-    </label>
   );
 }

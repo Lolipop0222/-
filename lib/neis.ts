@@ -68,6 +68,14 @@ async function getSchoolCode(): Promise<string> {
 
 // ── 날짜 ──
 
+/**
+ * 주소로 받은 달("202611")이 말이 되는지. 아무 달이나 넣어 NEIS를 마구 부르게(캐시를 채우게) 하지 못하도록
+ * 2020~2039년, 01~12월만 받는다.
+ */
+export function validMonth(month: string): boolean {
+  return /^20[23]\d(0[1-9]|1[0-2])$/.test(month);
+}
+
 /** 한국 시간 기준 YYYYMMDD. Vercel 서버는 UTC라 new Date()를 그대로 쓰면 오전 9시 전에 하루가 밀린다 */
 export function kstYmd(d = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" })

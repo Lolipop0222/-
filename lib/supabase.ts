@@ -41,7 +41,11 @@ export function koreanError(e: unknown): string {
   if (msg.includes("row-level security")) return "이 기록은 고칠 수 없어요 (데이터베이스 업데이트가 필요할 수 있어요)";
   if (msg.includes("Invalid login credentials")) return "이메일 또는 비밀번호가 맞지 않아요";
   if (msg.includes("User already registered")) return "이미 가입된 이메일이에요. 로그인해 주세요";
-  if (msg.includes("Password should be at least")) return "비밀번호는 6자 이상이어야 해요";
+  if (msg.includes("Password should be at least")) return "비밀번호가 너무 짧아요";
+  if (msg.includes("should be different from the old password")) return "지금 비밀번호와 다른 비밀번호를 써 주세요";
+  if (msg.includes("weak") && msg.toLowerCase().includes("password")) return "너무 쉬운 비밀번호예요. 다른 비밀번호를 써 주세요";
+  if (msg.includes("inquiries_body_check")) return "문의 내용은 5~1000자로 써 주세요";
+  if (msg.includes("rate limit") || err?.code === "over_request_rate_limit") return "요청이 너무 많아요. 잠시 후 다시 시도해 주세요";
   if (msg.includes("Unable to validate email") || msg.includes("invalid format")) return "이메일 형식을 확인해 주세요";
   if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) return "인터넷 연결을 확인해 주세요";
   // DB 함수가 직접 던지는 한국어 메시지 (초대코드, 16시간 상한 등)

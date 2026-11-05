@@ -14,7 +14,7 @@ const TABS = [
 ];
 
 // 집중해야 하는 화면에서는 탭을 숨긴다
-const HIDDEN_ON = ["/login", "/words/review"];
+const HIDDEN_ON = ["/login", "/login/reset", "/words/review"];
 
 export default function BottomNav() {
   const pathname = usePathname();

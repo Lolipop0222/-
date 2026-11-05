@@ -1,5 +1,5 @@
 import { meals as fileMeals, type MealDay, type MealsResponse } from "@/lib/meals";
-import { getMonthMeals } from "@/lib/neis";
+import { getMonthMeals, validMonth } from "@/lib/neis";
 
 /**
  * GET /api/meals/202611 — 한 달 급식.
@@ -7,7 +7,7 @@ import { getMonthMeals } from "@/lib/neis";
  */
 export async function GET(_req: Request, ctx: RouteContext<"/api/meals/[month]">) {
   const { month } = await ctx.params;
-  if (!/^20\d{4}$/.test(month)) {
+  if (!validMonth(month)) {
     return Response.json({ error: "month는 YYYYMM 형식" }, { status: 400 });
   }
 

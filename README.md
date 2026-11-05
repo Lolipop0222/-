@@ -4,12 +4,12 @@
 
 ## 지금 상태
 
-- **진짜로 동작**: 로그인·가입(초대코드), 공부 타이머(서버 시각 기록), 오늘·이번 주 과목별 공부 시간, 과목별 주간 순위, 급식·학사일정(NEIS), 디데이, 플래너·데일리 루틴(과제 ↔ 타이머 연결), 워마 퀴즈(문제당 제한 시간 옵션)
-- **아직 가짜(`lib/mock.ts`)**: 홈 공지 배너, 워마 복습(상자 5단계)·직접 입력·스캔
+- **진짜로 동작**: 로그인·가입(초대코드), 공부 타이머(서버 시각 기록), 오늘·이번 주 과목별 공부 시간, 과목별 주간 순위, 급식·학사일정(NEIS), 디데이, 플래너·데일리 루틴(과제 ↔ 타이머 연결), 워마 퀴즈(문제당 제한 시간 옵션), 문의함, 비밀번호 찾기(복구 코드), 계정 삭제
+- **아직 가짜(`lib/mock.ts`)**: 워마 복습(상자 5단계)·직접 입력·스캔
 
 | 탭 | 경로 | 화면 |
 | --- | --- | --- |
-| 홈 | `/` | 오늘 급식 한 줄, 가장 가까운 디데이 2개, 공지 배너, 오늘 공부 시간(과목별), 이번 주 합계, 전교 순위, 오늘 복습할 단어 |
+| 홈 | `/` | 오늘 급식 한 줄, 가장 가까운 디데이 2개, 복구 코드가 없으면 만들라는 안내, 오늘 공부 시간(과목별), 이번 주 합계, 전교 순위, 오늘 복습할 단어 |
 | | `/dday` | 디데이: 학교 시험(NEIS에서 내 학년 것만 자동) + 직접 추가·삭제, 지난 디데이 |
 | | `/planner` | 플래너(종이 플래너 양식): 날짜·D-DAY·COMMENT·TOTAL TIME, TASKS(과목은 직접 고름, ▶로 그 과목 타이머), 10분 단위 TIMETABLE(공부 기록으로 자동 색칠), MEMO |
 | | `/planner/routines` | 데일리 루틴: 요일마다 반복되는 과제를 한 번만 등록 → 그날 플래너에 자동으로 들어감 |
@@ -22,7 +22,12 @@
 | | `/words/scan` | 사진 스캔 → 인식 결과 확인·수정 |
 | 캘린더 | `/calendar` | 월 달력, 날짜별 급식·학사일정 (NEIS) |
 | 내정보 | `/me` | 닉네임·학년·반, 오늘/이번 주/최다 과목, 로그아웃, 개인정보 처리방침(`/me/privacy`) |
+| | `/me/inquiry` | 문의함: 관리자에게 질문·오류 신고·제안 보내기(하루 5개), 답변 보기, 내 문의 지우기 |
+| | `/me/security` | 비밀번호 복구 코드 만들기(한 번만 보여 줌), 비밀번호 바꾸기(지금 비밀번호 확인) |
+| | `/me/delete` | 계정 삭제: 비밀번호 + 닉네임 입력 → 계정과 모든 기록 즉시 삭제 |
+| | `/me/admin` | 관리자만: 문의 답변, 학생 복구 코드 대신 만들기 (관리자가 아니면 메뉴도 안 보임) |
 | | `/login` | 이메일·비밀번호 로그인 / 가입(닉네임·학년·반·초대코드). 로그인하지 않으면 이 화면으로 온다 |
+| | `/login/reset` | 비밀번호 찾기: 이메일 + 복구 코드 → 새 비밀번호 |
 
 ## 실행
 
@@ -50,6 +55,13 @@ npm run dev
 3. 초대코드 바꾸기: `update app_settings set value = '새코드' where key = 'invite_code';`
 4. Authentication → Sign In / Providers → Email: **Confirm email 끄기** (무료 메일 발송 한도가 시간당 몇 통뿐이라)
 5. Project Settings → API의 Project URL과 publishable(anon) 키를 `.env.local`과 Vercel 환경변수에 넣는다 (`.env.example` 참고)
+6. 관리자 등록 (문의 답변·복구 코드 발급용, 내 닉네임으로):
+   `insert into admins (user_id) select id from profiles where nickname = '내닉네임' on conflict do nothing;`
+7. 보안 설정: Authentication → Sign In / Providers → Email → **Minimum password length 8** 권장. 초대코드는 기본값(`DAEGO2026`)에서 꼭 바꾼다
+
+**비밀번호 찾기**: 메일 인증을 꺼 둬서 메일로 재설정할 수 없다. 대신 학생이 내정보에서 **복구 코드**(12자리, 해시로만 저장, 한 번 쓰면 없어짐)를
+만들어 두고, 잊으면 `/login/reset`에서 이메일 + 코드로 새 비밀번호를 정한다(15분에 5번 틀리면 잠김). 코드도 잃어버리면 관리자가 `/me/admin`에서
+닉네임으로 새 코드를 만들어 직접 전해 준다.
 
 공부 시간은 클라이언트가 숫자를 보내지 않는다. `start_session` / `end_session` 함수가 서버 시각으로 기록하고,
 순위는 `get_ranking(범위, 과목)` 함수가 닉네임·학년·반·합계만 돌려준다. 과목을 바꾸면 `lib/subjects.ts`와
@@ -80,6 +92,8 @@ npm run apk -- https://배포주소.vercel.app
 - `supabase/schema.sql` — DB 테이블·RLS·함수
 - `lib/supabase.ts`, `components/AuthProvider.tsx` — Supabase 연결과 로그인 상태(로그인 안 하면 /login으로)
 - `lib/study.ts`, `components/StudyProvider.tsx` — 공부 기록 시작·정지·합계·순위 (타이머·홈·순위가 같이 씀)
+- `lib/account.ts` — 문의함·복구 코드·비밀번호 찾기·계정 삭제·관리자 함수 호출
+- `next.config.ts` — 보안 헤더(CSP, iframe 금지 등)
 - `lib/mock.ts` — 가짜 데이터. 계획서 3장 테이블 구조와 같은 모양
 - `docs/NEIS_API.md` — NEIS API 명세. NEIS 코드는 이 문서를 기준으로 쓴다
 - `scripts/test-neis.mjs` — 인증키·학교코드 확인용 (`node scripts/test-neis.mjs`)

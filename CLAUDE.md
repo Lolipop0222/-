@@ -56,8 +56,23 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `tasks` | 플래너 과제 (날짜·제목·과목·완료·skipped·routine_id, 하루 30개) | 본인만 |
 | `routines` | 데일리 루틴 (요일 배열 0=일…6=토, active, 20개) | 본인만 |
 | `planner_days` | 날짜별 COMMENT·MEMO | 본인만 |
+| `inquiries` | 문의함 (분류·내용 5~1000자·답변, 하루 5개) | 본인 조회·작성·삭제, 수정 불가. 답변은 관리자 함수로만 |
+| `admins` | 관리자 user_id. **SQL Editor에서만** 추가 | 클라이언트 못 읽음 |
+| `recovery_codes` | 비밀번호 복구 코드 **해시**(bcrypt) | 클라이언트 못 읽음 |
+| `security_attempts` | 초대코드·복구 코드 틀린 기록 (하루 지나면 지움) | 클라이언트 못 읽음 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()`. 모두 `authenticated`만 실행 가능.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)`. 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+
+**관리자 등록**: `insert into admins (user_id) select id from profiles where nickname = '닉네임' on conflict do nothing;` — 사용자(앱 주인)가 직접 실행. 관리자면 내정보에 "관리자" 메뉴(`/me/admin`)가 보인다.
+
+**보안 규칙 (2026-11-05 강화)** — 새 기능을 만들 때도 지킨다
+- 새 테이블: RLS 켜고 `to authenticated` 정책만, `revoke all on … from anon`. 학생이 직접 쓰는 테이블엔 개수·날짜 범위 제한 트리거(`planner_limits`, `ddays_limit`, `date_range_guard`, `etc_session_guard`, `inquiries_guard` 참고).
+- 새 함수: `security definer`면 `set search_path = public`, 끝에서 `revoke execute … from public, anon` + `grant … to authenticated`를 꼭 쓴다 (Supabase는 새 함수를 anon도 부를 수 있게 만든다).
+- 틀린 시도를 세야 하는 함수(초대코드·복구 코드)는 **오류를 던지면 기록도 되돌아간다** → 기록 후 null이나 결과 글자('invalid' 등)를 돌려준다. `create_profile`은 코드가 틀리면 null을 돌려주고 앱(`app/login/page.tsx`)이 "초대코드가 맞지 않습니다"로 보여 준다. 15분에 5번 틀리면 잠김.
+- 비밀번호 찾기 = 복구 코드(12자리, 60비트, 해시만 저장, 한 번 쓰면 삭제). 성공하면 `auth.users.encrypted_password`를 bcrypt로 바꾸고 `auth.sessions`를 지워 다른 기기를 로그아웃. 메일 재설정은 Confirm email을 꺼 뒀고 Supabase 기본 메일은 팀원 주소로만 보내져서 안 쓴다(쓰려면 커스텀 SMTP 필요).
+- 계정 삭제 = `delete_my_account()`가 `auth.users`를 지움 → cascade로 모든 기록 삭제. 앱은 비밀번호를 다시 확인하고 닉네임을 똑같이 쓰게 한 뒤 부른다.
+- 웹: `next.config.ts`의 보안 헤더(CSP — 스크립트는 self, 통신은 self+`*.supabase.co`, CSS·글꼴은 jsdelivr만 / iframe 금지 / HSTS 등). 외부 스크립트·이미지·API를 새로 쓰면 CSP에 추가해야 한다. API 주소의 달 파라미터는 `validMonth()`로 검사.
+- `dangerouslySetInnerHTML` 쓰지 않는다. 학생이 쓴 글(문의·닉네임)은 React가 글자로만 그린다.
 
 **초대코드 방식**: 가입 = 이메일·비밀번호(Supabase Auth, **Confirm email 꺼 둠** — 무료 메일 한도 때문) → `create_profile`에 닉네임·학년·반·초대코드. 코드가 틀리면 프로필이 안 생겨 앱을 못 쓴다(로그인 화면의 프로필 단계에 머묾). 기본값 `DAEGO2026`이지만 사용자가 바꿨을 수 있다. 바꾸기: `update app_settings set value = '새코드' where key = 'invite_code';`
 
@@ -113,25 +128,29 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 플래너(`/planner`)·데일리 루틴(`/planner/routines`), 홈 플래너 카드
 - 워마 퀴즈(`/words/day/1~50`): 뜻 고르기 / 빈칸 채우기(단어 상자 10개, 기본·응용·심화), 틀린 것만 다시, 제한 시간 옵션. 최고 점수는 **기기 localStorage**에만 저장
 - PWA manifest·아이콘, 안드로이드 APK(Capacitor, 디버그 서명)
+- 문의함(`/me/inquiry`)·관리자 화면(`/me/admin`: 답변, 복구 코드 대신 발급)
+- 비밀번호 찾기(`/login/reset`, 복구 코드)·복구 코드 만들기·비밀번호 바꾸기(`/me/security`), 홈에 "복구 코드 만들어 두세요" 안내(코드 없을 때만)
+- 계정 삭제(`/me/delete`)
+- 홈 공지 배너(가짜 "간식 나눔" 등)는 사용자 요청으로 **삭제**함 (`EventBanner`, `lib/mock.ts`의 events)
 
 **아직 가짜 / 준비 중** (`lib/mock.ts` 등)
-- 홈 공지 배너(`EventBanner`) — 가짜
 - 워마 "오늘 복습할 단어 23개", 상자 5단계 분포, `/words/review`(상자 복습) — 가짜
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
-- 스터디그룹, 아바타 꾸미기, 계정 삭제 — "준비 중" 표시만
-- 비밀번호 찾기 없음(메일 인증 꺼 둠), 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
+- 스터디그룹, 아바타 꾸미기 — "준비 중" 표시만
+- 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
 **확인된 상태 (2026-11-05)**
 - 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. 다시 확인하려면 publishable 키로 `GET /rest/v1/tasks?select=id&limit=1` → `PGRST205`면 없음, `[]`면 있음.
+- **커밋 "문의함·비밀번호 찾기·계정 삭제·보안 강화" 이후 `schema.sql`을 다시 실행해야 한다** — 사용자가 실행했는지 확인. 안 했으면 문의함·복구 코드·계정 삭제가 "준비 중"/"데이터베이스 업데이트가 필요해요"로 나온다. 확인: publishable 키로 `POST /rest/v1/rpc/reset_password_with_code` (빈 값들) → `PGRST202`면 아직, `"weak"`면 됨.
+- 사용자에게 안내한 것(했는지 확인): 관리자 등록 SQL, 초대코드를 기본값 `DAEGO2026`에서 바꾸기(schema.sql에 기본값이 보임), Supabase Auth 최소 비밀번호 길이 8.
 - GitHub 기본 브랜치는 아직 `claude/app-ui-design-nxs7yv` → 사용자에게 Settings → General → Default branch를 `main`으로 바꾸도록 안내함(바꿨는지 다음 세션에서 확인). Vercel은 이미 `main`을 배포.
 
 **다음 할 일 후보** (사용자와 순서를 정할 것)
 1. 친구들에게 초대코드를 주고 1주일 써 보게 하기 — 계획서 1단계 완료 기준
 2. ① 공부 시간으로 성장하는 캐릭터 → 나중에 재화·스킨 상점 (그림 작업 필요, 계획서 6단계)
-3. 계정 삭제(개인정보 처리방침에서 약속함), 비밀번호 재설정 방법
-4. 워마 상자 5단계 복습을 실제 데이터로 (Supabase `reviews` 테이블, 퀴즈 점수도 계정에 저장)
-5. NEIS 하루 1회 cron + `school_cache` (문서 6장)
-6. 스터디그룹(초대코드 6자리), 수행평가(반장 등록), 이벤트 배너 관리자 화면 — 사용자가 보류한 것 포함
+3. 워마 상자 5단계 복습을 실제 데이터로 (Supabase `reviews` 테이블, 퀴즈 점수도 계정에 저장)
+4. NEIS 하루 1회 cron + `school_cache` (문서 6장)
+5. 스터디그룹(초대코드 6자리), 수행평가(반장 등록), 이벤트 배너 관리자 화면 — 사용자가 보류한 것 포함
 
 ## 7. 테스트 방법 (이 클라우드 환경 기준)
 
@@ -145,7 +164,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 create role anon nologin;
 create role authenticated nologin;
 create schema auth;
-create table auth.users (id uuid primary key);
+create table auth.users (id uuid primary key, email text, encrypted_password text, updated_at timestamptz);
+create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users on delete cascade);
 create function auth.uid() returns uuid language sql stable as
   $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to anon, authenticated;
@@ -155,7 +175,8 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant all on functions to anon, authenticated;
 ```
 
-- 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 현재)을 꺼내 각각 올린 DB에 새 파일을 2번 실행.
+- psql 파일은 postgres 사용자가 스크래치 폴더를 못 읽으니 `su postgres -c "psql …" < 파일`처럼 표준입력으로 넣는다. pgcrypto는 로컬에도 있다(schema.sql이 `extensions` 스키마에 만든다).
+- 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 한국사·기타, 그 뒤는 `git log --oneline -- supabase/schema.sql`)을 꺼내 각각 올린 DB에 새 파일을 2번 실행.
 - Next 16은 떠난 페이지를 숨긴 채 DOM에 남겨 둔다 → Playwright 선택자는 `:visible`이나 열린 dialog 안으로 범위를 좁힌다.
 
 ## 8. 구현하며 알게 된 함정
