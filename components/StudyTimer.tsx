@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Eye, Play, Square } from "lucide-react";
 import { hm, hms } from "@/lib/format";
-import { SUBJECTS, SUBJECT_COLOR, todayStudy, weekStudy, type Subject } from "@/lib/mock";
+import { todayStudy, weekStudy } from "@/lib/mock";
+import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
 
 const AWAY_LIMIT_MS = 30_000;
 

@@ -5,8 +5,8 @@ import TodayLabel from "@/components/TodayLabel";
 import TodayMealLine from "@/components/TodayMealLine";
 import { Badge, Card, PageHeader, SectionTitle } from "@/components/ui";
 import { hm } from "@/lib/format";
+import { SUBJECT_COLOR } from "@/lib/subjects";
 import {
-  SUBJECT_COLOR,
   myGroup,
   rankingAround,
   reviewToday,

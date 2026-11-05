@@ -38,6 +38,18 @@ npm run dev
 키가 없거나 NEIS가 응답하지 않으면 급식은 `lib/meals.ts`(학교 식단표 파일을 옮긴 것)로 대신 보여준다.
 캘린더 급식 카드 오른쪽 위에 지금 데이터가 어디서 왔는지(NEIS / 학교 식단표 파일) 작게 표시된다.
 
+## Supabase (로그인 · 공부 기록 · 순위)
+
+1. supabase.com에서 프로젝트 생성 — 지역은 **Northeast Asia (Seoul)**
+2. SQL Editor에 `supabase/schema.sql`을 통째로 붙여넣고 Run (여러 번 실행해도 된다)
+3. 초대코드 바꾸기: `update app_settings set value = '새코드' where key = 'invite_code';`
+4. Authentication → Sign In / Providers → Email: **Confirm email 끄기** (무료 메일 발송 한도가 시간당 몇 통뿐이라)
+5. Project Settings → API의 Project URL과 publishable(anon) 키를 `.env.local`과 Vercel 환경변수에 넣는다 (`.env.example` 참고)
+
+공부 시간은 클라이언트가 숫자를 보내지 않는다. `start_session` / `end_session` 함수가 서버 시각으로 기록하고,
+순위는 `get_ranking(범위, 과목)` 함수가 닉네임·학년·반·합계만 돌려준다. 과목을 바꾸면 `lib/subjects.ts`와
+`schema.sql`의 `sessions_subject_check`를 같이 고친다.
+
 ## 안드로이드 앱 (APK)
 
 APK는 **배포된 웹 주소를 여는 안드로이드 앱**이다 (Capacitor). 화면과 기능은 웹과 같고, 웹을 다시 배포하면 앱도 바로 바뀐다.
@@ -58,6 +70,8 @@ npm run apk -- https://배포주소.vercel.app
 - `components/` — 여러 화면에서 같이 쓰는 조각 (하단 탭, 카드, 타이머, 순위표 등)
 - `components/ui.tsx` — 공통 디자인 부품. 새 화면도 이걸로 만든다
 - `app/globals.css` — 색상 규칙(디자인 토큰). 색은 여기서만 정한다
+- `lib/subjects.ts` — 과목 분류 (국어·영어·수학·과학·사회)와 색
+- `supabase/schema.sql` — DB 테이블·RLS·함수
 - `lib/mock.ts` — 가짜 데이터. 계획서 3장 테이블 구조와 같은 모양
 - `docs/NEIS_API.md` — NEIS API 명세. NEIS 코드는 이 문서를 기준으로 쓴다
 - `scripts/test-neis.mjs` — 인증키·학교코드 확인용 (`node scripts/test-neis.mjs`)

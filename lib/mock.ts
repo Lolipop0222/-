@@ -3,16 +3,7 @@
  * 모양은 계획서 3장의 테이블 구조를 그대로 따른다 — 나중에 Supabase 조회 결과로 바꿔 끼운다.
  */
 
-export const SUBJECTS = ["국어", "수학", "영어", "탐구", "기타"] as const;
-export type Subject = (typeof SUBJECTS)[number];
-
-export const SUBJECT_COLOR: Record<Subject, string> = {
-  국어: "#ff8a7a",
-  수학: "#7c8cff",
-  영어: "#3ddc84",
-  탐구: "#ffb547",
-  기타: "#8b93a5",
-};
+import type { Subject } from "@/lib/subjects";
 
 // users
 export const me = {
@@ -31,7 +22,7 @@ export const todayStudy = {
     { subject: "수학" as Subject, sec: 5400 },
     { subject: "영어" as Subject, sec: 4200 },
     { subject: "국어" as Subject, sec: 2400 },
-    { subject: "탐구" as Subject, sec: 1320 },
+    { subject: "과학" as Subject, sec: 1320 },
   ],
 };
 
