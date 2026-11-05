@@ -64,19 +64,6 @@ alter table sessions drop constraint if exists sessions_label_check;
 alter table sessions add constraint sessions_label_check check (label is null or char_length(label) <= 20);
 alter table sessions drop constraint if exists sessions_time_order;
 alter table sessions add constraint sessions_time_order check (ended_at is null or ended_at >= started_at);
-
--- '기타' 기록만 학생이 직접 추가·고치기·지우기 가능 (순위에 안 들어가므로). 공부 과목 기록은 여전히 함수로만
-drop policy if exists "기타 기록 추가" on sessions;
-create policy "기타 기록 추가" on sessions for insert to authenticated
-  with check (auth.uid() = user_id and subject = '기타' and task_id is null);
-drop policy if exists "기타 기록 수정" on sessions;
-create policy "기타 기록 수정" on sessions for update to authenticated
-  using (auth.uid() = user_id and subject = '기타')
-  with check (auth.uid() = user_id and subject = '기타');
-drop policy if exists "기타 기록 삭제" on sessions;
-create policy "기타 기록 삭제" on sessions for delete to authenticated
-  using (auth.uid() = user_id and subject = '기타');
-
 -- ───────────────────────── 플래너 ─────────────────────────
 -- 데일리 루틴: 요일마다 반복되는 과제. 플래너를 열면 그날 과제로 자동으로 들어간다 (materialize_routines)
 create table if not exists routines (
@@ -117,6 +104,19 @@ create table if not exists planner_days (
 
 -- 공부 기록이 어떤 과제였는지 (과제를 지우면 기록은 남고 연결만 끊긴다)
 alter table sessions add column if not exists task_id uuid references tasks (id) on delete set null;
+
+-- (task_id 열이 생긴 다음에 만들어야 한다 — 처음 스키마에서 바로 올라오는 DB에는 task_id가 없다)
+-- '기타' 기록만 학생이 직접 추가·고치기·지우기 가능 (순위에 안 들어가므로). 공부 과목 기록은 여전히 함수로만
+drop policy if exists "기타 기록 추가" on sessions;
+create policy "기타 기록 추가" on sessions for insert to authenticated
+  with check (auth.uid() = user_id and subject = '기타' and task_id is null);
+drop policy if exists "기타 기록 수정" on sessions;
+create policy "기타 기록 수정" on sessions for update to authenticated
+  using (auth.uid() = user_id and subject = '기타')
+  with check (auth.uid() = user_id and subject = '기타');
+drop policy if exists "기타 기록 삭제" on sessions;
+create policy "기타 기록 삭제" on sessions for delete to authenticated
+  using (auth.uid() = user_id and subject = '기타');
 
 alter table routines drop constraint if exists routines_subject_check;
 alter table routines add constraint routines_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
