@@ -6,13 +6,13 @@ import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { Badge, Card, ListRow, PageHeader } from "@/components/ui";
 import { hm } from "@/lib/format";
-import { SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
+import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
 export default function MePage() {
   const auth = useAuth();
   const profile = useProfile();
   const { summary } = useStudy();
-  const top = SUBJECTS.reduce((a, b) => (summary.weekBySubject[b] > summary.weekBySubject[a] ? b : a));
+  const top = RANKED_SUBJECTS.reduce((a, b) => (summary.weekBySubject[b] > summary.weekBySubject[a] ? b : a));
   const hasTop = summary.weekBySubject[top] >= 60;
 
   return (

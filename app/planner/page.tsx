@@ -8,7 +8,7 @@ import { SubHeader } from "@/components/ui";
 import { daysUntil, ddayLabel, kstToday } from "@/lib/dday";
 import { WEEKDAYS, fromYmd, hm } from "@/lib/format";
 import { TIMETABLE_HOURS, addDays, secondsByTask, timetableCells, totalSeconds, type Task } from "@/lib/planner";
-import { SUBJECTS, SUBJECT_COLOR, guessSubject, type Subject } from "@/lib/subjects";
+import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
 import { useDdays } from "@/lib/useDdays";
 import { usePlanner, type PlannerState } from "@/lib/usePlanner";
 
@@ -178,17 +178,15 @@ function MemoInput({ value, disabled, onSave }: { value: string; disabled: boole
 function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string, number>; isToday: boolean }) {
   const study = useStudy();
   const [draft, setDraft] = useState("");
-  const [draftSubject, setDraftSubject] = useState<Subject | null | undefined>(undefined); // undefined = 자동
+  const [subject, setSubject] = useState<Subject | null>(null); // 학생이 직접 고른다 (자동으로 정하지 않음)
   const [editing, setEditing] = useState<Task | null>(null);
   const [needSubject, setNeedSubject] = useState(false);
-  const guessed = guessSubject(draft);
-  const subject = draftSubject === undefined ? guessed : draftSubject;
 
   async function submit() {
     if (!draft.trim()) return;
     if (await p.add(draft, subject)) {
       setDraft("");
-      setDraftSubject(undefined);
+      setSubject(null);
     }
   }
 
@@ -265,14 +263,14 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
           />
           {draft.trim() && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <SubjectChips value={subject} onChange={setDraftSubject} />
+              <SubjectChips value={subject} onChange={setSubject} />
               <button className="ml-auto rounded-lg bg-accent px-3 py-1 text-[12px] font-bold text-bg">추가</button>
             </div>
           )}
         </form>
       )}
       {p.ready && p.tasks.length === 0 && !draft && !p.unavailable && (
-        <p className="py-3 text-[12px] leading-relaxed text-faint">오늘 할 공부를 적어 보세요. 과제로 타이머를 켜면 그 과목 시간이 올라가요.</p>
+        <p className="py-3 text-[12px] leading-relaxed text-faint">오늘 할 공부를 적어 보세요. 과목을 골라 두면 ▶로 그 과목 타이머를 바로 켤 수 있어요.</p>
       )}
 
       {editing && (
@@ -290,7 +288,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
   );
 }
 
-/** 과목 고르기 — 자동 짐작된 과목이 먼저 골라져 있다 */
+/** 과목 고르기 (다시 누르면 선택 해제) */
 function SubjectChips({ value, onChange }: { value: Subject | null; onChange: (s: Subject | null) => void }) {
   return (
     <>

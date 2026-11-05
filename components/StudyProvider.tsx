@@ -23,6 +23,8 @@ type StudyContext = {
   stop: () => Promise<void>;
   /** 순위 등 다른 화면이 기록이 바뀐 걸 알 수 있게 — 저장할 때마다 1씩 오른다 */
   version: number;
+  /** 다른 화면에서 기록을 직접 고친 뒤(기타 기록) 다시 불러오기 */
+  refresh: () => Promise<void>;
 };
 
 const Ctx = createContext<StudyContext | null>(null);
@@ -158,6 +160,14 @@ export default function StudyProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [running, stopAt]);
 
+  const refresh = useCallback(async () => {
+    const t = Date.now();
+    const rows = await loadWeekSessions(t);
+    setSessions(rows);
+    setNow(t);
+    setVersion((v) => v + 1);
+  }, []);
+
   const value: StudyContext = {
     ready,
     running,
@@ -169,6 +179,7 @@ export default function StudyProvider({ children }: { children: ReactNode }) {
     start,
     stop: () => stopAt(),
     version,
+    refresh,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

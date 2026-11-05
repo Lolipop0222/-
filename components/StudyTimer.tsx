@@ -6,7 +6,7 @@ import { ClipboardList, Eye, Play, Square } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
 import { kstToday } from "@/lib/dday";
 import { hm, hms } from "@/lib/format";
-import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
+import { ETC, SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
 import { usePlanner } from "@/lib/usePlanner";
 
 /**
@@ -60,7 +60,7 @@ export default function StudyTimer() {
       )}
 
       {/* 과목 선택 (공부 중에는 바꿀 수 없다) */}
-      <div className="mt-5 grid grid-cols-5 gap-2">
+      <div className="mt-5 grid grid-cols-4 gap-2">
         {SUBJECTS.map((s) => {
           const active = s === subject;
           return (
@@ -91,6 +91,14 @@ export default function StudyTimer() {
         </p>
       </div>
 
+      {subject === ETC && (
+        <p className="mb-4 text-center text-[12px] text-faint">
+          기타는 순위·공부 합계에 안 들어가요 ·{" "}
+          <Link href="/timer/etc" className="font-semibold text-muted underline underline-offset-2">
+            기타 기록 보기·고치기
+          </Link>
+        </p>
+      )}
       {study.notice && <p className="mb-4 rounded-xl bg-warn-soft px-4 py-3 text-center text-[13px] text-warn">{study.notice}</p>}
 
       {/* 시작 / 정지 */}
@@ -129,7 +137,7 @@ export default function StudyTimer() {
       </div>
 
       {/* 오늘 과목별 */}
-      <ul className="mt-3 grid grid-cols-5 gap-2 text-center">
+      <ul className="mt-3 grid grid-cols-4 gap-2 text-center">
         {SUBJECTS.map((s) => (
           <li key={s} className="rounded-xl bg-surface px-1 py-2.5">
             <p className="text-[11px] font-semibold" style={{ color: SUBJECT_COLOR[s] }}>

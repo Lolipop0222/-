@@ -35,6 +35,10 @@ export function koreanError(e: unknown): string {
   const msg = err?.message ?? String(e);
   if (err?.code === "23505" || msg.includes("profiles_nickname_key")) return "이미 쓰는 닉네임이에요";
   if (msg.includes("profiles_nickname_check")) return "닉네임은 2~12글자로 해 주세요";
+  if (msg.includes("subject_check")) return "이 과목은 아직 쓸 수 없어요 (데이터베이스 업데이트가 필요해요)";
+  if (msg.includes("sessions_time_order")) return "끝나는 시각이 시작보다 뒤여야 해요";
+  if (msg.includes("sessions_label_check")) return "이름은 20자까지 쓸 수 있어요";
+  if (msg.includes("row-level security")) return "이 기록은 고칠 수 없어요 (데이터베이스 업데이트가 필요할 수 있어요)";
   if (msg.includes("Invalid login credentials")) return "이메일 또는 비밀번호가 맞지 않아요";
   if (msg.includes("User already registered")) return "이미 가입된 이메일이에요. 로그인해 주세요";
   if (msg.includes("Password should be at least")) return "비밀번호는 6자 이상이어야 해요";

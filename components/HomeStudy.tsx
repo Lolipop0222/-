@@ -7,7 +7,7 @@ import { useStudy } from "@/components/StudyProvider";
 import { Badge, Card } from "@/components/ui";
 import { hm, hms } from "@/lib/format";
 import { getRanking, type RankRow } from "@/lib/study";
-import { SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
+import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
 const DAILY_GOAL_SEC = 5 * 3600;
 
@@ -16,7 +16,7 @@ export default function HomeStudy() {
   const study = useStudy();
   const { todaySec, todayBySubject, weekSec, weekDays } = study.summary;
   const goalPct = Math.min(100, Math.round((todaySec / DAILY_GOAL_SEC) * 100));
-  const studied = SUBJECTS.filter((s) => todayBySubject[s] >= 60);
+  const studied = RANKED_SUBJECTS.filter((s) => todayBySubject[s] >= 60);
 
   // 전교 순위 — 기록이 저장될 때마다 다시 읽는다
   const [rank, setRank] = useState<{ me: RankRow; ahead?: RankRow; total: number } | null>(null);
@@ -48,7 +48,7 @@ export default function HomeStudy() {
 
         {/* 과목별 비율 막대 (목표 5시간 기준) */}
         <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-surface-2">
-          {SUBJECTS.map((s) => (
+          {RANKED_SUBJECTS.map((s) => (
             <div key={s} style={{ width: `${(todayBySubject[s] / DAILY_GOAL_SEC) * 100}%`, background: SUBJECT_COLOR[s] }} />
           ))}
         </div>
@@ -63,6 +63,9 @@ export default function HomeStudy() {
           </ul>
         ) : (
           <p className="mt-3 text-[12px] text-faint">오늘은 아직 기록이 없어요</p>
+        )}
+        {study.summary.todayEtcSec >= 60 && (
+          <p className="mt-2 text-[12px] text-faint">+ 기타 {hm(study.summary.todayEtcSec)} (순위 제외)</p>
         )}
 
         <Link

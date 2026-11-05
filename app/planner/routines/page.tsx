@@ -5,7 +5,7 @@ import { Repeat, Trash2 } from "lucide-react";
 import { Card, SubHeader } from "@/components/ui";
 import { WEEKDAYS } from "@/lib/format";
 import { addRoutine, deleteRoutine, isPlannerMissing, listRoutines, updateRoutine, type Routine } from "@/lib/planner";
-import { SUBJECTS, SUBJECT_COLOR, guessSubject, type Subject } from "@/lib/subjects";
+import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
 import { koreanError } from "@/lib/supabase";
 
 // 월요일부터 보여 준다 (값은 0=일 … 6=토)
@@ -22,10 +22,10 @@ export default function RoutinesPage() {
   const [unavailable, setUnavailable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState<Subject | null | undefined>(undefined); // undefined = 자동
+  const [subject, setSubject] = useState<Subject | null>(null);
   const [days, setDays] = useState<number[]>(PRESETS[0].days);
   const [busy, setBusy] = useState(false);
-  const pickedSubject = subject === undefined ? guessSubject(title) : subject;
+  const pickedSubject = subject;
 
   const fail = (e: unknown) => (isPlannerMissing(e) ? setUnavailable(true) : setError(koreanError(e)));
 
@@ -45,7 +45,7 @@ export default function RoutinesPage() {
       const r = await addRoutine(title, pickedSubject, [...days].sort());
       setRoutines((list) => [...(list ?? []), r]);
       setTitle("");
-      setSubject(undefined);
+      setSubject(null);
     } catch (e) {
       fail(e);
     } finally {
@@ -100,7 +100,7 @@ export default function RoutinesPage() {
                 className="h-12 w-full rounded-xl border border-line bg-bg px-4 text-[15px] outline-none placeholder:text-faint focus:border-accent"
               />
               <div>
-                <p className="mb-1.5 text-[12px] font-medium text-muted">과목 {subject === undefined && pickedSubject && <span className="text-faint">(자동)</span>}</p>
+                <p className="mb-1.5 text-[12px] font-medium text-muted">과목 <span className="text-faint">(선택)</span></p>
                 <div className="flex flex-wrap gap-1.5">
                   {SUBJECTS.map((s) => (
                     <button

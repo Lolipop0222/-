@@ -4,7 +4,7 @@
  */
 import { supabase } from "@/lib/supabase";
 import { sessionSeconds, type StudySession } from "@/lib/study";
-import type { Subject } from "@/lib/subjects";
+import { ETC, type Subject } from "@/lib/subjects";
 
 export type Task = {
   id: string;
@@ -109,14 +109,14 @@ export async function deleteRoutine(id: string): Promise<void> {
 
 // ── 시간 계산 ──
 
-/** 그날(0시~24시) 시작한 기록만 — 홈의 "오늘 공부"와 같은 기준 */
+/** 그날(0시~24시) 시작한 기록만 — 홈의 "오늘 공부"와 같은 기준 (TOTAL TIME은 기타 제외) */
 function startedOn(s: StudySession, dayStart: number) {
   const t = Date.parse(s.started_at);
   return t >= dayStart && t < dayStart + DAY_MS;
 }
 
 export function totalSeconds(sessions: StudySession[], dayStart: number, now: number): number {
-  return sessions.filter((s) => startedOn(s, dayStart)).reduce((sum, s) => sum + sessionSeconds(s, now), 0);
+  return sessions.filter((s) => s.subject !== ETC && startedOn(s, dayStart)).reduce((sum, s) => sum + sessionSeconds(s, now), 0);
 }
 
 /** 과제별 공부 시간 (taskId → 초) */

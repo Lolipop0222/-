@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { SUBJECTS, type Subject } from "@/lib/subjects";
+import { ETC, SUBJECTS, type RankedSubject, type Subject } from "@/lib/subjects";
 
 /** sessions 테이블 한 행 (supabase/schema.sql) */
 export type StudySession = {
@@ -13,11 +13,16 @@ export type StudySession = {
   duration: number | null;
   /** 플래너 과제와 연결된 기록이면 그 과제 id */
   task_id: string | null;
+  /** 기타 기록 이름 (예: 독서) */
+  label: string | null;
 };
 
-const SESSION_COLS = "id, subject, started_at, ended_at, away_count, duration, task_id";
-// supabase/schema.sql을 다시 실행하기 전(플래너 이전) DB에는 task_id가 없다 → 그때는 이 목록으로 읽는다
-const LEGACY_COLS = "id, subject, started_at, ended_at, away_count, duration";
+// supabase/schema.sql을 다시 실행하기 전 DB에는 뒤쪽 열이 없을 수 있다 → 앞에서부터 차례로 시도한다
+const COLUMN_SETS = [
+  "id, subject, started_at, ended_at, away_count, duration, task_id, label",
+  "id, subject, started_at, ended_at, away_count, duration, task_id",
+  "id, subject, started_at, ended_at, away_count, duration",
+];
 
 type PgError = { code?: string } | null;
 const isMissingColumn = (e: PgError) => e?.code === "42703";
@@ -25,10 +30,10 @@ const isMissingFunction = (e: PgError) => e?.code === "PGRST202";
 
 /** task_id 열이 없는 예전 DB면 task_id 없이 다시 읽는다 */
 async function selectSessions(build: (cols: string) => PromiseLike<{ data: unknown; error: PgError }>): Promise<StudySession[]> {
-  let { data, error } = await build(SESSION_COLS);
-  if (isMissingColumn(error)) ({ data, error } = await build(LEGACY_COLS));
-  if (error) throw error;
-  return (data as StudySession[]).map((s) => ({ ...s, task_id: s.task_id ?? null }));
+  let res = await build(COLUMN_SETS[0]);
+  for (const cols of COLUMN_SETS.slice(1)) if (isMissingColumn(res.error)) res = await build(cols);
+  if (res.error) throw res.error;
+  return (res.data as StudySession[]).map((s) => ({ ...s, task_id: s.task_id ?? null, label: s.label ?? null }));
 }
 
 export type RankScope = "school" | "grade" | "class";
@@ -68,7 +73,7 @@ export async function startSession(subject: Subject, taskId?: string | null): Pr
   if (isMissingFunction(error) && !taskId) ({ data, error } = await supabase().rpc("start_session", { p_subject: subject }));
   if (error) throw error;
   const row = data as StudySession;
-  return { ...row, task_id: row.task_id ?? null };
+  return { ...row, task_id: row.task_id ?? null, label: row.label ?? null };
 }
 
 /** endAt: 앱을 벗어난 순간처럼 지금보다 이른 종료 시각 (서버는 줄이는 쪽으로만 반영) */
@@ -104,13 +109,43 @@ export async function loadDaySessions(dayStart: number): Promise<StudySession[]>
   );
 }
 
-/** 세션의 실제 공부 초 (진행 중이면 지금까지). 4시간 넘는 것은 0 — 서버 합계 규칙과 같게 */
+/**
+ * 세션의 실제 초 (진행 중이면 지금까지).
+ * 공부 과목은 4시간 넘으면 0 — 서버 합계 규칙과 같게. 기타는 순위와 상관없으니 하루(24시간)까지 센다.
+ */
 export function sessionSeconds(s: StudySession, now: number): number {
   const sec = s.ended_at ? (s.duration ?? 0) : Math.floor((now - Date.parse(s.started_at)) / 1000);
-  return sec >= 1 && sec <= MAX_SESSION_SEC ? sec : 0;
+  const max = s.subject === ETC ? 24 * 3600 : MAX_SESSION_SEC;
+  return sec >= 1 && sec <= max ? sec : 0;
 }
 
-export async function getRanking(scope: RankScope, subject: Subject | null): Promise<RankRow[]> {
+// ── 기타 기록 (나만 보고 직접 고칠 수 있다. 순위에는 안 들어간다) ──
+
+export async function loadEtcSessions(sinceDays = 30): Promise<StudySession[]> {
+  const since = new Date(Date.now() - sinceDays * DAY).toISOString();
+  return selectSessions((cols) =>
+    supabase().from("sessions").select(cols).eq("subject", ETC).gte("started_at", since).order("started_at", { ascending: false }),
+  );
+}
+
+export async function addEtcSession(label: string, startedAt: number, endedAt: number): Promise<void> {
+  const { error } = await supabase()
+    .from("sessions")
+    .insert({ subject: ETC, label: label.trim() || null, started_at: new Date(startedAt).toISOString(), ended_at: new Date(endedAt).toISOString() });
+  if (error) throw error;
+}
+
+export async function updateEtcSession(id: string, patch: { label?: string | null; started_at?: string; ended_at?: string }): Promise<void> {
+  const { error } = await supabase().from("sessions").update(patch).eq("id", id).eq("subject", ETC);
+  if (error) throw error;
+}
+
+export async function deleteEtcSession(id: string): Promise<void> {
+  const { error } = await supabase().from("sessions").delete().eq("id", id).eq("subject", ETC);
+  if (error) throw error;
+}
+
+export async function getRanking(scope: RankScope, subject: RankedSubject | null): Promise<RankRow[]> {
   const { data, error } = await supabase().rpc("get_ranking", { p_scope: scope, p_subject: subject });
   if (error) throw error;
   return (data as RankRow[]).map((r) => ({ ...r, rank: Number(r.rank), total_sec: Number(r.total_sec) }));
@@ -119,11 +154,15 @@ export async function getRanking(scope: RankScope, subject: Subject | null): Pro
 // ── 합계 ──
 
 export type StudySummary = {
+  /** 공부 과목 합계 (기타 제외) */
   todaySec: number;
   weekSec: number;
+  /** 기타 타이머 합계 (순위·공부 합계와 따로) */
+  todayEtcSec: number;
+  weekEtcSec: number;
   todayBySubject: Record<Subject, number>;
   weekBySubject: Record<Subject, number>;
-  /** 월~일 하루별 초 */
+  /** 월~일 하루별 초 (기타 제외) */
   weekDays: number[];
 };
 
@@ -139,21 +178,28 @@ export function summarize(sessions: StudySession[], now: number): StudySummary {
   const out: StudySummary = {
     todaySec: 0,
     weekSec: 0,
+    todayEtcSec: 0,
+    weekEtcSec: 0,
     todayBySubject: emptyBySubject(),
     weekBySubject: emptyBySubject(),
     weekDays: [0, 0, 0, 0, 0, 0, 0],
   };
   for (const s of sessions) {
     const start = Date.parse(s.started_at);
-    const sec = s.ended_at ? (s.duration ?? 0) : Math.floor((now - start) / 1000);
-    if (start < weekStart || sec < 1 || sec > MAX_SESSION_SEC) continue;
-    out.weekSec += sec;
+    const sec = sessionSeconds(s, now);
+    if (start < weekStart || sec === 0) continue;
+    const today = start >= dayStart;
     out.weekBySubject[s.subject] += sec;
-    out.weekDays[Math.min(6, Math.floor((kstDayStart(start) - weekStart) / DAY))] += sec;
-    if (start >= dayStart) {
-      out.todaySec += sec;
-      out.todayBySubject[s.subject] += sec;
+    if (today) out.todayBySubject[s.subject] += sec;
+    if (s.subject === ETC) {
+      // 기타는 순위·공부 합계에 넣지 않는다
+      out.weekEtcSec += sec;
+      if (today) out.todayEtcSec += sec;
+      continue;
     }
+    out.weekSec += sec;
+    out.weekDays[Math.min(6, Math.floor((kstDayStart(start) - weekStart) / DAY))] += sec;
+    if (today) out.todaySec += sec;
   }
   return out;
 }

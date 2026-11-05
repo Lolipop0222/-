@@ -32,7 +32,7 @@ create table if not exists profiles (
 create table if not exists sessions (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references profiles (id) on delete cascade,
-  subject    text not null check (subject in ('국어', '영어', '수학', '과학', '사회')),
+  subject    text not null check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타')),
   started_at timestamptz not null default now(),  -- 서버 시각
   ended_at   timestamptz,
   away_count int not null default 0,              -- 앱 이탈 횟수
@@ -54,7 +54,28 @@ create policy "내 프로필 수정" on profiles for update to authenticated usi
 
 drop policy if exists "내 기록만 조회" on sessions;
 create policy "내 기록만 조회" on sessions for select to authenticated using (auth.uid() = user_id);
--- sessions의 insert/update/delete 정책은 만들지 않는다 → start_session / end_session 함수로만 쓴다
+
+-- 과목 목록 (이미 만들어진 DB도 새 목록으로). '기타'는 순위·공부 합계에 들어가지 않는 개인 타이머
+alter table sessions drop constraint if exists sessions_subject_check;
+alter table sessions add constraint sessions_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
+-- 기타 기록 이름 (예: 독서, 운동)
+alter table sessions add column if not exists label text;
+alter table sessions drop constraint if exists sessions_label_check;
+alter table sessions add constraint sessions_label_check check (label is null or char_length(label) <= 20);
+alter table sessions drop constraint if exists sessions_time_order;
+alter table sessions add constraint sessions_time_order check (ended_at is null or ended_at >= started_at);
+
+-- '기타' 기록만 학생이 직접 추가·고치기·지우기 가능 (순위에 안 들어가므로). 공부 과목 기록은 여전히 함수로만
+drop policy if exists "기타 기록 추가" on sessions;
+create policy "기타 기록 추가" on sessions for insert to authenticated
+  with check (auth.uid() = user_id and subject = '기타' and task_id is null);
+drop policy if exists "기타 기록 수정" on sessions;
+create policy "기타 기록 수정" on sessions for update to authenticated
+  using (auth.uid() = user_id and subject = '기타')
+  with check (auth.uid() = user_id and subject = '기타');
+drop policy if exists "기타 기록 삭제" on sessions;
+create policy "기타 기록 삭제" on sessions for delete to authenticated
+  using (auth.uid() = user_id and subject = '기타');
 
 -- ───────────────────────── 플래너 ─────────────────────────
 -- 데일리 루틴: 요일마다 반복되는 과제. 플래너를 열면 그날 과제로 자동으로 들어간다 (materialize_routines)
@@ -62,7 +83,7 @@ create table if not exists routines (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references profiles (id) on delete cascade,
   title      text not null check (char_length(trim(title)) between 1 and 60),
-  subject    text check (subject in ('국어', '영어', '수학', '과학', '사회')),
+  subject    text check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타')),
   weekdays   int[] not null default '{0,1,2,3,4,5,6}'  -- 0=일 … 6=토
              check (cardinality(weekdays) >= 1 and weekdays <@ array[0, 1, 2, 3, 4, 5, 6]),
   active     boolean not null default true,
@@ -75,7 +96,7 @@ create table if not exists tasks (
   user_id    uuid not null default auth.uid() references profiles (id) on delete cascade,
   task_date  date not null,
   title      text not null check (char_length(trim(title)) between 1 and 60),
-  subject    text check (subject in ('국어', '영어', '수학', '과학', '사회')),
+  subject    text check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타')),
   done       boolean not null default false,
   skipped    boolean not null default false,  -- 루틴 과제를 그날만 지운 것 (다시 생기지 않게 남겨 둔다)
   routine_id uuid references routines (id) on delete set null,
@@ -96,6 +117,11 @@ create table if not exists planner_days (
 
 -- 공부 기록이 어떤 과제였는지 (과제를 지우면 기록은 남고 연결만 끊긴다)
 alter table sessions add column if not exists task_id uuid references tasks (id) on delete set null;
+
+alter table routines drop constraint if exists routines_subject_check;
+alter table routines add constraint routines_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
+alter table tasks drop constraint if exists tasks_subject_check;
+alter table tasks add constraint tasks_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
 
 alter table routines enable row level security;
 alter table tasks enable row level security;
@@ -196,7 +222,7 @@ begin
 
   select coalesce(sum(duration), 0) into today_sec
   from sessions
-  where user_id = auth.uid() and started_at >= kst_day_start() and duration between 1 and 14400;
+  where user_id = auth.uid() and started_at >= kst_day_start() and duration between 1 and 14400 and subject <> '기타';
   if today_sec >= 16 * 3600 then
     raise exception '오늘은 16시간을 넘게 공부해서 더 기록할 수 없습니다';
   end if;
@@ -238,12 +264,13 @@ language sql stable security definer set search_path = public as $$
     from sessions
     where started_at >= kst_week_start()
       and duration between 1 and 14400
+      and subject <> '기타'  -- 기타는 순위에 안 들어간다
       and (p_subject is null or subject = p_subject)
     group by user_id
   ),
   live as (
     select distinct user_id from sessions
-    where ended_at is null and started_at > now() - interval '4 hours'
+    where ended_at is null and started_at > now() - interval '4 hours' and subject <> '기타'
   )
   select rank() over (order by coalesce(t.total, 0) desc) as rank,
          p.nickname, p.grade, p.class_no,

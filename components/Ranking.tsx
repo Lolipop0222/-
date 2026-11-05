@@ -7,7 +7,7 @@ import { Segmented } from "@/components/ui";
 import { hm } from "@/lib/format";
 import { koreanError } from "@/lib/supabase";
 import { getRanking, type RankRow, type RankScope } from "@/lib/study";
-import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
+import { RANKED_SUBJECTS, SUBJECT_COLOR, type RankedSubject } from "@/lib/subjects";
 
 const SCOPES = ["전교", "학년", "반"] as const;
 const SCOPE_VALUE: Record<(typeof SCOPES)[number], RankScope> = { 전교: "school", 학년: "grade", 반: "class" };
@@ -17,7 +17,7 @@ const MEDAL = ["#ffd166", "#c9d1e0", "#e0a37a"];
 export default function Ranking() {
   const study = useStudy();
   const [scope, setScope] = useState<(typeof SCOPES)[number]>("반");
-  const [subject, setSubject] = useState<Subject | null>(null);
+  const [subject, setSubject] = useState<RankedSubject | null>(null);
   const [rows, setRows] = useState<RankRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +50,7 @@ export default function Ranking() {
       {/* 과목 */}
       <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5">
         <SubjectChip active={subject === null} onClick={() => setSubject(null)} label="전체" />
-        {SUBJECTS.map((s) => (
+        {RANKED_SUBJECTS.map((s) => (
           <SubjectChip key={s} active={subject === s} onClick={() => setSubject(s)} label={s} color={SUBJECT_COLOR[s]} />
         ))}
       </div>
