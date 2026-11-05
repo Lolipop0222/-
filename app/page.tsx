@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen, ChevronRight } from "lucide-react";
 import EventBanner from "@/components/EventBanner";
 import HomeDday from "@/components/HomeDday";
+import HomePlanner from "@/components/HomePlanner";
 import HomeStudy from "@/components/HomeStudy";
 import TodayLabel from "@/components/TodayLabel";
 import TodayMealLine from "@/components/TodayMealLine";
@@ -22,6 +23,8 @@ export default function HomePage() {
         <EventBanner />
 
         <HomeStudy />
+
+        <HomePlanner />
 
         {/* 오늘 복습할 단어 */}
         <Link href="/words/review" className="block">

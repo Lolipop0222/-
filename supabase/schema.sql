@@ -1,4 +1,4 @@
--- 대고 일품타 · Supabase 스키마 (프로필 · 공부 기록 · 과목별 순위 · 디데이)
+-- 대고 일품타 · Supabase 스키마 (프로필 · 공부 기록 · 과목별 순위 · 디데이 · 플래너)
 -- Supabase 대시보드 → SQL Editor 에 통째로 붙여넣고 Run. 여러 번 실행해도 된다.
 --
 -- 원칙 (계획서 3장, 6.1)
@@ -56,6 +56,88 @@ drop policy if exists "내 기록만 조회" on sessions;
 create policy "내 기록만 조회" on sessions for select to authenticated using (auth.uid() = user_id);
 -- sessions의 insert/update/delete 정책은 만들지 않는다 → start_session / end_session 함수로만 쓴다
 
+-- ───────────────────────── 플래너 ─────────────────────────
+-- 데일리 루틴: 요일마다 반복되는 과제. 플래너를 열면 그날 과제로 자동으로 들어간다 (materialize_routines)
+create table if not exists routines (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references profiles (id) on delete cascade,
+  title      text not null check (char_length(trim(title)) between 1 and 60),
+  subject    text check (subject in ('국어', '영어', '수학', '과학', '사회')),
+  weekdays   int[] not null default '{0,1,2,3,4,5,6}'  -- 0=일 … 6=토
+             check (cardinality(weekdays) >= 1 and weekdays <@ array[0, 1, 2, 3, 4, 5, 6]),
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- 그날의 과제 (TASKS). subject가 있으면 이 과제로 잰 시간이 그 과목 공부 시간이 된다
+create table if not exists tasks (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references profiles (id) on delete cascade,
+  task_date  date not null,
+  title      text not null check (char_length(trim(title)) between 1 and 60),
+  subject    text check (subject in ('국어', '영어', '수학', '과학', '사회')),
+  done       boolean not null default false,
+  skipped    boolean not null default false,  -- 루틴 과제를 그날만 지운 것 (다시 생기지 않게 남겨 둔다)
+  routine_id uuid references routines (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists tasks_user_date_idx on tasks (user_id, task_date);
+create unique index if not exists tasks_routine_date_uq on tasks (routine_id, task_date) where routine_id is not null;
+
+-- 그날의 COMMENT / MEMO
+create table if not exists planner_days (
+  user_id    uuid not null default auth.uid() references profiles (id) on delete cascade,
+  day        date not null,
+  comment    text check (char_length(comment) <= 100),
+  memo       text check (char_length(memo) <= 1000),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, day)
+);
+
+-- 공부 기록이 어떤 과제였는지 (과제를 지우면 기록은 남고 연결만 끊긴다)
+alter table sessions add column if not exists task_id uuid references tasks (id) on delete set null;
+
+alter table routines enable row level security;
+alter table tasks enable row level security;
+alter table planner_days enable row level security;
+
+do $$
+declare t text;
+begin
+  -- 세 테이블 모두 "내 것만" 보기·추가·수정·삭제
+  foreach t in array array['routines', 'tasks', 'planner_days'] loop
+    execute format('drop policy if exists "내 것만 조회" on %I', t);
+    execute format('create policy "내 것만 조회" on %I for select to authenticated using (auth.uid() = user_id)', t);
+    execute format('drop policy if exists "내 것만 추가" on %I', t);
+    execute format('create policy "내 것만 추가" on %I for insert to authenticated with check (auth.uid() = user_id)', t);
+    execute format('drop policy if exists "내 것만 수정" on %I', t);
+    execute format('create policy "내 것만 수정" on %I for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)', t);
+    execute format('drop policy if exists "내 것만 삭제" on %I', t);
+    execute format('create policy "내 것만 삭제" on %I for delete to authenticated using (auth.uid() = user_id)', t);
+  end loop;
+end $$;
+
+-- 개수 제한: 하루 과제 30개, 루틴 20개
+create or replace function planner_limits() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  -- 테이블마다 다른 열을 읽으므로 조건을 나눠서 확인한다 (routines에는 task_date가 없다)
+  if tg_table_name = 'tasks' then
+    if (select count(*) from tasks where user_id = new.user_id and task_date = new.task_date) >= 30 then
+      raise exception '과제는 하루 30개까지 만들 수 있어요';
+    end if;
+  elsif tg_table_name = 'routines' then
+    if (select count(*) from routines where user_id = new.user_id) >= 20 then
+      raise exception '루틴은 20개까지 만들 수 있어요';
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists tasks_limit on tasks;
+create trigger tasks_limit before insert on tasks for each row execute function planner_limits();
+drop trigger if exists routines_limit on routines;
+create trigger routines_limit before insert on routines for each row execute function planner_limits();
+
 -- ───────────────────────── 규칙 ─────────────────────────
 -- 한 세션 4시간, 하루 16시간이 상한 (계획서 6.1). 4시간이 넘은 세션은 합계에서 빠진다.
 
@@ -94,7 +176,9 @@ begin
 end $$;
 
 -- 공부 시작: 서버가 started_at을 찍는다. 켜져 있던 세션은 지금 시각으로 끝낸다.
-create or replace function start_session(p_subject text)
+-- p_task_id: 플래너 과제와 연결 (내 과제만)
+drop function if exists start_session(text);  -- 예전(과목만 받던) 버전
+create or replace function start_session(p_subject text, p_task_id uuid default null)
 returns sessions
 language plpgsql security definer set search_path = public as $$
 declare
@@ -103,6 +187,9 @@ declare
 begin
   if not exists (select 1 from profiles where id = auth.uid()) then
     raise exception '프로필이 없습니다';
+  end if;
+  if p_task_id is not null and not exists (select 1 from tasks where id = p_task_id and user_id = auth.uid()) then
+    raise exception '과제를 찾을 수 없습니다';
   end if;
 
   update sessions set ended_at = now() where user_id = auth.uid() and ended_at is null;
@@ -114,7 +201,7 @@ begin
     raise exception '오늘은 16시간을 넘게 공부해서 더 기록할 수 없습니다';
   end if;
 
-  insert into sessions (user_id, subject) values (auth.uid(), p_subject) returning * into r;
+  insert into sessions (user_id, subject, task_id) values (auth.uid(), p_subject, p_task_id) returning * into r;
   return r;
 end $$;
 
@@ -207,12 +294,29 @@ end $$;
 drop trigger if exists ddays_limit on ddays;
 create trigger ddays_limit before insert on ddays for each row execute function ddays_limit();
 
+-- 데일리 루틴을 그날 과제로 넣는다 (플래너를 열 때 부른다). 이미 있거나 그날만 지운 루틴은 건너뛴다.
+-- 루틴을 만든 날 이전 날짜에는 넣지 않는다. 내 권한으로 실행된다 (RLS 그대로).
+create or replace function materialize_routines(p_date date)
+returns void
+language sql security invoker set search_path = public as $$
+  insert into tasks (user_id, task_date, title, subject, routine_id)
+  select auth.uid(), p_date, r.title, r.subject, r.id
+  from routines r
+  where r.user_id = auth.uid()
+    and r.active
+    and extract(dow from p_date)::int = any (r.weekdays)
+    and p_date >= (r.created_at at time zone 'Asia/Seoul')::date
+  on conflict (routine_id, task_date) where routine_id is not null do nothing
+$$;
+
 -- 함수는 로그인한 사용자만 부를 수 있다
 revoke execute on function create_profile(text, int, int, text) from public, anon;
-revoke execute on function start_session(text) from public, anon;
+revoke execute on function start_session(text, uuid) from public, anon;
+revoke execute on function materialize_routines(date) from public, anon;
 revoke execute on function end_session(uuid, int, timestamptz) from public, anon;
 revoke execute on function get_ranking(text, text) from public, anon;
 grant execute on function create_profile(text, int, int, text) to authenticated;
-grant execute on function start_session(text) to authenticated;
+grant execute on function start_session(text, uuid) to authenticated;
+grant execute on function materialize_routines(date) to authenticated;
 grant execute on function end_session(uuid, int, timestamptz) to authenticated;
 grant execute on function get_ranking(text, text) to authenticated;

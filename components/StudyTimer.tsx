@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, Play, Square } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ClipboardList, Eye, Play, Square } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
+import { kstToday } from "@/lib/dday";
 import { hm, hms } from "@/lib/format";
 import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
+import { usePlanner } from "@/lib/usePlanner";
 
 /**
  * 공부 타이머. 시작·정지는 서버 시각으로 기록된다 (components/StudyProvider.tsx).
@@ -13,13 +16,31 @@ import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
 export default function StudyTimer() {
   const study = useStudy();
   const [picked, setPicked] = useState<Subject>("수학");
+  const [taskId, setTaskId] = useState<string | null>(null); // 연결할 플래너 과제
+  const [today, setToday] = useState<string | null>(null);
+  useEffect(() => {
+    const id = setTimeout(() => setToday(kstToday()), 0);
+    return () => clearTimeout(id);
+  }, []);
+  const planner = usePlanner(today);
+  const openTasks = planner.tasks.filter((t) => !t.done || t.id === taskId);
+  const runningTask = planner.tasks.find((t) => t.id === study.running?.task_id);
   const subject = study.running?.subject ?? picked;
   const running = !!study.running;
+
+  function pickTask(id: string | null) {
+    setTaskId(id);
+    const t = planner.tasks.find((x) => x.id === id);
+    if (t?.subject) setPicked(t.subject); // 과제의 과목으로 맞춘다
+  }
 
   return (
     <section className="bg-black px-5 pb-8 pt-[calc(env(safe-area-inset-top)+20px)]">
       <div className="flex items-center justify-between">
         <h1 className="text-[17px] font-semibold text-muted">일품타</h1>
+        <Link href="/planner" className="ml-auto mr-2 flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-muted">
+          <ClipboardList size={14} /> 플래너
+        </Link>
         {running && (
           <span className="flex items-center gap-1.5 rounded-full bg-live-soft px-2.5 py-1 text-[12px] font-semibold text-live">
             <span className="live-dot size-1.5 rounded-full bg-live" />
@@ -27,6 +48,16 @@ export default function StudyTimer() {
           </span>
         )}
       </div>
+
+      {/* 과제 연결 (플래너 TASKS) — 고르면 그 과제의 과목으로 맞춰진다 */}
+      {!running && openTasks.length > 0 && (
+        <div className="no-scrollbar -mx-5 mt-5 flex gap-2 overflow-x-auto px-5">
+          <TaskChip active={taskId === null} onClick={() => pickTask(null)} label="과제 없이" />
+          {openTasks.map((t) => (
+            <TaskChip key={t.id} active={taskId === t.id} onClick={() => pickTask(t.id)} label={t.title} color={t.subject ? SUBJECT_COLOR[t.subject] : undefined} />
+          ))}
+        </div>
+      )}
 
       {/* 과목 선택 (공부 중에는 바꿀 수 없다) */}
       <div className="mt-5 grid grid-cols-5 gap-2">
@@ -52,6 +83,7 @@ export default function StudyTimer() {
       <div className="py-12 text-center">
         <p className="text-[14px] font-medium" style={{ color: SUBJECT_COLOR[subject] }}>
           {subject}
+          {running && runningTask && <span className="text-muted"> · {runningTask.title}</span>}
         </p>
         <p className="num mt-2 text-[64px] font-bold leading-none text-white">{hms(study.elapsed)}</p>
         <p className="mt-4 flex items-center justify-center gap-1 text-[13px] text-faint">
@@ -74,7 +106,7 @@ export default function StudyTimer() {
           </button>
         ) : (
           <button
-            onClick={() => study.start(picked)}
+            onClick={() => study.start(picked, taskId)}
             disabled={study.busy || !study.ready}
             aria-label="시작"
             className="grid size-24 place-items-center rounded-full bg-white text-black shadow-[0_0_0_10px_rgba(255,255,255,0.08)] active:scale-95 disabled:opacity-50"
@@ -108,6 +140,20 @@ export default function StudyTimer() {
         ))}
       </ul>
     </section>
+  );
+}
+
+function TaskChip({ active, onClick, label, color }: { active: boolean; onClick: () => void; label: string; color?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex max-w-[180px] shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-medium ${
+        active ? "border-accent bg-accent-soft text-text" : "border-line text-muted"
+      }`}
+    >
+      {color && <span className="size-1.5 shrink-0 rounded-full" style={{ background: color }} />}
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
