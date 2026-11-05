@@ -11,12 +11,20 @@ let client: SupabaseClient | null = null;
 
 export function supabase(): SupabaseClient {
   if (!client) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const url = envValue(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    const key = envValue(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
     if (!url || !key) throw new Error("Supabase 환경변수(NEXT_PUBLIC_SUPABASE_URL / _PUBLISHABLE_KEY)가 없습니다");
     client = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } });
   }
   return client;
+}
+
+/**
+ * 환경변수 값 정리. 배포 설정 화면에 "이름=값" 한 줄을 통째로 붙여넣거나 따옴표가 들어가는 실수가 흔해서
+ * 앞의 "NEXT_PUBLIC_…=" 과 따옴표·공백을 떼어 낸다. 값은 컴파일할 때 그대로 박히므로 여기서 정리한다.
+ */
+function envValue(v: string | undefined): string | undefined {
+  return v?.trim().replace(/^[A-Z0-9_]+=/, "").replace(/^["']|["']$/g, "").trim() || undefined;
 }
 
 export type Profile = { id: string; nickname: string; grade: number; class_no: number };
