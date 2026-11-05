@@ -1,5 +1,6 @@
 "use client";
 
+import { photoPath, removeAllMyPhotos, removePhotoFile } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -60,6 +61,8 @@ export async function deleteMyAccount(email: string, password: string): Promise<
   const sb = supabase();
   const { error: authError } = await sb.auth.signInWithPassword({ email, password });
   if (authError) throw authError;
+  const { data: u } = await sb.auth.getUser();
+  if (u.user) await removeAllMyPhotos(u.user.id); // 저장소의 내 사진 파일도 지운다
   const { error } = await sb.rpc("delete_my_account");
   if (error) throw error;
   // 서버에서 계정이 없어졌으니 이 기기의 로그인 정보만 지운다
@@ -133,4 +136,28 @@ export function kstDateTime(iso: string): string {
   const hh = String(d.getUTCHours()).padStart(2, "0");
   const mm = String(d.getUTCMinutes()).padStart(2, "0");
   return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${hh}:${mm}`;
+}
+
+// ───────────────────────── 관리자: 사진·계정 ─────────────────────────
+
+export type AdminPhoto = { nickname: string; grade: number; class_no: number; avatar: string; avatar_at: string | null };
+
+export async function adminListPhotos(): Promise<AdminPhoto[]> {
+  const { data, error } = await supabase().rpc("admin_list_photos");
+  if (error) throw error;
+  return data as AdminPhoto[];
+}
+
+/** 사진 내리기: 프로필에서 빼고 저장소 파일도 지운다 */
+export async function adminRemoveAvatar(nickname: string): Promise<void> {
+  const { data, error } = await supabase().rpc("admin_remove_avatar", { p_nickname: nickname });
+  if (error) throw error;
+  await removePhotoFile((data as string | null) ?? null);
+}
+
+/** 계정 삭제 (부적절한 사진 등). 사진 파일을 먼저 지운 다음 계정과 모든 기록을 지운다 */
+export async function adminDeleteUser(nickname: string, avatar?: string | null): Promise<void> {
+  await removePhotoFile(photoPath(avatar));
+  const { error } = await supabase().rpc("admin_delete_user", { p_nickname: nickname.trim() });
+  if (error) throw error;
 }

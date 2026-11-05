@@ -99,10 +99,8 @@ export function parseAvatar(v: string | null | undefined): AvatarValue | null {
 
 export const avatarString = (a: AvatarValue) => `${a.icon}:${a.color}`;
 
-export async function saveAvatar(userId: string, a: AvatarValue | null): Promise<void> {
-  const { error } = await supabase()
-    .from("profiles")
-    .update({ avatar: a ? avatarString(a) : null })
-    .eq("id", userId);
+/** 프로필 avatar 값 저장 ('cat:s-math' 같은 그림, 'photo:…' 사진, null = 첫 글자) */
+export async function saveAvatar(userId: string, value: string | null): Promise<void> {
+  const { error } = await supabase().from("profiles").update({ avatar: value }).eq("id", userId);
   if (error) throw error;
 }

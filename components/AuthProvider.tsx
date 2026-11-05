@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
+import PrintArchiveLogo from "@/components/PrintArchiveLogo";
 import { supabase, type Profile } from "@/lib/supabase";
 
 type AuthState =
@@ -100,10 +101,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** 로딩 화면 — 프린트 아카이브 로고 */
 function Splash() {
   return (
-    <div className="grid min-h-dvh place-items-center">
-      <div className="size-8 animate-spin rounded-full border-4 border-accent/30 border-t-accent" />
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-8" aria-busy="true" aria-label="불러오는 중">
+      <PrintArchiveLogo width={220} className="pa-breathe" />
+      <div className="size-6 animate-spin rounded-full border-[3px] border-accent/25 border-t-accent" />
     </div>
   );
 }

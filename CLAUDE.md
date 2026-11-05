@@ -63,9 +63,12 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `study_groups` | 스터디그룹 (이름 2~20자, 6자리 초대코드, owner_id) | 클라이언트 못 읽음 — 함수로만 |
 | `group_members` | 그룹원 (group_id, user_id, joined_at) | 클라이언트 못 읽음 — 함수로만 |
 | `title_defs` | 칭호 정의 31개 (code·이름·등급·분류·설명·metric·goal·unit·sort·active). schema.sql의 insert가 원본 | 클라이언트 못 읽음 (히든 이름 보호) — `my_titles()`로만 |
+| `prints` | 프린트 아카이브 목록 (제목·분류 수행평가/학습지/시험 대비/기타·과목·학년(null=전 학년)·메모·file_path·file_name·크기) | 가입한(프로필 있는) 학생 조회, 추가·수정·삭제는 관리자만(RLS `is_admin()`) |
+| Storage `avatars` (공개) | 프로필 사진 `<user id>/<16자>.webp|jpg`, 300KB | 내 폴더만 올리기·지우기, 관리자는 모두 지우기 |
+| Storage `prints` (비공개) | 프린트 파일 `<uuid>.<확장자>`, 50MB | 프로필 있는 학생 읽기(서명 주소), 관리자만 올리기·지우기 |
 | `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)`. `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, 칭호 테이블 뒤에 있어야 해서 **schema.sql 맨 끝**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, 칭호 테이블 뒤에 있어야 해서 **schema.sql 맨 끝**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
 
 **스터디그룹 규칙**: 한 사람이 들어가는 그룹 5개, 만든 그룹 3개, 그룹 30명, 코드 15분에 10번 틀리면 잠김. 방장이 나가거나 계정을 지우면 `group_member_left` 트리거가 가장 먼저 들어온 사람에게 방장을 넘기고, 아무도 없으면 그룹을 지운다. 그룹 순위 규칙은 `get_ranking`과 같다(4시간 넘는 세션·기타 제외).
 
@@ -78,6 +81,12 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 등급: 일반(common)·희귀(rare)·영웅(epic)·전설(legendary)·히든(hidden). 색·모양은 `globals.css`의 `--g-*`, `.tb-*`(배지), `.ring-*`(프로필 그림 테두리). 전설은 금빛이 반짝, 히든은 점선+그라데이션, 움직임은 `prefers-reduced-motion`이면 멈춤.
 - 프로필 그림 = 사진 대신 그림 24개 × 과목색 8개(`lib/titles.ts`의 `AVATAR_ICONS/COLORS`, 실명·얼굴 안 받는 원칙). DB는 `그림:색` 모양만 검사. 대표 칭호 등급이 그림 테두리 색이 된다.
 - 예전 DB 호환: `AuthProvider`는 avatar·title_code 열이 없으면(42703) 예전 열만 읽는다.
+
+**사진 프로필·프린트 아카이브 규칙** (schema.sql 맨 끝, Supabase Storage)
+- 사진 프로필: 사용자가 "무조건 넣어"라고 해서 넣음. 부적절한 사진은 관리자가 `/me/admin`에서 내리거나 계정 삭제(사용자 방침). 앱(`lib/photos.ts`)이 가운데를 정사각형으로 잘라 320px webp(안 되면 jpg)로 다시 그려 올린다 → 용량 작고 EXIF(위치 등) 제거. avatar = `photo:<user id>/<16자>.webp`, `profiles_avatar_guard` 트리거가 **내 폴더 사진만** 허용하고 `avatar_at`을 기록. 사진을 바꾸거나 지우면 예전 파일도 지움, 계정 삭제 전에 내 폴더 파일 삭제(`removeAllMyPhotos`).
+- 공개 버킷이라 주소를 아는 사람은 볼 수 있음(경로에 무작위 16자). CSP `img-src`에 `https://*.supabase.co` 추가함.
+- 프린트 아카이브(`/prints`): 관리자는 오른쪽 위 "올리기" → 파일 여러 개(끌어다 놓기 가능) + 분류·과목·학년·메모 한 번에 → 학생들에게 바로 보임. 파일은 비공개 버킷, 열 때 10분짜리 서명 주소(`openPrint`, 아이폰 팝업 차단 때문에 빈 창을 먼저 연다). PDF·사진은 바로 보기, 한글·오피스는 내려받기. 학생 화면 기본은 "내 학년"(+전 학년) 필터.
+- 로고: 사용자가 준 Print Archive 로고(검은 바탕 PNG)를 파란 부분·회색 글자 두 장의 투명 마스크(`public/print-archive/logo-blue.png`, `logo-gray.png`)로 나눠 CSS mask로 칠한다(`components/PrintArchiveLogo.tsx`, 색 `--pa-blue`/`--pa-ink`) → 모든 테마에서 보임. 쓰는 곳: 로딩 화면(`AuthProvider`의 Splash), 프린트 아카이브 머리, 홈 카드, 관리자 화면.
 
 **관리자 등록**: `insert into admins (user_id) select id from profiles where nickname = '닉네임' on conflict do nothing;` — 사용자(앱 주인)가 직접 실행. 관리자면 내정보에 "관리자" 메뉴(`/me/admin`)가 보인다.
 
@@ -149,7 +158,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 계정 삭제(`/me/delete`)
 - 스터디그룹(`/groups`): 만들기·코드로 참여·공유, 그룹 안 이번 주 순위(과목별, 오늘 시간, 공부 중), 방장 설정(이름·코드 새로 만들기·내보내기·지우기), 나가기. 순위 화면 아래 "스터디그룹 순위 보기" 링크
 - 칭호(`/me/titles`): 31개, 등급별 목록·진행도·대표 칭호 달기/떼기, 새 칭호 토스트. 순위·그룹 순위·내정보에 그림과 칭호 표시
-- 프로필 그림(`/me/avatar`): 그림 24개 × 색 8개, 대표 칭호 등급 테두리
+- 프로필 사진(`/me/avatar`): 사진 올리기(320px로 줄임) 또는 그림 24개 × 색 8개, 대표 칭호 등급 테두리. 관리자 사진 검토(내리기·계정 삭제)
+- 프린트 아카이브(`/prints`, 홈 카드·내정보): 관리자 업로드(여러 파일), 학년·분류·과목·검색 필터, 열기·내려받기. 로딩 화면에 Print Archive 로고
 - 테마(`/me/theme`): 8개 + 시스템 설정, 미리보기 카드. APK에서는 Capacitor `SystemBars.setStyle`로 상태바 글자색도 바꾸려 시도(실기기 미확인)
 - 홈 공지 배너(가짜 "간식 나눔" 등)는 사용자 요청으로 **삭제**함 (`EventBanner`, `lib/mock.ts`의 events)
 
@@ -160,6 +170,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 **확인된 상태 (2026-11-05)**
 - 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. 다시 확인하려면 publishable 키로 `GET /rest/v1/tasks?select=id&limit=1` → `PGRST205`면 없음, `[]`면 있음.
+- **커밋 "사진 프로필·프린트 아카이브" 이후 `schema.sql` 다시 실행 필요** (Storage 버킷 avatars·prints와 정책, prints 테이블, 관리자 함수). 확인: `GET /rest/v1/prints?select=id&limit=1` → `PGRST205`면 아직.
 - **커밋 "칭호·프로필 그림" 이후 `schema.sql` 다시 실행 필요**. 확인: `POST /rest/v1/rpc/my_titles` → `PGRST202`면 아직. 실행 전에는 칭호 "준비 중", 그림 저장 시 "데이터베이스 업데이트가 필요해요".
 - **커밋 "스터디그룹·테마" 이후에도 `schema.sql` 다시 실행 필요** (스터디그룹 테이블·함수). 확인: `POST /rest/v1/rpc/my_groups` → `PGRST202`면 아직.
 - **커밋 "문의함·비밀번호 찾기·계정 삭제·보안 강화" 이후 `schema.sql`을 다시 실행해야 한다** — 사용자가 실행했는지 확인. 안 했으면 문의함·복구 코드·계정 삭제가 "준비 중"/"데이터베이스 업데이트가 필요해요"로 나온다. 확인: publishable 키로 `POST /rest/v1/rpc/reset_password_with_code` (빈 값들) → `PGRST202`면 아직, `"weak"`면 됨.
@@ -188,6 +199,17 @@ create role authenticated nologin;
 create schema auth;
 create table auth.users (id uuid primary key, email text, encrypted_password text, updated_at timestamptz);
 create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users on delete cascade);
+-- Storage 흉내 (사진·프린트 정책 시험용)
+create schema storage;
+create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner_id text);
+alter table storage.objects enable row level security;
+create function storage.foldername(name text) returns text[] language sql immutable as
+  $$ select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
+create function storage.extension(name text) returns text language sql immutable as
+  $$ select lower(reverse(split_part(reverse(name), '.', 1))) $$;
+grant usage on schema storage to anon, authenticated;
+grant all on storage.objects to anon, authenticated;
 create function auth.uid() returns uuid language sql stable as
   $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth to anon, authenticated;
@@ -200,6 +222,7 @@ alter default privileges in schema public grant all on functions to anon, authen
 - psql 파일은 postgres 사용자가 스크래치 폴더를 못 읽으니 `su postgres -c "psql …" < 파일`처럼 표준입력으로 넣는다. pgcrypto는 로컬에도 있다(schema.sql이 `extensions` 스키마에 만든다).
 - 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 한국사·기타, 그 뒤는 `git log --oneline -- supabase/schema.sql`)을 꺼내 각각 올린 DB에 새 파일을 2번 실행.
 - 칭호 테스트: 학생 여럿을 만들고 `insert into sessions (…, started_at, ended_at)`에 `'2026-11-02 23:30+09'`처럼 KST 시각을 직접 넣어 경계·소급·기타 제외·중복을 확인했다. 화면 테스트의 가짜 서버는 schema.sql의 `title_defs` insert 줄을 정규식으로 읽어 쓴다.
+- Storage 화면 테스트: 가짜 서버가 `/storage/v1/object/<bucket>/<path>`(업로드, supabase-js는 multipart로 보내고 `cacheControl` 칸 다음에 파일 칸이 온다 → filename 있는 칸을 꺼낼 것), `/object/public/…`, `/object/sign/…`, DELETE를 흉내 낸다. Playwright `setInputFiles`에 한글·띄어쓰기 경로를 주면 조용히 실패 → `{ name, mimeType, buffer }`로 넘긴다.
 - Next 16은 떠난 페이지를 숨긴 채 DOM에 남겨 둔다 → Playwright 선택자는 `:visible`이나 열린 dialog 안으로 범위를 좁힌다.
 
 ## 8. 구현하며 알게 된 함정

@@ -13,7 +13,7 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
   "font-src 'self' data: https://cdn.jsdelivr.net",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://*.supabase.co", // 프로필 사진 (Supabase Storage 공개 주소)
   `connect-src 'self' https://*.supabase.co wss://*.supabase.co${isDev ? " ws:" : ""}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",

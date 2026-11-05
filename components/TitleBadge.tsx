@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { Bird, Bot, Cat, Cherry, Clover, Coffee, Crown, Dog, Fish, Flame, Gamepad2, Gem, Ghost, Leaf, Moon, Music, Origami, Pencil, Rabbit, Rocket, Shield, Snail, Sparkles, Squirrel, Star, Sun, Turtle, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { photoPath, photoUrl } from "@/lib/photos";
 import { GRADE_LABEL, isGrade, parseAvatar, type AvatarIcon, type TitleGrade } from "@/lib/titles";
 
 /**
@@ -33,8 +37,8 @@ export function AvatarIconView({ icon, className }: { icon: AvatarIcon; classNam
 }
 
 /**
- * 프로필 그림 (동그라미). 대표 칭호 등급이 있으면 그 등급의 테두리를 두른다.
- * 그림을 아직 안 골랐으면 닉네임 첫 글자.
+ * 프로필 사진·그림 (동그라미). 대표 칭호 등급이 있으면 그 등급의 테두리를 두른다.
+ * 사진('photo:…') > 그림('cat:s-math') > 닉네임 첫 글자 순. 사진을 못 불러오면 첫 글자로.
  */
 export function ProfileAvatar({
   avatar,
@@ -48,9 +52,29 @@ export function ProfileAvatar({
   size?: number;
 }) {
   const a = parseAvatar(avatar);
+  const photo = photoPath(avatar);
+  const [broken, setBroken] = useState<string | null>(null);
   const g = isGrade(grade) ? grade : null;
   const ring = g ? Math.max(2, Math.round(size / 18)) : 0;
   const inner = size - ring * 2;
+  if (photo && broken !== photo) {
+    return (
+      <span className={`relative inline-grid shrink-0 place-items-center rounded-full ${g ? `ring-${g}` : ""}`} style={{ width: size, height: size }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 작은 원형 사진, Supabase 공개 주소 그대로 */}
+        <img
+          src={photoUrl(photo)}
+          alt=""
+          width={inner}
+          height={inner}
+          loading="lazy"
+          decoding="async"
+          onError={() => setBroken(photo)}
+          className="rounded-full bg-surface-2 object-cover"
+          style={{ width: inner, height: inner }}
+        />
+      </span>
+    );
+  }
   return (
     <span className={`relative inline-grid shrink-0 place-items-center rounded-full ${g ? `ring-${g}` : ""}`} style={{ width: size, height: size }}>
       <span

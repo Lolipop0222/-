@@ -415,3 +415,42 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .tb-legendary, .ring-legendary, .ring-hidden, .toast-in, .live-dot { animation: none; }
 }
+
+/* ───────────── 프린트 아카이브 로고 (components/PrintArchiveLogo.tsx) ───────────── */
+:root,
+[data-theme] {
+  --pa-blue: #0b8cfe;
+  --pa-ink: color-mix(in srgb, var(--text) 78%, transparent);
+}
+.pa-logo {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.pa-logo > span {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.pa-logo-gray {
+  background: var(--pa-ink);
+  -webkit-mask-image: url("/print-archive/logo-gray.png");
+  mask-image: url("/print-archive/logo-gray.png");
+}
+.pa-logo-blue {
+  background: var(--pa-blue);
+  -webkit-mask-image: url("/print-archive/logo-blue.png");
+  mask-image: url("/print-archive/logo-blue.png");
+}
+/* 로딩 화면: 로고가 숨 쉬듯 */
+@keyframes pa-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1); }
+}
+.pa-breathe { animation: pa-breathe 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pa-breathe { animation: none; }
+}

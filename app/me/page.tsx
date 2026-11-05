@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
+import { Award, Files, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
@@ -46,7 +46,7 @@ export default function MePage() {
       <div className="space-y-4 px-5">
         {/* 프로필 */}
         <Card flush className="flex items-center gap-4 p-5">
-          <Link href="/me/avatar" aria-label="프로필 그림 바꾸기" className="relative">
+          <Link href="/me/avatar" aria-label="프로필 사진 바꾸기" className="relative">
             <ProfileAvatar avatar={profile.avatar} nickname={profile.nickname} grade={equipped?.grade} size={68} />
             <span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full border-2 border-surface bg-surface-2 text-muted">
               <Smile size={13} />
@@ -75,7 +75,8 @@ export default function MePage() {
           <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
           <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
           <ListRow icon={<Award size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
-          <ListRow icon={<Smile size={20} />} label="프로필 그림" href="/me/avatar" />
+          <ListRow icon={<Smile size={20} />} label="프로필 사진" href="/me/avatar" />
+          <ListRow icon={<Files size={20} />} label="프린트 아카이브" href="/prints" />
           <ListRow icon={<MessageCircleQuestion size={20} />} label="문의함" href="/me/inquiry" />
           <ListRow icon={<KeyRound size={20} />} label="비밀번호·복구 코드" href="/me/security" />
           <ListRow icon={<Shield size={20} />} label="개인정보 처리방침" href="/me/privacy" />
