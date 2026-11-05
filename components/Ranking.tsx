@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Crown, Users } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
+import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
 import { Segmented } from "@/components/ui";
 import { hm } from "@/lib/format";
 import { koreanError } from "@/lib/supabase";
@@ -64,7 +65,15 @@ export default function Ranking() {
           {top.map((r, i) => (
             <div key={r.nickname} className="rounded-2xl bg-surface p-3 text-center">
               <Crown size={18} className="mx-auto" style={{ color: MEDAL[i] }} fill={MEDAL[i]} />
-              <p className="mt-1.5 truncate text-[13px] font-semibold">{r.nickname}</p>
+              <span className="mt-1.5 flex justify-center">
+                <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} size={36} />
+              </span>
+              <p className="mt-1 truncate text-[13px] font-semibold">{r.nickname}</p>
+              {r.title_name && (
+                <span className="flex justify-center">
+                  <TitleBadge name={r.title_name} grade={r.title_grade} size="xs" />
+                </span>
+              )}
               <p className="num text-[12px] text-muted">{hm(r.total_sec)}</p>
             </div>
           ))}
@@ -116,16 +125,23 @@ function RankItem({ row }: { row: RankRow }) {
       }`}
     >
       <span className={`num w-8 text-[15px] font-bold ${row.is_me ? "text-accent" : "text-muted"}`}>{row.rank}</span>
-      <span className="relative grid size-8 place-items-center rounded-full bg-surface-2 text-[12px] font-semibold">
-        {row.nickname[0]}
+      <span className="relative">
+        <ProfileAvatar avatar={row.avatar} nickname={row.nickname} grade={row.title_grade} size={34} />
         {row.studying && <span className="live-dot absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface bg-live" />}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[15px] font-medium">
-        {row.nickname}
-        {row.is_me && <span className="ml-1.5 text-[12px] text-accent">나</span>}
-        <span className="ml-1.5 text-[11px] text-faint">
-          {row.grade}-{row.class_no}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[15px] font-medium">{row.nickname}</span>
+          {row.is_me && <span className="shrink-0 text-[12px] text-accent">나</span>}
+          <span className="shrink-0 text-[11px] text-faint">
+            {row.grade}-{row.class_no}
+          </span>
         </span>
+        {row.title_name && (
+          <span className="mt-0.5 flex">
+            <TitleBadge name={row.title_name} grade={row.title_grade} size="xs" />
+          </span>
+        )}
       </span>
       <span className="num text-[14px] font-semibold">{hm(row.total_sec)}</span>
     </li>

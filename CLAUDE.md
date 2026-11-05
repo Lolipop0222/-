@@ -50,7 +50,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 테이블 | 내용 | 접근 |
 |---|---|---|
 | `app_settings` | `invite_code` 가입 초대코드 | 클라이언트 못 읽음 |
-| `profiles` | 닉네임(2~12자, 고유)·학년(1~3)·반. **실명·학번 안 받음** | 본인만 조회·수정 |
+| `profiles` | 닉네임(2~12자, 고유)·학년(1~3)·반·avatar(프로필 그림 `그림:색`)·title_code(대표 칭호). **실명·학번 안 받음** | 본인만 조회. 직접 수정은 **열 권한으로** nickname·grade·class_no·avatar만 (title_code는 `set_title()`로만) |
 | `sessions` | 공부 기록: subject, started_at, ended_at, away_count, duration(계산 열), task_id(플래너 과제), label(기타 이름) | 본인만 조회. 쓰기는 함수로만 (기타만 직접 쓰기) |
 | `ddays` | 직접 만든 디데이 (1인 30개) | 본인만 |
 | `tasks` | 플래너 과제 (날짜·제목·과목·완료·skipped·routine_id, 하루 30개) | 본인만 |
@@ -62,10 +62,22 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `security_attempts` | 초대코드·복구 코드·그룹 코드 틀린 기록 (하루 지나면 지움) | 클라이언트 못 읽음 |
 | `study_groups` | 스터디그룹 (이름 2~20자, 6자리 초대코드, owner_id) | 클라이언트 못 읽음 — 함수로만 |
 | `group_members` | 그룹원 (group_id, user_id, joined_at) | 클라이언트 못 읽음 — 함수로만 |
+| `title_defs` | 칭호 정의 31개 (code·이름·등급·분류·설명·metric·goal·unit·sort·active). schema.sql의 insert가 원본 | 클라이언트 못 읽음 (히든 이름 보호) — `my_titles()`로만 |
+| `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)`. `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, 칭호 테이블 뒤에 있어야 해서 **schema.sql 맨 끝**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
 
 **스터디그룹 규칙**: 한 사람이 들어가는 그룹 5개, 만든 그룹 3개, 그룹 30명, 코드 15분에 10번 틀리면 잠김. 방장이 나가거나 계정을 지우면 `group_member_left` 트리거가 가장 먼저 들어온 사람에게 방장을 넘기고, 아무도 없으면 그룹을 지운다. 그룹 순위 규칙은 `get_ranking`과 같다(4시간 넘는 세션·기타 제외).
+
+**칭호 규칙** (schema.sql 맨 끝 "칭호 · 프로필 그림")
+- 판정은 전부 서버: `title_stats(uid)`(내부용)가 숫자 값들(jsonb)을 계산 → `title_defs`의 `metric` 값이 `goal` 이상이면 지급. **칭호 추가 = `title_defs` insert 한 줄**(있는 metric이면), 새 조건이면 `title_stats()`에 값 하나 추가. 단어 퀴즈 칭호는 점수를 서버에 저장하게 되면 `quiz_…` metric을 더한다.
+- 공부 시간 = 순위와 같은 기준(기타 제외, 한 기록 1초~4시간). 날짜·요일·시각은 KST, 기록은 시작한 날. 연속 출석 = 하루 30분 이상인 날의 최장 연속(gaps-and-islands). 히든 일부(리셋 사냥꾼·새해·작심삼분)는 진행 중 기록도 봄(기타·4시간 넘게 켜 둔 것 제외).
+- 주간 순위 칭호(반/학년/전교 1위) = **끝난 모든 주**(이번 주 제외)를 본다 → 앱을 안 연 주도 나중에 소급. 그 주 5시간 이상 + 그 범위에 그 주 기록 있는 학생 3명 이상, 공동 1위 모두 지급. 반·학년은 지금 프로필 기준.
+- 중복 없음: `user_titles` primary key + `on conflict do nothing`. 알림은 `seen`으로 한 번만.
+- cron이 없어서 앱이 `check_titles()`를 부른다(`components/TitlesProvider.tsx`): 앱 열기, 공부 기록 변화(study.version), 플래너 과제 완료(`requestTitleCheck()` 이벤트), 내정보·칭호 화면 열기. 새 칭호는 위에 소리 없는 토스트.
+- 등급: 일반(common)·희귀(rare)·영웅(epic)·전설(legendary)·히든(hidden). 색·모양은 `globals.css`의 `--g-*`, `.tb-*`(배지), `.ring-*`(프로필 그림 테두리). 전설은 금빛이 반짝, 히든은 점선+그라데이션, 움직임은 `prefers-reduced-motion`이면 멈춤.
+- 프로필 그림 = 사진 대신 그림 24개 × 과목색 8개(`lib/titles.ts`의 `AVATAR_ICONS/COLORS`, 실명·얼굴 안 받는 원칙). DB는 `그림:색` 모양만 검사. 대표 칭호 등급이 그림 테두리 색이 된다.
+- 예전 DB 호환: `AuthProvider`는 avatar·title_code 열이 없으면(42703) 예전 열만 읽는다.
 
 **관리자 등록**: `insert into admins (user_id) select id from profiles where nickname = '닉네임' on conflict do nothing;` — 사용자(앱 주인)가 직접 실행. 관리자면 내정보에 "관리자" 메뉴(`/me/admin`)가 보인다.
 
@@ -136,17 +148,19 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 비밀번호 찾기(`/login/reset`, 복구 코드)·복구 코드 만들기·비밀번호 바꾸기(`/me/security`), 홈에 "복구 코드 만들어 두세요" 안내(코드 없을 때만)
 - 계정 삭제(`/me/delete`)
 - 스터디그룹(`/groups`): 만들기·코드로 참여·공유, 그룹 안 이번 주 순위(과목별, 오늘 시간, 공부 중), 방장 설정(이름·코드 새로 만들기·내보내기·지우기), 나가기. 순위 화면 아래 "스터디그룹 순위 보기" 링크
+- 칭호(`/me/titles`): 31개, 등급별 목록·진행도·대표 칭호 달기/떼기, 새 칭호 토스트. 순위·그룹 순위·내정보에 그림과 칭호 표시
+- 프로필 그림(`/me/avatar`): 그림 24개 × 색 8개, 대표 칭호 등급 테두리
 - 테마(`/me/theme`): 8개 + 시스템 설정, 미리보기 카드. APK에서는 Capacitor `SystemBars.setStyle`로 상태바 글자색도 바꾸려 시도(실기기 미확인)
 - 홈 공지 배너(가짜 "간식 나눔" 등)는 사용자 요청으로 **삭제**함 (`EventBanner`, `lib/mock.ts`의 events)
 
 **아직 가짜 / 준비 중** (`lib/mock.ts` 등)
 - 워마 "오늘 복습할 단어 23개", 상자 5단계 분포, `/words/review`(상자 복습) — 가짜
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
-- 아바타 꾸미기 — "준비 중" 표시만
 - 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
 **확인된 상태 (2026-11-05)**
 - 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. 다시 확인하려면 publishable 키로 `GET /rest/v1/tasks?select=id&limit=1` → `PGRST205`면 없음, `[]`면 있음.
+- **커밋 "칭호·프로필 그림" 이후 `schema.sql` 다시 실행 필요**. 확인: `POST /rest/v1/rpc/my_titles` → `PGRST202`면 아직. 실행 전에는 칭호 "준비 중", 그림 저장 시 "데이터베이스 업데이트가 필요해요".
 - **커밋 "스터디그룹·테마" 이후에도 `schema.sql` 다시 실행 필요** (스터디그룹 테이블·함수). 확인: `POST /rest/v1/rpc/my_groups` → `PGRST202`면 아직.
 - **커밋 "문의함·비밀번호 찾기·계정 삭제·보안 강화" 이후 `schema.sql`을 다시 실행해야 한다** — 사용자가 실행했는지 확인. 안 했으면 문의함·복구 코드·계정 삭제가 "준비 중"/"데이터베이스 업데이트가 필요해요"로 나온다. 확인: publishable 키로 `POST /rest/v1/rpc/reset_password_with_code` (빈 값들) → `PGRST202`면 아직, `"weak"`면 됨.
 - 사용자에게 안내한 것(했는지 확인): 관리자 등록 SQL, 초대코드를 기본값 `DAEGO2026`에서 바꾸기(schema.sql에 기본값이 보임), Supabase Auth 최소 비밀번호 길이 8.
@@ -185,6 +199,7 @@ alter default privileges in schema public grant all on functions to anon, authen
 
 - psql 파일은 postgres 사용자가 스크래치 폴더를 못 읽으니 `su postgres -c "psql …" < 파일`처럼 표준입력으로 넣는다. pgcrypto는 로컬에도 있다(schema.sql이 `extensions` 스키마에 만든다).
 - 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 한국사·기타, 그 뒤는 `git log --oneline -- supabase/schema.sql`)을 꺼내 각각 올린 DB에 새 파일을 2번 실행.
+- 칭호 테스트: 학생 여럿을 만들고 `insert into sessions (…, started_at, ended_at)`에 `'2026-11-02 23:30+09'`처럼 KST 시각을 직접 넣어 경계·소급·기타 제외·중복을 확인했다. 화면 테스트의 가짜 서버는 schema.sql의 `title_defs` insert 줄을 정규식으로 읽어 쓴다.
 - Next 16은 떠난 페이지를 숨긴 채 DOM에 남겨 둔다 → Playwright 선택자는 `:visible`이나 열린 dialog 안으로 범위를 좁힌다.
 
 ## 8. 구현하며 알게 된 함정

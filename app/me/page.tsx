@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
-import Avatar from "@/components/Avatar";
+import { Award, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
+import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { useTheme } from "@/components/ThemeProvider";
+import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
+import { useMyTitles, useTitles } from "@/components/TitlesProvider";
 import { Badge, Card, ListRow, PageHeader } from "@/components/ui";
 import { isAdmin } from "@/lib/account";
 import { hm } from "@/lib/format";
@@ -19,6 +21,14 @@ export default function MePage() {
   const themeLabel = themeName(useTheme().choice);
   const top = RANKED_SUBJECTS.reduce((a, b) => (summary.weekBySubject[b] > summary.weekBySubject[a] ? b : a));
   const hasTop = summary.weekBySubject[top] >= 60;
+  const { check } = useTitles();
+  const { titles, available: titlesOn } = useMyTitles();
+  const equipped = titles?.find((t) => t.equipped) ?? null;
+  const earned = titles?.filter((t) => t.earned_at).length ?? 0;
+  // 내정보를 열 때도 칭호 판정 (계획서: cron 대신 앱을 쓰는 시점마다)
+  useEffect(() => {
+    void check();
+  }, [check]);
   // 관리자 메뉴는 관리자에게만 보인다 (실제 권한은 DB가 확인)
   const [admin, setAdmin] = useState(false);
   useEffect(() => {
@@ -36,10 +46,20 @@ export default function MePage() {
       <div className="space-y-4 px-5">
         {/* 프로필 */}
         <Card flush className="flex items-center gap-4 p-5">
-          <Avatar size={68} />
+          <Link href="/me/avatar" aria-label="프로필 그림 바꾸기" className="relative">
+            <ProfileAvatar avatar={profile.avatar} nickname={profile.nickname} grade={equipped?.grade} size={68} />
+            <span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full border-2 border-surface bg-surface-2 text-muted">
+              <Smile size={13} />
+            </span>
+          </Link>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[20px] font-bold">{profile.nickname}</p>
-            <p className="mt-0.5 text-[13px] text-muted">
+            {equipped && (
+              <Link href="/me/titles" className="mt-1 flex">
+                <TitleBadge name={equipped.name} grade={equipped.grade} size="sm" />
+              </Link>
+            )}
+            <p className="mt-1 text-[13px] text-muted">
               {profile.grade}학년 {profile.class_no}반
             </p>
           </div>
@@ -54,7 +74,8 @@ export default function MePage() {
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
           <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
           <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
-          <ListRow icon={<Smile size={20} />} label="아바타 꾸미기" value="준비 중" />
+          <ListRow icon={<Award size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
+          <ListRow icon={<Smile size={20} />} label="프로필 그림" href="/me/avatar" />
           <ListRow icon={<MessageCircleQuestion size={20} />} label="문의함" href="/me/inquiry" />
           <ListRow icon={<KeyRound size={20} />} label="비밀번호·복구 코드" href="/me/security" />
           <ListRow icon={<Shield size={20} />} label="개인정보 처리방침" href="/me/privacy" />

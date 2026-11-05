@@ -3,6 +3,7 @@ import AuthProvider from "@/components/AuthProvider";
 import BottomNav from "@/components/BottomNav";
 import StudyProvider from "@/components/StudyProvider";
 import ThemeProvider from "@/components/ThemeProvider";
+import TitlesProvider from "@/components/TitlesProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/themes";
 import "./globals.css";
 
@@ -36,8 +37,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ThemeProvider>
             <AuthProvider>
               <StudyProvider>
-                <main className="flex-1 pb-28">{children}</main>
-                <BottomNav />
+                <TitlesProvider>
+                  <main className="flex-1 pb-28">{children}</main>
+                  <BottomNav />
+                </TitlesProvider>
               </StudyProvider>
             </AuthProvider>
           </ThemeProvider>

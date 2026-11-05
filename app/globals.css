@@ -309,3 +309,109 @@ body {
   background-image: var(--texture);
   color: var(--text);
 }
+
+/* ───────────── 칭호 등급 (components/TitleBadge.tsx) ─────────────
+ * 일반 = 테두리만 / 희귀 = 파랑 / 영웅 = 보라 + 은은한 빛 / 전설 = 금빛 그라데이션이 천천히 반짝 / 히든 = 분홍→강조색 그라데이션
+ * 어두운 테마 기준 색을 모든 테마에 깔고, 밝은 테마(라이트·종이·솔라라이즈드)는 진한 색으로 바꾼다. */
+:root,
+[data-theme] {
+  --g-common: var(--muted);
+  --g-rare: #4ea8ff;
+  --g-epic: #b98cff;
+  --g-legendary: #ffc83d;
+  --g-legendary-2: #fff0b3;
+  --g-legendary-ink: #2a1d00;
+  --g-hidden: #ff70b8;
+}
+[data-theme="light"],
+[data-theme="paper"],
+[data-theme="solarized"] {
+  --g-rare: #1d6fd6;
+  --g-epic: #8a3fd6;
+  --g-legendary: #d99a00;
+  --g-legendary-2: #ffd75e;
+  --g-legendary-ink: #2a1d00;
+  --g-hidden: #d0307f;
+}
+
+.tb {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.tb-xs { font-size: 10px; line-height: 14px; padding: 0 5px; }
+.tb-md { font-size: 13px; line-height: 20px; padding: 2px 9px; border-radius: 8px; }
+.tb-icon { width: 1.05em; height: 1.05em; flex-shrink: 0; }
+
+.tb-common {
+  color: var(--g-common);
+  border-color: color-mix(in srgb, var(--g-common) 45%, transparent);
+}
+.tb-rare {
+  color: var(--g-rare);
+  background: color-mix(in srgb, var(--g-rare) 14%, transparent);
+  border-color: color-mix(in srgb, var(--g-rare) 40%, transparent);
+}
+.tb-epic {
+  color: var(--g-epic);
+  background: color-mix(in srgb, var(--g-epic) 16%, transparent);
+  border-color: color-mix(in srgb, var(--g-epic) 65%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--g-epic) 35%, transparent);
+}
+.tb-legendary {
+  color: var(--g-legendary-ink);
+  background: linear-gradient(110deg, var(--g-legendary) 0%, var(--g-legendary-2) 45%, var(--g-legendary) 70%, var(--g-legendary) 100%);
+  background-size: 250% 100%;
+  border-color: var(--g-legendary);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--g-legendary) 45%, transparent);
+  animation: tb-shine 3.2s ease-in-out infinite;
+}
+.tb-hidden {
+  color: var(--g-hidden);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--g-hidden) 20%, transparent), color-mix(in srgb, var(--accent) 20%, transparent));
+  border-color: color-mix(in srgb, var(--g-hidden) 55%, transparent);
+  border-style: dashed;
+}
+@keyframes tb-shine {
+  0% { background-position: 100% 0; }
+  60%, 100% { background-position: -50% 0; }
+}
+
+/* 프로필 그림 테두리 (대표 칭호 등급) */
+.ring-common { background: color-mix(in srgb, var(--g-common) 60%, transparent); }
+.ring-rare { background: var(--g-rare); }
+.ring-epic { background: var(--g-epic); box-shadow: 0 0 10px color-mix(in srgb, var(--g-epic) 45%, transparent); }
+.ring-legendary {
+  background: conic-gradient(from var(--ring-angle, 0deg), var(--g-legendary), var(--g-legendary-2), var(--g-legendary), #ff9f1a, var(--g-legendary));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--g-legendary) 50%, transparent);
+  animation: ring-spin 6s linear infinite;
+}
+.ring-hidden { background: conic-gradient(from var(--ring-angle, 0deg), var(--g-hidden), var(--accent), var(--g-hidden)); animation: ring-spin 8s linear infinite; }
+@property --ring-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes ring-spin {
+  to { --ring-angle: 360deg; }
+}
+
+/* 칭호 알림 (components/TitlesProvider.tsx) — 소리 없이 위에서 살짝 */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.toast-in { animation: toast-in 0.25s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-legendary, .ring-legendary, .ring-hidden, .toast-in, .live-dot { animation: none; }
+}

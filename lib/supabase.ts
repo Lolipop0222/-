@@ -27,7 +27,8 @@ function envValue(v: string | undefined): string | undefined {
   return v?.trim().replace(/^[A-Z0-9_]+=/, "").replace(/^["']|["']$/g, "").trim() || undefined;
 }
 
-export type Profile = { id: string; nickname: string; grade: number; class_no: number };
+/** avatar·title_code는 schema.sql(칭호 부분)을 실행한 DB에만 있다 */
+export type Profile = { id: string; nickname: string; grade: number; class_no: number; avatar?: string | null; title_code?: string | null };
 
 /** Supabase/Postgres 오류를 학생이 읽을 말로 */
 export function koreanError(e: unknown): string {

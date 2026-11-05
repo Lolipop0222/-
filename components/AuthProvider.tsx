@@ -45,7 +45,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: "signedOut" });
       return;
     }
-    const { data, error } = await supabase().from("profiles").select("id, nickname, grade, class_no").eq("id", user.id).maybeSingle();
+    const sb = supabase();
+    let { data, error } = await sb.from("profiles").select("id, nickname, grade, class_no, avatar, title_code").eq("id", user.id).maybeSingle();
+    if (error?.code === "42703") {
+      // schema.sql(칭호·프로필 그림)을 아직 실행하지 않은 DB — 예전 열만 읽는다 (안 그러면 프로필이 없는 걸로 보여 가입 화면에 갇힌다)
+      ({ data, error } = await sb.from("profiles").select("id, nickname, grade, class_no").eq("id", user.id).maybeSingle());
+    }
     if (seq !== loadSeq.current) return;
     if (error) {
       // 인터넷이 끊긴 경우 등 — 로그인 상태는 유지하고 프로필만 다시 시도하게 둔다

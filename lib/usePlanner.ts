@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useStudy } from "@/components/StudyProvider";
+import { requestTitleCheck } from "@/lib/titles";
 import {
   addTask,
   isPlannerMissing,
@@ -108,6 +109,7 @@ export function usePlanner(date: string | null): PlannerState {
       setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t))); // 먼저 화면에 반영
       try {
         await updateTask(id, patch);
+        if (patch.done) requestTitleCheck(); // 과제 완료 → 칭호(계획의 달인) 판정
       } catch (e) {
         setTasks(before);
         fail(e);

@@ -20,6 +20,9 @@ export type GroupRankRow = {
   studying: boolean;
   is_me: boolean;
   is_owner: boolean;
+  avatar?: string | null;
+  title_name?: string | null;
+  title_grade?: string | null;
 };
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {

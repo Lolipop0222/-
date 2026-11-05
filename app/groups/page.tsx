@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Copy, Crown, LogIn, LogOut, Pencil, Plus, RefreshCw, Share2, Trash2, UserMinus, Users } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
+import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
 import { Badge, Card, ErrorText, InfoText, InputRow, PrimaryButton, inputCls } from "@/components/ui";
 import { notReady } from "@/lib/account";
 import { hm } from "@/lib/format";
@@ -345,8 +346,8 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
                 className={`flex items-center gap-3 px-4 py-3 ${r.is_me ? "bg-accent-soft" : ""} ${i > 0 ? "border-t border-line" : ""}`}
               >
                 <span className={`num w-6 text-[15px] font-bold ${r.rank <= 3 && r.total_sec > 0 ? "text-warn" : "text-muted"}`}>{r.rank}</span>
-                <span className="relative grid size-9 place-items-center rounded-full bg-surface-2 text-[13px] font-semibold">
-                  {r.nickname[0]}
+                <span className="relative">
+                  <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} size={36} />
                   {r.studying && <span className="live-dot absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-surface bg-live" />}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -355,8 +356,11 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
                     {r.is_owner && <Crown size={13} className="shrink-0 text-warn" fill="currentColor" />}
                     {r.is_me && <span className="text-[12px] text-accent">나</span>}
                   </span>
-                  <span className="num text-[12px] text-faint">
-                    {r.grade}-{r.class_no} · 오늘 {hm(r.today_sec)}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {r.title_name && <TitleBadge name={r.title_name} grade={r.title_grade} size="xs" />}
+                    <span className="num shrink-0 text-[12px] text-faint">
+                      {r.grade}-{r.class_no} · 오늘 {hm(r.today_sec)}
+                    </span>
                   </span>
                 </span>
                 <span className="num text-[15px] font-semibold">{hm(r.total_sec)}</span>
