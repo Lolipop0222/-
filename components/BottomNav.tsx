@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, CalendarDays, House, Timer, User } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 const TABS = [
   { href: "/", label: "홈", icon: House },
@@ -17,7 +18,8 @@ const HIDDEN_ON = ["/login", "/words/review"];
 
 export default function BottomNav() {
   const pathname = usePathname();
-  if (HIDDEN_ON.includes(pathname) || pathname.startsWith("/words/day/")) return null;
+  const auth = useAuth();
+  if (auth.status !== "ready" || HIDDEN_ON.includes(pathname) || pathname.startsWith("/words/day/")) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t border-line bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg">

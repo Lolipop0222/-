@@ -76,6 +76,7 @@ export function Segmented<T extends string>({
       {items.map((item) => (
         <button
           key={item}
+          type="button"
           onClick={() => onChange(item)}
           className={`flex-1 rounded-lg py-2 text-[13px] font-semibold transition-colors ${
             value === item ? "bg-bg text-text shadow" : "text-muted"

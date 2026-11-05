@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import AuthProvider from "@/components/AuthProvider";
 import BottomNav from "@/components/BottomNav";
+import StudyProvider from "@/components/StudyProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,8 +29,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         {/* 휴대폰 폭 기준. 큰 화면에서는 가운데 정렬 */}
         <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-          <main className="flex-1 pb-28">{children}</main>
-          <BottomNav />
+          <AuthProvider>
+            <StudyProvider>
+              <main className="flex-1 pb-28">{children}</main>
+              <BottomNav />
+            </StudyProvider>
+          </AuthProvider>
         </div>
       </body>
     </html>

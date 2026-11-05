@@ -3,77 +3,6 @@
  * 모양은 계획서 3장의 테이블 구조를 그대로 따른다 — 나중에 Supabase 조회 결과로 바꿔 끼운다.
  */
 
-import type { Subject } from "@/lib/subjects";
-
-// users
-export const me = {
-  nickname: "새벽공부러",
-  grade: 2,
-  classNo: 3,
-  points: 1284,
-  avatar: { bg: "#232a45", body: "#7c8cff", hair: "#2b1d14", accessory: "🎧" },
-};
-
-// 오늘 / 이번 주 공부 기록 (sessions 합계)
-export const todayStudy = {
-  totalSec: 3 * 3600 + 42 * 60,
-  goalSec: 5 * 3600,
-  bySubject: [
-    { subject: "수학" as Subject, sec: 5400 },
-    { subject: "영어" as Subject, sec: 4200 },
-    { subject: "국어" as Subject, sec: 2400 },
-    { subject: "과학" as Subject, sec: 1320 },
-  ],
-};
-
-export const weekStudy = {
-  totalSec: 19 * 3600 + 8 * 60,
-  // 월~일
-  days: [4.2, 3.6, 5.1, 2.4, 3.7, 0, 0],
-};
-
-// ranking 뷰 결과
-export type RankRow = { rank: number; nickname: string; grade: number; totalSec: number; studying?: boolean; me?: boolean };
-
-const names = [
-  "수능만점가자", "카페인중독", "오늘도화이팅", "의대가즈아", "수학괴물", "단어장정복",
-  "물리러버", "야자지킴이", "독서실귀신", "고삼이다", "열품타장인", "집중모드", "탐구천재",
-];
-
-export const RANKING_SCOPES = ["전교", "학년", "반", "그룹"] as const;
-export type RankingScope = (typeof RANKING_SCOPES)[number];
-
-/** 내 순위를 가운데 두고 위아래 세 명씩 */
-export function rankingAround(scope: RankingScope): { top: RankRow[]; around: RankRow[]; total: number } {
-  const myRank = { 전교: 37, 학년: 14, 반: 4, 그룹: 2 }[scope];
-  const total = { 전교: 612, 학년: 203, 반: 31, 그룹: 6 }[scope];
-  const mySec = weekStudy.totalSec;
-
-  const around: RankRow[] = [];
-  for (let r = Math.max(1, myRank - 3); r <= Math.min(total, myRank + 3); r++) {
-    const isMe = r === myRank;
-    around.push({
-      rank: r,
-      nickname: isMe ? me.nickname : names[3 + ((r * 3) % (names.length - 3))],
-      grade: isMe ? me.grade : (r % 3) + 1,
-      totalSec: mySec + (myRank - r) * 9 * 60 + (r % 2) * 120,
-      studying: !isMe && r % 3 === 0,
-      me: isMe,
-    });
-  }
-
-  const top: RankRow[] = [1, 2, 3].map((r) => ({
-    rank: r,
-    nickname: names[r - 1],
-    grade: r === 2 ? 2 : 3,
-    totalSec: [41, 38, 36][r - 1] * 3600 + r * 700,
-    studying: r !== 2,
-  }));
-
-  // 위아래 세 명 안에 1등이 들어오면 상위 3명은 따로 보여주지 않는다
-  return { top: around[0].rank === 1 ? [] : top, around, total };
-}
-
 // events (홈 배너)
 export const EVENT_CATEGORIES = ["학생회", "반", "입시"] as const;
 export const events = [
@@ -107,28 +36,6 @@ export const words: Word[] = [
   { id: "w7", book: "능률 VOCA 고교필수", day: 12, en: "ambiguous", ko: "애매모호한", pos: "adj.", box: 2 },
   { id: "w8", book: "능률 VOCA 고교필수", day: 12, en: "anticipate", ko: "예상하다, 기대하다", pos: "v.", box: 1 },
 ];
-
-export const dayList = [
-  { day: 14, count: 30, due: 0, progress: 0.1 },
-  { day: 13, count: 30, due: 8, progress: 0.42 },
-  { day: 12, count: 30, due: 15, progress: 0.61 },
-  { day: 11, count: 28, due: 0, progress: 0.88 },
-  { day: 10, count: 30, due: 0, progress: 1 },
-];
-
-// groups / members
-export const myGroup = {
-  name: "2-3 야자 최강자",
-  code: "K7Q2M9",
-  members: [
-    { nickname: "의대가즈아", studying: true, todaySec: 4 * 3600 + 12 * 60 },
-    { nickname: "새벽공부러", studying: false, todaySec: todayStudy.totalSec, me: true },
-    { nickname: "수학괴물", studying: true, todaySec: 3 * 3600 + 5 * 60 },
-    { nickname: "단어장정복", studying: false, todaySec: 2 * 3600 + 40 * 60 },
-    { nickname: "카페인중독", studying: true, todaySec: 1 * 3600 + 58 * 60 },
-    { nickname: "오늘도화이팅", studying: false, todaySec: 47 * 60 },
-  ],
-};
 
 // 스캔 결과 예시 (확인·수정 화면용)
 export const scanResult = [
