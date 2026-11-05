@@ -107,7 +107,7 @@ export default function RoutinesPage() {
                       type="button"
                       key={s}
                       onClick={() => setSubject(pickedSubject === s ? null : s)}
-                      className={`rounded-full border px-3 py-1 text-[13px] font-semibold ${pickedSubject === s ? "border-transparent text-black" : "border-line text-muted"}`}
+                      className={`rounded-full border px-3 py-1 text-[13px] font-semibold ${pickedSubject === s ? "border-transparent text-on-subject" : "border-line text-muted"}`}
                       style={pickedSubject === s ? { background: SUBJECT_COLOR[s] } : undefined}
                     >
                       {s}

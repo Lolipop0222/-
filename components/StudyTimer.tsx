@@ -35,7 +35,7 @@ export default function StudyTimer() {
   }
 
   return (
-    <section className="bg-black px-5 pb-8 pt-[calc(env(safe-area-inset-top)+20px)]">
+    <section className="bg-stage text-stage-text px-5 pb-8 pt-[calc(env(safe-area-inset-top)+20px)]">
       <div className="flex items-center justify-between">
         <h1 className="text-[17px] font-semibold text-muted">일품타</h1>
         <Link href="/planner" className="ml-auto mr-2 flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-muted">
@@ -69,7 +69,7 @@ export default function StudyTimer() {
               disabled={running || study.busy}
               onClick={() => setPicked(s)}
               className={`rounded-full border py-2 text-[14px] font-semibold transition-colors ${
-                active ? "border-transparent text-black" : "border-line text-muted disabled:opacity-30"
+                active ? "border-transparent text-on-subject" : "border-line text-muted disabled:opacity-30"
               }`}
               style={active ? { background: SUBJECT_COLOR[s] } : undefined}
             >
@@ -85,7 +85,7 @@ export default function StudyTimer() {
           {subject}
           {running && runningTask && <span className="text-muted"> · {runningTask.title}</span>}
         </p>
-        <p className="num mt-2 text-[64px] font-bold leading-none text-white">{hms(study.elapsed)}</p>
+        <p className="num mt-2 text-[64px] font-bold leading-none text-stage-text">{hms(study.elapsed)}</p>
         <p className="mt-4 flex items-center justify-center gap-1 text-[13px] text-faint">
           <Eye size={14} /> 이탈 {running ? study.awayCount : 0}회 · 30초 넘게 벗어나면 자동 정지
         </p>
@@ -108,7 +108,7 @@ export default function StudyTimer() {
             onClick={() => study.stop()}
             disabled={study.busy}
             aria-label="정지"
-            className="grid size-24 place-items-center rounded-full bg-danger text-black shadow-[0_0_0_10px_rgba(255,107,107,0.12)] active:scale-95 disabled:opacity-50"
+            className="grid size-24 place-items-center rounded-full bg-danger text-bg shadow-[0_0_0_10px_var(--danger-soft)] active:scale-95 disabled:opacity-50"
           >
             <Square size={30} fill="currentColor" />
           </button>
@@ -117,7 +117,7 @@ export default function StudyTimer() {
             onClick={() => study.start(picked, taskId)}
             disabled={study.busy || !study.ready}
             aria-label="시작"
-            className="grid size-24 place-items-center rounded-full bg-white text-black shadow-[0_0_0_10px_rgba(255,255,255,0.08)] active:scale-95 disabled:opacity-50"
+            className="grid size-24 place-items-center rounded-full bg-text text-bg shadow-[0_0_0_10px_color-mix(in_srgb,var(--text)_10%,transparent)] active:scale-95 disabled:opacity-50"
           >
             <Play size={34} fill="currentColor" className="ml-1" />
           </button>

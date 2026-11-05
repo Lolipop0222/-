@@ -59,9 +59,13 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `inquiries` | 문의함 (분류·내용 5~1000자·답변, 하루 5개) | 본인 조회·작성·삭제, 수정 불가. 답변은 관리자 함수로만 |
 | `admins` | 관리자 user_id. **SQL Editor에서만** 추가 | 클라이언트 못 읽음 |
 | `recovery_codes` | 비밀번호 복구 코드 **해시**(bcrypt) | 클라이언트 못 읽음 |
-| `security_attempts` | 초대코드·복구 코드 틀린 기록 (하루 지나면 지움) | 클라이언트 못 읽음 |
+| `security_attempts` | 초대코드·복구 코드·그룹 코드 틀린 기록 (하루 지나면 지움) | 클라이언트 못 읽음 |
+| `study_groups` | 스터디그룹 (이름 2~20자, 6자리 초대코드, owner_id) | 클라이언트 못 읽음 — 함수로만 |
+| `group_members` | 그룹원 (group_id, user_id, joined_at) | 클라이언트 못 읽음 — 함수로만 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)`. 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+
+**스터디그룹 규칙**: 한 사람이 들어가는 그룹 5개, 만든 그룹 3개, 그룹 30명, 코드 15분에 10번 틀리면 잠김. 방장이 나가거나 계정을 지우면 `group_member_left` 트리거가 가장 먼저 들어온 사람에게 방장을 넘기고, 아무도 없으면 그룹을 지운다. 그룹 순위 규칙은 `get_ranking`과 같다(4시간 넘는 세션·기타 제외).
 
 **관리자 등록**: `insert into admins (user_id) select id from profiles where nickname = '닉네임' on conflict do nothing;` — 사용자(앱 주인)가 직접 실행. 관리자면 내정보에 "관리자" 메뉴(`/me/admin`)가 보인다.
 
@@ -72,7 +76,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 비밀번호 찾기 = 복구 코드(12자리, 60비트, 해시만 저장, 한 번 쓰면 삭제). 성공하면 `auth.users.encrypted_password`를 bcrypt로 바꾸고 `auth.sessions`를 지워 다른 기기를 로그아웃. 메일 재설정은 Confirm email을 꺼 뒀고 Supabase 기본 메일은 팀원 주소로만 보내져서 안 쓴다(쓰려면 커스텀 SMTP 필요).
 - 계정 삭제 = `delete_my_account()`가 `auth.users`를 지움 → cascade로 모든 기록 삭제. 앱은 비밀번호를 다시 확인하고 닉네임을 똑같이 쓰게 한 뒤 부른다.
 - 웹: `next.config.ts`의 보안 헤더(CSP — 스크립트는 self, 통신은 self+`*.supabase.co`, CSS·글꼴은 jsdelivr만 / iframe 금지 / HSTS 등). 외부 스크립트·이미지·API를 새로 쓰면 CSP에 추가해야 한다. API 주소의 달 파라미터는 `validMonth()`로 검사.
-- `dangerouslySetInnerHTML` 쓰지 않는다. 학생이 쓴 글(문의·닉네임)은 React가 글자로만 그린다.
+- `dangerouslySetInnerHTML` 쓰지 않는다. 학생이 쓴 글(문의·닉네임·그룹 이름)은 React가 글자로만 그린다. 예외는 `app/layout.tsx`의 테마 부팅 스크립트 하나(`lib/themes.ts`의 고정 문자열, 사용자 입력 없음).
 
 **초대코드 방식**: 가입 = 이메일·비밀번호(Supabase Auth, **Confirm email 꺼 둠** — 무료 메일 한도 때문) → `create_profile`에 닉네임·학년·반·초대코드. 코드가 틀리면 프로필이 안 생겨 앱을 못 쓴다(로그인 화면의 프로필 단계에 머묾). 기본값 `DAEGO2026`이지만 사용자가 바꿨을 수 있다. 바꾸기: `update app_settings set value = '새코드' where key = 'invite_code';`
 
@@ -105,7 +109,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 - **과목**: 순위에 들어가는 7과목 **국어·영어·수학·과학·사회·한국사·인강** + **기타**(순위·합계 제외, 나만 보고 직접 편집). 처음엔 국어·영어·수학·과학·사회 5개였고 나중에 한국사·인강·기타를 추가했다. 목록은 `lib/subjects.ts`와 `schema.sql`의 subject check 3곳(sessions·tasks·routines)을 같이 고친다.
 - **과목 자동 짐작 금지**: 과제 이름으로 과목을 자동으로 고르던 기능은 "오류 가능성" 때문에 사용자가 빼라고 했다. 과목은 학생이 직접 고른다. 플래너 과제 ▶ / 타이머 화면 과제 선택은 학생이 고른 과목으로만 시작한다.
-- **다크 모드 기본**. 색은 `app/globals.css` 토큰, 공통 부품은 `components/ui.tsx`. 휴대폰 화면 기준(`max-w-md`), 한국어 존댓말(해요체) 문구.
+- **다크 모드 기본 + 테마 8개**(기본 다크·라이트·종이·노드·모카·그루브박스·솔라라이즈드·고대비 + 시스템 설정 따라가기). 색은 `app/globals.css` 토큰, 공통 부품은 `components/ui.tsx`. **색을 코드에 직접 쓰지 않는다**(`text-black`, `bg-white`, `#hex` 금지) — 토큰(`bg-surface`, `text-muted`, `bg-stage`, `text-on-subject` 등)과 과목 색 `SUBJECT_COLOR`(=`var(--s-*)`)를 쓴다. 강조색 버튼 글자는 `text-bg`. 새 화면을 만들면 라이트·종이 테마에서도 스크린샷으로 확인한다. 테마를 추가하려면 `globals.css`의 `[data-theme="…"]`(토큰 전부)와 `lib/themes.ts` 목록을 같이 고친다. 테마는 기기 localStorage(`daego-theme`)에 저장, `<head>` 부팅 스크립트가 깜빡임을 막는다. 팔레트 출처: Nord·Catppuccin·Gruvbox·Solarized 공개 팔레트. 휴대폰 화면 기준(`max-w-md`), 한국어 존댓말(해요체) 문구.
 - **가짜 데이터를 실제 데이터와 섞지 않는다**: 실데이터가 들어온 화면의 가짜(학사일정·수행평가·순위·스터디그룹 멤버)는 지웠다. 아직 기능이 없으면 "준비 중"으로 표시.
 - **실명 받지 않음**, 닉네임만. 학년·반은 순위 범위용.
 - 워마 퀴즈 제한 시간은 **셀프 옵션, 기본 끄기**.
@@ -131,16 +135,19 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 문의함(`/me/inquiry`)·관리자 화면(`/me/admin`: 답변, 복구 코드 대신 발급)
 - 비밀번호 찾기(`/login/reset`, 복구 코드)·복구 코드 만들기·비밀번호 바꾸기(`/me/security`), 홈에 "복구 코드 만들어 두세요" 안내(코드 없을 때만)
 - 계정 삭제(`/me/delete`)
+- 스터디그룹(`/groups`): 만들기·코드로 참여·공유, 그룹 안 이번 주 순위(과목별, 오늘 시간, 공부 중), 방장 설정(이름·코드 새로 만들기·내보내기·지우기), 나가기. 순위 화면 아래 "스터디그룹 순위 보기" 링크
+- 테마(`/me/theme`): 8개 + 시스템 설정, 미리보기 카드. APK에서는 Capacitor `SystemBars.setStyle`로 상태바 글자색도 바꾸려 시도(실기기 미확인)
 - 홈 공지 배너(가짜 "간식 나눔" 등)는 사용자 요청으로 **삭제**함 (`EventBanner`, `lib/mock.ts`의 events)
 
 **아직 가짜 / 준비 중** (`lib/mock.ts` 등)
 - 워마 "오늘 복습할 단어 23개", 상자 5단계 분포, `/words/review`(상자 복습) — 가짜
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
-- 스터디그룹, 아바타 꾸미기 — "준비 중" 표시만
+- 아바타 꾸미기 — "준비 중" 표시만
 - 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
 **확인된 상태 (2026-11-05)**
 - 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. 다시 확인하려면 publishable 키로 `GET /rest/v1/tasks?select=id&limit=1` → `PGRST205`면 없음, `[]`면 있음.
+- **커밋 "스터디그룹·테마" 이후에도 `schema.sql` 다시 실행 필요** (스터디그룹 테이블·함수). 확인: `POST /rest/v1/rpc/my_groups` → `PGRST202`면 아직.
 - **커밋 "문의함·비밀번호 찾기·계정 삭제·보안 강화" 이후 `schema.sql`을 다시 실행해야 한다** — 사용자가 실행했는지 확인. 안 했으면 문의함·복구 코드·계정 삭제가 "준비 중"/"데이터베이스 업데이트가 필요해요"로 나온다. 확인: publishable 키로 `POST /rest/v1/rpc/reset_password_with_code` (빈 값들) → `PGRST202`면 아직, `"weak"`면 됨.
 - 사용자에게 안내한 것(했는지 확인): 관리자 등록 SQL, 초대코드를 기본값 `DAEGO2026`에서 바꾸기(schema.sql에 기본값이 보임), Supabase Auth 최소 비밀번호 길이 8.
 - GitHub 기본 브랜치는 아직 `claude/app-ui-design-nxs7yv` → 사용자에게 Settings → General → Default branch를 `main`으로 바꾸도록 안내함(바꿨는지 다음 세션에서 확인). Vercel은 이미 `main`을 배포.
@@ -150,7 +157,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 2. ① 공부 시간으로 성장하는 캐릭터 → 나중에 재화·스킨 상점 (그림 작업 필요, 계획서 6단계)
 3. 워마 상자 5단계 복습을 실제 데이터로 (Supabase `reviews` 테이블, 퀴즈 점수도 계정에 저장)
 4. NEIS 하루 1회 cron + `school_cache` (문서 6장)
-5. 스터디그룹(초대코드 6자리), 수행평가(반장 등록), 이벤트 배너 관리자 화면 — 사용자가 보류한 것 포함
+5. 수행평가(반장 등록), 공지(이벤트 배너) 관리자 화면 — 사용자가 보류한 것 포함
+6. 스터디그룹 다음 단계 후보: 그룹 목표 시간, 그룹 안 응원/콕 찌르기(알림 필요)
 
 ## 7. 테스트 방법 (이 클라우드 환경 기준)
 

@@ -10,13 +10,14 @@ export type Subject = (typeof SUBJECTS)[number];
 
 export const isRanked = (s: Subject): s is RankedSubject => s !== ETC;
 
+/** 과목 색 — 테마마다 다르므로 CSS 변수로 쓴다 (app/globals.css의 --s-*). style 속성에 그대로 넣으면 된다 */
 export const SUBJECT_COLOR: Record<Subject, string> = {
-  국어: "#ff8a7a",
-  영어: "#3ddc84",
-  수학: "#7c8cff",
-  과학: "#4cc9f0",
-  사회: "#ffb547",
-  한국사: "#c792ea",
-  인강: "#f78fb3",
-  기타: "#8b93a5",
+  국어: "var(--s-kor)",
+  영어: "var(--s-eng)",
+  수학: "var(--s-math)",
+  과학: "var(--s-sci)",
+  사회: "var(--s-soc)",
+  한국사: "var(--s-his)",
+  인강: "var(--s-lec)",
+  기타: "var(--s-etc)",
 };

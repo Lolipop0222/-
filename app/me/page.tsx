@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Trash2, Users } from "lucide-react";
+import { KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
+import { useTheme } from "@/components/ThemeProvider";
 import { Badge, Card, ListRow, PageHeader } from "@/components/ui";
 import { isAdmin } from "@/lib/account";
 import { hm } from "@/lib/format";
+import { themeName } from "@/lib/themes";
 import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
 export default function MePage() {
   const auth = useAuth();
   const profile = useProfile();
   const { summary } = useStudy();
+  const themeLabel = themeName(useTheme().choice);
   const top = RANKED_SUBJECTS.reduce((a, b) => (summary.weekBySubject[b] > summary.weekBySubject[a] ? b : a));
   const hasTop = summary.weekBySubject[top] >= 60;
   // 관리자 메뉴는 관리자에게만 보인다 (실제 권한은 DB가 확인)
@@ -49,8 +52,9 @@ export default function MePage() {
         </div>
 
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
-          <ListRow icon={<Users size={20} />} label="스터디그룹" value="준비 중" />
-          <ListRow icon={<Palette size={20} />} label="아바타 꾸미기" value="준비 중" />
+          <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
+          <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
+          <ListRow icon={<Smile size={20} />} label="아바타 꾸미기" value="준비 중" />
           <ListRow icon={<MessageCircleQuestion size={20} />} label="문의함" href="/me/inquiry" />
           <ListRow icon={<KeyRound size={20} />} label="비밀번호·복구 코드" href="/me/security" />
           <ListRow icon={<Shield size={20} />} label="개인정보 처리방침" href="/me/privacy" />

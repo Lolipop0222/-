@@ -1,10 +1,21 @@
 @import "tailwindcss";
 
 /*
- * 디자인 토큰 — 모든 화면이 이 색/여백 규칙을 따른다.
- * 기본은 다크 모드 (야간자습실에서 쓰는 앱).
+ * 디자인 토큰 — 모든 화면이 이 색 규칙을 따른다. 테마는 <html data-theme="…">로 바꾼다 (lib/themes.ts, components/ThemeProvider.tsx).
+ * 기본은 다크 (야간자습실에서 쓰는 앱). 테마마다 아래 토큰을 모두 정한다:
+ *   bg·surface·surface-2·line  배경 → 카드 → 카드 안 → 테두리
+ *   text·muted·faint           글자 (진하게 → 흐리게)
+ *   accent·live·warn·danger    강조·공부 중·주의·위험 (-soft는 아래 [data-theme] 공통 규칙에서 자동으로 섞는다)
+ *   stage·stage-text           타이머 화면 위쪽 큰 시계 영역
+ *   on-subject                 과목 색 칩 위의 글자색
+ *   s-kor … s-etc              과목 색 (lib/subjects.ts)
+ *   texture                    배경 무늬 (종이 테마)
+ * 버튼 글자는 text-bg(배경색)를 쓰므로 accent·live·danger는 bg와 대비가 커야 한다.
+ * [data-theme]이 붙은 요소면 어디든 그 테마 색이 된다 → 테마 고르기 화면의 미리보기도 같은 규칙으로 그린다.
  */
-:root {
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0b0d12;
   --surface: #14171f;
   --surface-2: #1c202a;
@@ -13,13 +24,228 @@
   --muted: #8b93a5;
   --faint: #5b6375;
   --accent: #7c8cff;
-  --accent-soft: rgba(124, 140, 255, 0.14);
   --live: #3ddc84;
-  --live-soft: rgba(61, 220, 132, 0.14);
   --warn: #ffb547;
-  --warn-soft: rgba(255, 181, 71, 0.14);
   --danger: #ff6b6b;
-  --danger-soft: rgba(255, 107, 107, 0.14);
+  --stage: #000000;
+  --stage-text: #ffffff;
+  --on-subject: #000000;
+  --s-kor: #ff8a7a;
+  --s-eng: #3ddc84;
+  --s-math: #7c8cff;
+  --s-sci: #4cc9f0;
+  --s-soc: #ffb547;
+  --s-his: #c792ea;
+  --s-lec: #f78fb3;
+  --s-etc: #8b93a5;
+  --texture: none;
+}
+
+/* 라이트 — 밝은 교실·낮에 */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --surface-2: #eceef4;
+  --line: #dde0e8;
+  --text: #151821;
+  --muted: #5d6474;
+  --faint: #969cab;
+  --accent: #4f5bd5;
+  --live: #11994c;
+  --warn: #c27400;
+  --danger: #dc3c3c;
+  --stage: #e6e9f6;
+  --stage-text: #151821;
+  --on-subject: #ffffff;
+  --s-kor: #e5534b;
+  --s-eng: #1f9d55;
+  --s-math: #4f5bd5;
+  --s-sci: #0a8fc2;
+  --s-soc: #c27c0e;
+  --s-his: #8b4fc7;
+  --s-lec: #d1457d;
+  --s-etc: #6b7280;
+  --texture: none;
+}
+
+/* 종이 — 크림색 종이에 만년필 잉크. 무늬는 SVG feTurbulence 노이즈(data URI, 외부 파일 없음) */
+[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #f2e8d3;
+  --surface: rgba(255, 251, 241, 0.74);
+  --surface-2: #e9ddc2;
+  --line: #d6c7a8;
+  --text: #2e2820;
+  --muted: #6b604f;
+  --faint: #9e9077;
+  --accent: #2d5b88;
+  --live: #4b7737;
+  --warn: #a8690c;
+  --danger: #b3412c;
+  --stage: #e8dbbd;
+  --stage-text: #2e2820;
+  --on-subject: #fffaf0;
+  --s-kor: #b3412c;
+  --s-eng: #4b7737;
+  --s-math: #2d5b88;
+  --s-sci: #2b7a80;
+  --s-soc: #a8690c;
+  --s-his: #74498a;
+  --s-lec: #a94a6e;
+  --s-etc: #7b705f;
+  --texture:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.33 0 0 0 0 0.25 0 0 0 0 0.14 0.22 0 0 0 -0.04'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.012' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.33 0 0 0 0 0.16 0.16 0 0 0 -0.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+
+/* 노드 — Nord 팔레트 (nordtheme.com: Polar Night · Snow Storm · Frost · Aurora) */
+[data-theme="nord"] {
+  color-scheme: dark;
+  --bg: #2e3440;
+  --surface: #3b4252;
+  --surface-2: #434c5e;
+  --line: #4c566a;
+  --text: #eceff4;
+  --muted: #b6bfcf;
+  --faint: #8590a6;
+  --accent: #88c0d0;
+  --live: #a3be8c;
+  --warn: #ebcb8b;
+  --danger: #bf616a;
+  --stage: #242933;
+  --stage-text: #eceff4;
+  --on-subject: #2e3440;
+  --s-kor: #d08770;
+  --s-eng: #a3be8c;
+  --s-math: #81a1c1;
+  --s-sci: #88c0d0;
+  --s-soc: #ebcb8b;
+  --s-his: #b48ead;
+  --s-lec: #bf616a;
+  --s-etc: #8590a6;
+  --texture: none;
+}
+
+/* 모카 — Catppuccin Mocha (catppuccin/palette) */
+[data-theme="mocha"] {
+  color-scheme: dark;
+  --bg: #181825;
+  --surface: #1e1e2e;
+  --surface-2: #313244;
+  --line: #45475a;
+  --text: #cdd6f4;
+  --muted: #a6adc8;
+  --faint: #6c7086;
+  --accent: #cba6f7;
+  --live: #a6e3a1;
+  --warn: #f9e2af;
+  --danger: #f38ba8;
+  --stage: #11111b;
+  --stage-text: #cdd6f4;
+  --on-subject: #1e1e2e;
+  --s-kor: #fab387;
+  --s-eng: #a6e3a1;
+  --s-math: #b4befe;
+  --s-sci: #89dceb;
+  --s-soc: #f9e2af;
+  --s-his: #cba6f7;
+  --s-lec: #f5c2e7;
+  --s-etc: #9399b2;
+  --texture: none;
+}
+
+/* 그루브박스 — Gruvbox dark hard (morhetz/gruvbox) */
+[data-theme="gruvbox"] {
+  color-scheme: dark;
+  --bg: #1d2021;
+  --surface: #282828;
+  --surface-2: #3c3836;
+  --line: #504945;
+  --text: #ebdbb2;
+  --muted: #bdae93;
+  --faint: #7c6f64;
+  --accent: #fabd2f;
+  --live: #b8bb26;
+  --warn: #fe8019;
+  --danger: #fb4934;
+  --stage: #141617;
+  --stage-text: #fbf1c7;
+  --on-subject: #282828;
+  --s-kor: #fb4934;
+  --s-eng: #b8bb26;
+  --s-math: #83a598;
+  --s-sci: #8ec07c;
+  --s-soc: #fabd2f;
+  --s-his: #d3869b;
+  --s-lec: #fe8019;
+  --s-etc: #928374;
+  --texture: none;
+}
+
+/* 솔라라이즈드 — Solarized Light (Ethan Schoonover, 16색 고정 팔레트) */
+[data-theme="solarized"] {
+  color-scheme: light;
+  --bg: #eee8d5;
+  --surface: #fdf6e3;
+  --surface-2: #f4eedb;
+  --line: #ddd6c1;
+  --text: #073642;
+  --muted: #586e75;
+  --faint: #93a1a1;
+  --accent: #268bd2;
+  --live: #859900;
+  --warn: #b58900;
+  --danger: #dc322f;
+  --stage: #e6dfc8;
+  --stage-text: #073642;
+  --on-subject: #fdf6e3;
+  --s-kor: #cb4b16;
+  --s-eng: #859900;
+  --s-math: #268bd2;
+  --s-sci: #2aa198;
+  --s-soc: #b58900;
+  --s-his: #6c71c4;
+  --s-lec: #d33682;
+  --s-etc: #93a1a1;
+  --texture: none;
+}
+
+/* 고대비 — 순수 검정 바탕에 가장 또렷한 글자 (접근성) */
+[data-theme="contrast"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #1f1f1f;
+  --line: #707070;
+  --text: #ffffff;
+  --muted: #e2e2e2;
+  --faint: #b8b8b8;
+  --accent: #ffd60a;
+  --live: #3cff8f;
+  --warn: #ffb000;
+  --danger: #ff6464;
+  --stage: #000000;
+  --stage-text: #ffffff;
+  --on-subject: #000000;
+  --s-kor: #ff9a8c;
+  --s-eng: #3cff8f;
+  --s-math: #a5b4ff;
+  --s-sci: #5ce1ff;
+  --s-soc: #ffd60a;
+  --s-his: #e3adff;
+  --s-lec: #ffa3cf;
+  --s-etc: #d0d0d0;
+  --texture: none;
+}
+
+/* 옅은 색은 테마의 진한 색에서 자동으로 만든다 (그 요소의 테마 기준) */
+:root,
+[data-theme] {
+  --accent-soft: color-mix(in srgb, var(--accent) 15%, transparent);
+  --live-soft: color-mix(in srgb, var(--live) 15%, transparent);
+  --warn-soft: color-mix(in srgb, var(--warn) 15%, transparent);
+  --danger-soft: color-mix(in srgb, var(--danger) 15%, transparent);
 }
 
 @theme inline {
@@ -38,16 +264,19 @@
   --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-stage: var(--stage);
+  --color-stage-text: var(--stage-text);
+  --color-on-subject: var(--on-subject);
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
 html {
-  color-scheme: dark;
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--texture);
   color: var(--text);
   font-family: var(--font-sans);
   letter-spacing: -0.01em;
@@ -72,4 +301,11 @@ body {
 }
 .live-dot {
   animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* 테마 고르기 미리보기 칸 */
+.theme-preview {
+  background-color: var(--bg);
+  background-image: var(--texture);
+  color: var(--text);
 }

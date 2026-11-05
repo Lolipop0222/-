@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Crown } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Crown, Users } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
 import { Segmented } from "@/components/ui";
 import { hm } from "@/lib/format";
@@ -83,6 +84,12 @@ export default function Ranking() {
           {scope} {rows.length}명 중{subject ? ` · ${subject}` : ""} · 진행 중인 공부는 끝나면 반영돼요
         </p>
       )}
+      <Link href="/groups" className="mt-4 flex items-center justify-between rounded-2xl border border-line bg-surface px-4 py-3">
+        <span className="flex items-center gap-2 text-[14px] font-semibold">
+          <Users size={17} className="text-accent" /> 스터디그룹 순위 보기
+        </span>
+        <ChevronRight size={18} className="text-faint" />
+      </Link>
     </section>
   );
 }
@@ -92,9 +99,9 @@ function SubjectChip({ active, onClick, label, color }: { active: boolean; onCli
     <button
       onClick={onClick}
       className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-        active ? "border-transparent text-black" : "border-line text-muted"
+        active ? "border-transparent text-on-subject" : "border-line text-muted"
       }`}
-      style={active ? { background: color ?? "var(--text)" } : undefined}
+      style={active ? (color ? { background: color } : { background: "var(--text)", color: "var(--bg)" }) : undefined}
     >
       {label}
     </button>

@@ -297,7 +297,7 @@ function SubjectChips({ value, onChange }: { value: Subject | null; onChange: (s
           type="button"
           key={s}
           onClick={() => onChange(value === s ? null : s)}
-          className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold ${value === s ? "border-transparent text-black" : "border-line text-muted"}`}
+          className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold ${value === s ? "border-transparent text-on-subject" : "border-line text-muted"}`}
           style={value === s ? { background: SUBJECT_COLOR[s] } : undefined}
         >
           {s}
