@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint && node scripts/schema.mjs --check",
     "wordmaster": "node scripts/split-wordmaster.mjs",
-    "apk": "node scripts/build-apk.mjs"
+    "apk": "node scripts/build-apk.mjs",
+    "schema": "node scripts/schema.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

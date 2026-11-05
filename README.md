@@ -56,7 +56,7 @@ npm run dev
 ## Supabase (로그인 · 공부 기록 · 순위)
 
 1. supabase.com에서 프로젝트 생성 — 지역은 **Northeast Asia (Seoul)**
-2. SQL Editor에 `supabase/schema.sql`을 통째로 붙여넣고 Run (여러 번 실행해도 된다)
+2. SQL Editor에서 `supabase/parts/`의 조각 01~05를 **번호 순서대로** 하나씩 붙여넣고 Run (전체본 `supabase/schema.sql`은 길어서 에디터가 느리다). 이후에는 바뀐 조각만 실행 — `supabase/README.md`의 변경 기록 참고. 여러 번 실행해도 된다
 3. 초대코드 바꾸기: `update app_settings set value = '새코드' where key = 'invite_code';`
 4. Authentication → Sign In / Providers → Email: **Confirm email 끄기** (무료 메일 발송 한도가 시간당 몇 통뿐이라)
 5. Project Settings → API의 Project URL과 publishable(anon) 키를 `.env.local`과 Vercel 환경변수에 넣는다 (`.env.example` 참고)
@@ -70,13 +70,13 @@ npm run dev
 
 공부 시간은 클라이언트가 숫자를 보내지 않는다. `start_session` / `end_session` 함수가 서버 시각으로 기록하고,
 순위는 `get_ranking(범위, 과목)` 함수가 닉네임·학년·반·합계만 돌려준다. 과목을 바꾸면 `lib/subjects.ts`와
-`schema.sql`의 과목 목록(`sessions_subject_check`, `tasks_subject_check`, `routines_subject_check`)을 같이 고친다.
+`supabase/parts/01-core.sql`의 과목 목록(`sessions_subject_check`, `tasks_subject_check`, `routines_subject_check`)을 같이 고친다.
 '기타' 기록은 순위·공부 합계에 들어가지 않으므로 RLS로 본인이 직접 추가·수정·삭제할 수 있다.
 
 **칭호**: 판정은 모두 서버(`check_titles()`)가 한다. 공부 시간은 순위와 같은 기준(기타 제외, 한 기록 4시간까지), 날짜·시각은 한국 시간.
 얻은 칭호는 영구 보관되고 여러 번 판정해도 중복으로 생기지 않는다. 예약 작업이 없어서 앱 열기·공부 종료·과제 완료·내정보 열기 때 판정한다.
 주간 순위 칭호는 끝난 주(월 0시~일 24시)를 보고, 그 주 5시간 이상 + 그 범위에 기록 있는 학생 3명 이상일 때 1위(공동 포함)에게 준다.
-칭호를 더하려면 `schema.sql`의 `title_defs` insert에 한 줄 추가(새 조건이면 `title_stats()`에 값 추가) 후 schema.sql을 다시 실행한다.
+칭호를 더하려면 `supabase/parts/04-titles.sql`의 `title_defs` insert에 한 줄 추가(새 조건이면 `title_stats()`에 값 추가) 후 `npm run schema`, 그리고 04 조각만 다시 실행한다.
 
 ## 안드로이드 앱 (APK)
 
@@ -99,12 +99,12 @@ npm run apk -- https://배포주소.vercel.app
 - `components/ui.tsx` — 공통 디자인 부품. 새 화면도 이걸로 만든다
 - `app/globals.css` — 색상 규칙(디자인 토큰). 색은 여기서만 정한다
 - `lib/subjects.ts` — 과목 분류 (순위에 들어가는 7과목 + 순위 제외 기타)와 색
-- `supabase/schema.sql` — DB 테이블·RLS·함수
+- `supabase/parts/01~05-*.sql` — DB 테이블·RLS·함수 (원본, 조각마다 따로 실행), `supabase/schema.sql` — 이어 붙인 전체본(`npm run schema`), `supabase/README.md` — 실행 순서·변경 기록
 - `lib/supabase.ts`, `components/AuthProvider.tsx` — Supabase 연결과 로그인 상태(로그인 안 하면 /login으로)
 - `lib/study.ts`, `components/StudyProvider.tsx` — 공부 기록 시작·정지·합계·순위 (타이머·홈·순위가 같이 씀)
 - `lib/photos.ts`, `lib/prints.ts`, `app/prints/page.tsx` — 사진 프로필(줄이기·올리기)과 프린트 아카이브 (Supabase Storage `avatars`·`prints`)
 - `components/PrintArchiveLogo.tsx`, `public/print-archive/` — Print Archive 로고 (테마 색으로 칠하는 마스크 두 장)
-- `lib/titles.ts`, `components/TitleBadge.tsx`, `components/TitlesProvider.tsx` — 칭호(판정 호출·알림·배지)와 프로필 그림. 칭호 정의·판정은 `schema.sql`의 `title_defs`·`title_stats()`·`check_titles()`
+- `lib/titles.ts`, `components/TitleBadge.tsx`, `components/TitlesProvider.tsx` — 칭호(판정 호출·알림·배지)와 프로필 그림. 칭호 정의·판정은 `supabase/parts/04-titles.sql`의 `title_defs`·`title_stats()`·`check_titles()`
 - `lib/groups.ts`, `app/groups/page.tsx` — 스터디그룹 (DB 함수 호출, 화면)
 - `lib/themes.ts`, `components/ThemeProvider.tsx` — 테마 목록·저장·적용. 색 값은 `app/globals.css`의 `[data-theme]`
 - `lib/account.ts` — 문의함·복구 코드·비밀번호 찾기·계정 삭제·관리자 함수 호출

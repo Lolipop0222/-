@@ -12,7 +12,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 구분 | 내용 |
 |---|---|
 | 프론트·서버 | Next.js 16.4 App Router, React 19, TypeScript, Tailwind CSS v4, lucide-react 아이콘. `next.config.ts`에 `cacheComponents: true` |
-| DB·로그인 | Supabase (Postgres + RLS, 이메일·비밀번호 로그인). 정의는 `supabase/schema.sql` 한 파일 |
+| DB·로그인 | Supabase (Postgres + RLS, 이메일·비밀번호 로그인). 정의는 **`supabase/parts/01~05-*.sql` 조각**이 원본, `supabase/schema.sql`은 이어 붙인 전체본(`npm run schema`로 자동 생성) |
 | 배포 | Vercel. **`main`에 push하면 자동 배포** → https://daego-ilpumta.vercel.app (고정 주소. `…-xxxx-liyu11.vercel.app` 같은 배포별 주소는 로그인 보호가 걸려 친구들이 못 연다) |
 | 안드로이드 | Capacitor 8 (`android/`). APK는 배포 주소를 여는 껍데기라 웹을 다시 배포하면 앱도 바뀐다 |
 | 학교 데이터 | NEIS 오픈 API (급식·학사일정) — 서버에서만 호출 |
@@ -24,7 +24,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - push 전에 항상 `npx tsc --noEmit`, `npm run lint`, `npm run build` 통과 확인. 커밋 메시지는 한국어로 무엇을·왜.
 - push 후 배포 확인: 새 페이지 주소가 200이 되는지 `curl`로 확인 (보통 30초~2분).
 
-**명령어**: `npm run dev` / `npm run build` / `npm run lint` / `npm run wordmaster`(단어 데이터 나누기) / `npm run apk -- https://daego-ilpumta.vercel.app`(APK, JDK 21·Android SDK 필요) / `node scripts/test-neis.mjs`(NEIS 키·응답 확인)
+**명령어**: `npm run dev` / `npm run build` / `npm run lint`(schema.sql이 조각과 같은지도 검사) / `npm run schema`(조각 → schema.sql) / `npm run wordmaster`(단어 데이터 나누기) / `npm run apk -- https://daego-ilpumta.vercel.app`(APK, JDK 21·Android SDK 필요) / `node scripts/test-neis.mjs`(NEIS 키·응답 확인)
 
 ## 2. 환경변수 (값은 `.env.local`과 Vercel 설정에만. 이 파일·코드·커밋에 값을 쓰지 않는다)
 
@@ -42,9 +42,12 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - Supabase **secret / service_role 키는 쓰지 않는다** (RLS 우회). 지금 구조에서 필요 없다.
 - `.env.example`에 이름 목록이 있다.
 
-## 3. DB 구조 (`supabase/schema.sql`)
+## 3. DB 구조 (`supabase/parts/` → `supabase/schema.sql`)
 
-**적용 방법**: Supabase 대시보드 SQL Editor에 파일을 **통째로** 붙여넣고 Run. 여러 번 실행해도 안전(idempotent)하게 짠다 — 기존 데이터·바꾼 초대코드는 유지된다. 스키마를 고치면 사용자에게 "schema.sql 다시 실행"을 안내한다.
+**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
+- 스키마를 고칠 때: **해당 조각 파일을 고치고** `npm run schema`(전체본 재생성, `npm run lint`가 어긋나면 실패). 사용자에게는 **"바뀐 조각 이름"만** 실행하라고 안내하고 `supabase/README.md`의 변경 기록 표에 한 줄 추가한다. 새 기능이 크면 `06-…sql`처럼 새 조각을 만든다.
+- **같은 제약·함수를 두 조각에서 만들지 않는다.** (예전에 사진 제약을 칭호 부분과 사진 부분에서 따로 만들어서, 사진을 올린 학생이 있으면 전체본 재실행이 `profiles_avatar_check … violated by some row`로 실패하는 버그가 있었다 → 04 한 곳으로 모음)
+- **실제 DB에 무엇이 적용됐는지 확인하는 법**: 배포된 사이트 JS 묶음에 공개 URL·publishable 키가 들어 있다(`curl` 로 `/login` HTML의 `/_next/static/…js`를 받아 `supabase.co`, `sb_publishable_` 검색). 그 키로 읽기만 하는 요청: 함수 `POST /rest/v1/rpc/<함수>` → 있으면 `42501 permission denied`(로그인 필요), 없으면 `PGRST202`. 테이블 `GET /rest/v1/<테이블>?select=id&limit=1` → 있으면 `42501`, 없으면 `PGRST205`. 쓰기 요청이나 계정 만들기는 하지 않는다.
 **교훈**: 사용자의 실제 DB가 오래된 버전일 수 있다(실제로 처음 버전에서 바로 올리다 `column "task_id" does not exist`가 났다). 스키마를 바꾸면 **처음 버전(커밋 97885ae)부터 지금까지 모든 버전에서 올리는 경우 + 새 DB**를 로컬 Postgres로 시험한다 (아래 7장). 열을 쓰는 정책·함수는 그 열을 만든 줄보다 뒤에 둔다.
 
 | 테이블 | 내용 | 접근 |
@@ -62,17 +65,17 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `security_attempts` | 초대코드·복구 코드·그룹 코드 틀린 기록 (하루 지나면 지움) | 클라이언트 못 읽음 |
 | `study_groups` | 스터디그룹 (이름 2~20자, 6자리 초대코드, owner_id) | 클라이언트 못 읽음 — 함수로만 |
 | `group_members` | 그룹원 (group_id, user_id, joined_at) | 클라이언트 못 읽음 — 함수로만 |
-| `title_defs` | 칭호 정의 31개 (code·이름·등급·분류·설명·metric·goal·unit·sort·active). schema.sql의 insert가 원본 | 클라이언트 못 읽음 (히든 이름 보호) — `my_titles()`로만 |
+| `title_defs` | 칭호 정의 31개 (code·이름·등급·분류·설명·metric·goal·unit·sort·active). `04-titles.sql`의 insert가 원본 | 클라이언트 못 읽음 (히든 이름 보호) — `my_titles()`로만 |
 | `prints` | 프린트 아카이브 목록 (제목·분류 수행평가/학습지/시험 대비/기타·과목·학년(null=전 학년)·메모·file_path·file_name·크기) | 가입한(프로필 있는) 학생 조회, 추가·수정·삭제는 관리자만(RLS `is_admin()`) |
 | Storage `avatars` (공개) | 프로필 사진 `<user id>/<16자>.webp|jpg`, 300KB | 내 폴더만 올리기·지우기, 관리자는 모두 지우기 |
 | Storage `prints` (비공개) | 프린트 파일 `<uuid>.<확장자>`, 50MB | 프로필 있는 학생 읽기(서명 주소), 관리자만 올리기·지우기 |
 | `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, 칭호 테이블 뒤에 있어야 해서 **schema.sql 맨 끝**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, 칭호 테이블 뒤에 있어야 해서 **`04-titles.sql`** 끝에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
 
 **스터디그룹 규칙**: 한 사람이 들어가는 그룹 5개, 만든 그룹 3개, 그룹 30명, 코드 15분에 10번 틀리면 잠김. 방장이 나가거나 계정을 지우면 `group_member_left` 트리거가 가장 먼저 들어온 사람에게 방장을 넘기고, 아무도 없으면 그룹을 지운다. 그룹 순위 규칙은 `get_ranking`과 같다(4시간 넘는 세션·기타 제외).
 
-**칭호 규칙** (schema.sql 맨 끝 "칭호 · 프로필 그림")
+**칭호 규칙** (`supabase/parts/04-titles.sql`)
 - 판정은 전부 서버: `title_stats(uid)`(내부용)가 숫자 값들(jsonb)을 계산 → `title_defs`의 `metric` 값이 `goal` 이상이면 지급. **칭호 추가 = `title_defs` insert 한 줄**(있는 metric이면), 새 조건이면 `title_stats()`에 값 하나 추가. 단어 퀴즈 칭호는 점수를 서버에 저장하게 되면 `quiz_…` metric을 더한다.
 - 공부 시간 = 순위와 같은 기준(기타 제외, 한 기록 1초~4시간). 날짜·요일·시각은 KST, 기록은 시작한 날. 연속 출석 = 하루 30분 이상인 날의 최장 연속(gaps-and-islands). 히든 일부(리셋 사냥꾼·새해·작심삼분)는 진행 중 기록도 봄(기타·4시간 넘게 켜 둔 것 제외).
 - 주간 순위 칭호(반/학년/전교 1위) = **끝난 모든 주**(이번 주 제외)를 본다 → 앱을 안 연 주도 나중에 소급. 그 주 5시간 이상 + 그 범위에 그 주 기록 있는 학생 3명 이상, 공동 1위 모두 지급. 반·학년은 지금 프로필 기준.
@@ -82,7 +85,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 프로필 그림 = 사진 대신 그림 24개 × 과목색 8개(`lib/titles.ts`의 `AVATAR_ICONS/COLORS`, 실명·얼굴 안 받는 원칙). DB는 `그림:색` 모양만 검사. 대표 칭호 등급이 그림 테두리 색이 된다.
 - 예전 DB 호환: `AuthProvider`는 avatar·title_code 열이 없으면(42703) 예전 열만 읽는다.
 
-**사진 프로필·프린트 아카이브 규칙** (schema.sql 맨 끝, Supabase Storage)
+**사진 프로필·프린트 아카이브 규칙** (`supabase/parts/05-storage.sql`, Supabase Storage. 사진 avatar 제약·`profiles_avatar_guard` 트리거는 `04-titles.sql`)
 - 사진 프로필: 사용자가 "무조건 넣어"라고 해서 넣음. 부적절한 사진은 관리자가 `/me/admin`에서 내리거나 계정 삭제(사용자 방침). 앱(`lib/photos.ts`)이 가운데를 정사각형으로 잘라 320px webp(안 되면 jpg)로 다시 그려 올린다 → 용량 작고 EXIF(위치 등) 제거. avatar = `photo:<user id>/<16자>.webp`, `profiles_avatar_guard` 트리거가 **내 폴더 사진만** 허용하고 `avatar_at`을 기록. 사진을 바꾸거나 지우면 예전 파일도 지움, 계정 삭제 전에 내 폴더 파일 삭제(`removeAllMyPhotos`).
 - 공개 버킷이라 주소를 아는 사람은 볼 수 있음(경로에 무작위 16자). CSP `img-src`에 `https://*.supabase.co` 추가함.
 - 프린트 아카이브(`/prints`): 관리자는 오른쪽 위 "올리기" → 파일 여러 개(끌어다 놓기 가능) + 분류·과목·학년·메모 한 번에 → 학생들에게 바로 보임. 파일은 비공개 버킷, 열 때 10분짜리 서명 주소(`openPrint`, 아이폰 팝업 차단 때문에 빈 창을 먼저 연다). PDF·사진은 바로 보기, 한글·오피스는 내려받기. 학생 화면 기본은 "내 학년"(+전 학년) 필터.
@@ -120,7 +123,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `data/wordmaster/README.md` | 워드마스터 수능 2000 데이터 설명 (DAY 1~50 × 40단어, 예문 3개씩, 채점·오답 보기 규칙). `schema.sql`·`seed.py`는 Supabase로 옮길 때용(아직 안 씀) |
 | `public/wordmaster/day-NN.json` | 위 데이터를 DAY별로 나눈 것 (`npm run wordmaster`로 다시 만듦) |
 | `lib/meals.ts` | 2026년 11월 식단표(학교 한글 파일에서 옮김, 알레르기 번호 포함). NEIS 실패 시 대신 쓰고, "슈퍼 프라이데이" 메모는 NEIS에 없어 여기서 덧붙임 |
-| `supabase/schema.sql` | DB 전체 정의 |
+| `supabase/parts/`, `supabase/README.md` | DB 정의 조각 01~05(원본)와 실행 순서·변경 기록. `supabase/schema.sql`은 자동 생성 전체본 |
 | `README.md` | 화면 목록, 파일 구조, Supabase·APK 설정 방법 |
 | `AGENTS.md` | Next.js 16 에이전트 규칙 (`next dev`가 자동으로 다시 씀) |
 
@@ -128,7 +131,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 ## 5. 사용자가 정한 규칙
 
-- **과목**: 순위에 들어가는 7과목 **국어·영어·수학·과학·사회·한국사·인강** + **기타**(순위·합계 제외, 나만 보고 직접 편집). 처음엔 국어·영어·수학·과학·사회 5개였고 나중에 한국사·인강·기타를 추가했다. 목록은 `lib/subjects.ts`와 `schema.sql`의 subject check 3곳(sessions·tasks·routines)을 같이 고친다.
+- **과목**: 순위에 들어가는 7과목 **국어·영어·수학·과학·사회·한국사·인강** + **기타**(순위·합계 제외, 나만 보고 직접 편집). 처음엔 국어·영어·수학·과학·사회 5개였고 나중에 한국사·인강·기타를 추가했다. 목록은 `lib/subjects.ts`와 `01-core.sql`의 subject check 3곳(sessions·tasks·routines)을 같이 고친다.
 - **과목 자동 짐작 금지**: 과제 이름으로 과목을 자동으로 고르던 기능은 "오류 가능성" 때문에 사용자가 빼라고 했다. 과목은 학생이 직접 고른다. 플래너 과제 ▶ / 타이머 화면 과제 선택은 학생이 고른 과목으로만 시작한다.
 - **다크 모드 기본 + 테마 8개**(기본 다크·라이트·종이·노드·모카·그루브박스·솔라라이즈드·고대비 + 시스템 설정 따라가기). 색은 `app/globals.css` 토큰, 공통 부품은 `components/ui.tsx`. **색을 코드에 직접 쓰지 않는다**(`text-black`, `bg-white`, `#hex` 금지) — 토큰(`bg-surface`, `text-muted`, `bg-stage`, `text-on-subject` 등)과 과목 색 `SUBJECT_COLOR`(=`var(--s-*)`)를 쓴다. 강조색 버튼 글자는 `text-bg`. 새 화면을 만들면 라이트·종이 테마에서도 스크린샷으로 확인한다. 테마를 추가하려면 `globals.css`의 `[data-theme="…"]`(토큰 전부)와 `lib/themes.ts` 목록을 같이 고친다. 테마는 기기 localStorage(`daego-theme`)에 저장, `<head>` 부팅 스크립트가 깜빡임을 막는다. 팔레트 출처: Nord·Catppuccin·Gruvbox·Solarized 공개 팔레트. 휴대폰 화면 기준(`max-w-md`), 한국어 존댓말(해요체) 문구.
 - **가짜 데이터를 실제 데이터와 섞지 않는다**: 실데이터가 들어온 화면의 가짜(학사일정·수행평가·순위·스터디그룹 멤버)는 지웠다. 아직 기능이 없으면 "준비 중"으로 표시.
@@ -168,8 +171,9 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
 - 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
-**확인된 상태 (2026-11-05)**
-- 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. 다시 확인하려면 publishable 키로 `GET /rest/v1/tasks?select=id&limit=1` → `PGRST205`면 없음, `[]`면 있음.
+**확인된 상태 (2026-11-05, 공개 키로 실제 DB 확인)**
+- 적용됨: 01·02(문의함 `reset_password_with_code`가 `"weak"`)·03(`my_groups` 있음). **아직 안 됨: 04(`my_titles` PGRST202), 05(`prints` PGRST205)** → 사용자에게 `04-titles.sql` → `05-storage.sql` 순서로 실행하라고 안내함. 다음 세션에서 위 방법으로 다시 확인.
+- 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. (아래 줄로 대체: 조각별 확인)
 - **커밋 "사진 프로필·프린트 아카이브" 이후 `schema.sql` 다시 실행 필요** (Storage 버킷 avatars·prints와 정책, prints 테이블, 관리자 함수). 확인: `GET /rest/v1/prints?select=id&limit=1` → `PGRST205`면 아직.
 - **커밋 "칭호·프로필 그림" 이후 `schema.sql` 다시 실행 필요**. 확인: `POST /rest/v1/rpc/my_titles` → `PGRST202`면 아직. 실행 전에는 칭호 "준비 중", 그림 저장 시 "데이터베이스 업데이트가 필요해요".
 - **커밋 "스터디그룹·테마" 이후에도 `schema.sql` 다시 실행 필요** (스터디그룹 테이블·함수). 확인: `POST /rest/v1/rpc/my_groups` → `PGRST202`면 아직.
@@ -220,7 +224,7 @@ alter default privileges in schema public grant all on functions to anon, authen
 ```
 
 - psql 파일은 postgres 사용자가 스크래치 폴더를 못 읽으니 `su postgres -c "psql …" < 파일`처럼 표준입력으로 넣는다. pgcrypto는 로컬에도 있다(schema.sql이 `extensions` 스키마에 만든다).
-- 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 한국사·기타, 그 뒤는 `git log --oneline -- supabase/schema.sql`)을 꺼내 각각 올린 DB에 새 파일을 2번 실행.
+- 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 한국사·기타, 그 뒤는 `git log --oneline -- supabase/schema.sql`)을 꺼내 각각 올린 DB에 새 전체본을 2번 실행. **조각도** 시험: 사용자 DB와 같은 상태의 예전 버전에 바뀐 조각만 2번 실행, 새 DB에 01→05 순서로 실행 후 아무 조각이나 다시 실행.
 - 칭호 테스트: 학생 여럿을 만들고 `insert into sessions (…, started_at, ended_at)`에 `'2026-11-02 23:30+09'`처럼 KST 시각을 직접 넣어 경계·소급·기타 제외·중복을 확인했다. 화면 테스트의 가짜 서버는 schema.sql의 `title_defs` insert 줄을 정규식으로 읽어 쓴다.
 - Storage 화면 테스트: 가짜 서버가 `/storage/v1/object/<bucket>/<path>`(업로드, supabase-js는 multipart로 보내고 `cacheControl` 칸 다음에 파일 칸이 온다 → filename 있는 칸을 꺼낼 것), `/object/public/…`, `/object/sign/…`, DELETE를 흉내 낸다. Playwright `setInputFiles`에 한글·띄어쓰기 경로를 주면 조용히 실패 → `{ name, mimeType, buffer }`로 넘긴다.
 - Next 16은 떠난 페이지를 숨긴 채 DOM에 남겨 둔다 → Playwright 선택자는 `:visible`이나 열린 dialog 안으로 범위를 좁힌다.

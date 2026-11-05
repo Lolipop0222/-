@@ -1,5 +1,16 @@
+-- 대고 일품타 · Supabase 스키마 전체본 (자동 생성 — 직접 고치지 말 것)
+-- 원본: supabase/parts/01-core.sql, 02-security.sql, 03-groups.sql, 04-titles.sql, 05-storage.sql
+-- 고칠 때는 parts의 파일을 고치고 `npm run schema`. 평소에는 바뀐 parts 파일만 SQL Editor에서 실행하면 된다.
+-- 새 프로젝트에 처음 넣을 때만 이 파일을 통째로 실행한다 (여러 번 실행해도 안전).
+
+-- ┌──────────────────────────────────────────────────────────────────────
+-- │ 01-core.sql — 기본: 설정·프로필·공부 기록·플래너·디데이·타이머 함수
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 없음 (맨 처음)
+-- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
+-- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
+-- └──────────────────────────────────────────────────────────────────────
+
 -- 대고 일품타 · Supabase 스키마 (프로필 · 공부 기록 · 과목별 순위 · 디데이 · 플래너)
--- Supabase 대시보드 → SQL Editor 에 통째로 붙여넣고 Run. 여러 번 실행해도 된다.
 --
 -- 원칙 (계획서 3장, 6.1)
 -- - 공부 시간은 숫자로 받지 않는다. 시작·종료 시각만 서버 시각(now())으로 저장하고 길이는 계산한다.
@@ -330,6 +341,13 @@ grant execute on function start_session(text, uuid) to authenticated;
 grant execute on function materialize_routines(date) to authenticated;
 grant execute on function end_session(uuid, int, timestamptz) to authenticated;
 
+-- ┌──────────────────────────────────────────────────────────────────────
+-- │ 02-security.sql — 보안·문의함·비밀번호 찾기·계정 삭제·관리자
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01
+-- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
+-- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
+-- └──────────────────────────────────────────────────────────────────────
+
 -- ═════════════════════════ 보안 · 문의함 · 비밀번호 찾기 · 계정 삭제 ═════════════════════════
 -- 비밀번호 해시와 무작위 코드에 쓴다 (Supabase에는 이미 extensions 스키마에 있다)
 create schema if not exists extensions;
@@ -617,6 +635,13 @@ grant execute on function delete_my_account() to authenticated;
 revoke execute on function reset_password_with_code(text, text, text) from public;
 grant execute on function reset_password_with_code(text, text, text) to anon, authenticated;
 
+-- ┌──────────────────────────────────────────────────────────────────────
+-- │ 03-groups.sql — 스터디그룹
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01, 02
+-- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
+-- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
+-- └──────────────────────────────────────────────────────────────────────
+
 -- ═════════════════════════ 스터디그룹 ═════════════════════════
 -- 친구끼리 6자리 초대코드로 모여 이번 주 공부 시간을 겨룬다.
 -- 테이블은 앱이 직접 못 읽는다(RLS 정책 없음 + 권한 없음). 모든 일은 아래 함수로만 한다 — 그룹원이 아니면 아무것도 볼 수 없다.
@@ -834,16 +859,44 @@ grant execute on function regenerate_group_code(uuid) to authenticated;
 grant execute on function kick_group_member(uuid, text) to authenticated;
 grant execute on function delete_group(uuid) to authenticated;
 
+-- ┌──────────────────────────────────────────────────────────────────────
+-- │ 04-titles.sql — 칭호·프로필 그림/사진 규칙·순위(get_ranking, get_group_ranking)
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01, 02, 03
+-- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
+-- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
+-- └──────────────────────────────────────────────────────────────────────
+
 -- ═════════════════════════ 칭호 · 프로필 그림 ═════════════════════════
 -- 조건을 채우면 칭호를 얻고(영구 보관), 얻은 칭호 하나를 닉네임 옆에 단다. 판정은 전부 서버(check_titles)가 한다.
 -- 공부 시간은 순위와 같은 기준: '기타' 제외, 한 기록 1초~4시간만. 날짜·요일·시각은 한국 시간, 기록은 "시작한 날"에 센다.
 -- 칭호를 더하려면: title_defs에 한 줄(아래 insert)만 넣으면 된다. 새로운 종류의 조건이면 title_stats()에 값을 하나 더 계산한다.
 -- (단어 퀴즈 점수를 서버에 저장하게 되면 title_stats()에 'quiz_…' 값을 더하고 칭호 줄을 추가하면 된다.)
 
--- 프로필 그림: '그림:색' (예 'cat:s-math'). 고를 수 있는 목록은 앱(lib/titles.ts)에 있고, DB는 모양만 검사한다
+-- 프로필 그림·사진. avatar = '그림:색'(예 'cat:s-math', 목록은 앱 lib/titles.ts) 또는 'photo:<내 user id>/<16자>.webp|jpg'(05-storage의 사진).
+-- 사진·그림 규칙은 여기 한 곳에만 둔다 (다른 파일에서 이 제약을 다시 만들면, 사진을 올린 학생이 있을 때 다시 실행하다 오류가 난다)
 alter table profiles add column if not exists avatar text;
+alter table profiles add column if not exists avatar_at timestamptz;  -- 그림을 마지막으로 바꾼 시각 (관리자 사진 검토 순서)
 alter table profiles drop constraint if exists profiles_avatar_check;
-alter table profiles add constraint profiles_avatar_check check (avatar is null or avatar ~ '^[a-z0-9-]{1,20}:[a-z0-9-]{1,20}$');
+alter table profiles add constraint profiles_avatar_check check (
+  avatar is null
+  or avatar ~ '^[a-z0-9-]{1,20}:[a-z0-9-]{1,20}$'
+  or avatar ~ '^photo:[0-9a-f-]{36}/[0-9a-f]{16}\.(webp|jpg)$'
+);
+
+create or replace function profiles_avatar_guard() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if new.avatar is distinct from old.avatar then
+    if new.avatar like 'photo:%' and split_part(substr(new.avatar, 7), '/', 1) <> new.id::text then
+      raise exception '내 사진만 프로필로 쓸 수 있어요';
+    end if;
+    new.avatar_at := now();
+  end if;
+  return new;
+end $$;
+drop trigger if exists profiles_avatar_guard on profiles;
+create trigger profiles_avatar_guard before update of avatar on profiles for each row execute function profiles_avatar_guard();
+
 alter table profiles add column if not exists title_code text;
 
 create table if not exists title_defs (
@@ -1150,6 +1203,7 @@ begin
 end $$;
 
 revoke execute on function title_stats(uuid) from public, anon, authenticated;
+revoke execute on function profiles_avatar_guard() from public, anon, authenticated;
 revoke execute on function check_titles() from public, anon;
 revoke execute on function my_titles() from public, anon;
 revoke execute on function set_title(text) from public, anon;
@@ -1160,6 +1214,13 @@ grant execute on function my_titles() to authenticated;
 grant execute on function set_title(text) to authenticated;
 grant execute on function get_ranking(text, text) to authenticated;
 grant execute on function get_group_ranking(uuid, text) to authenticated;
+
+-- ┌──────────────────────────────────────────────────────────────────────
+-- │ 05-storage.sql — 사진 프로필·프린트 아카이브 (Supabase Storage)·관리자 사진 검토/계정 삭제
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01~04
+-- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
+-- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
+-- └──────────────────────────────────────────────────────────────────────
 
 -- ═════════════════════════ 사진 프로필 · 프린트 아카이브 (Supabase Storage) ═════════════════════════
 -- 파일은 Supabase Storage 버킷 두 개에 둔다.
@@ -1197,29 +1258,6 @@ create policy "프린트 올리기" on storage.objects for insert to authenticat
 drop policy if exists "프린트 지우기" on storage.objects;
 create policy "프린트 지우기" on storage.objects for delete to authenticated
   using (bucket_id = 'prints' and public.is_admin());
-
--- 프로필 사진: avatar = 'photo:<경로>'. 그림(cat:s-math)도 계속 쓸 수 있다. 남의 폴더 사진은 못 단다(트리거)
-alter table profiles add column if not exists avatar_at timestamptz;  -- 그림을 마지막으로 바꾼 시각 (관리자 사진 검토 순서)
-alter table profiles drop constraint if exists profiles_avatar_check;
-alter table profiles add constraint profiles_avatar_check check (
-  avatar is null
-  or avatar ~ '^[a-z0-9-]{1,20}:[a-z0-9-]{1,20}$'
-  or avatar ~ '^photo:[0-9a-f-]{36}/[0-9a-f]{16}\.(webp|jpg)$'
-);
-
-create or replace function profiles_avatar_guard() returns trigger
-language plpgsql set search_path = public as $$
-begin
-  if new.avatar is distinct from old.avatar then
-    if new.avatar like 'photo:%' and split_part(substr(new.avatar, 7), '/', 1) <> new.id::text then
-      raise exception '내 사진만 프로필로 쓸 수 있어요';
-    end if;
-    new.avatar_at := now();
-  end if;
-  return new;
-end $$;
-drop trigger if exists profiles_avatar_guard on profiles;
-create trigger profiles_avatar_guard before update of avatar on profiles for each row execute function profiles_avatar_guard();
 
 -- 관리자: 사진 프로필 목록 (최근에 바꾼 순)
 create or replace function admin_list_photos()
@@ -1300,7 +1338,6 @@ create policy "프린트 수정" on prints for update to authenticated using (is
 drop policy if exists "프린트 삭제" on prints;
 create policy "프린트 삭제" on prints for delete to authenticated using (is_admin());
 
-revoke execute on function profiles_avatar_guard() from public, anon, authenticated;
 revoke execute on function admin_list_photos() from public, anon;
 revoke execute on function admin_remove_avatar(text) from public, anon;
 revoke execute on function admin_delete_user(text) from public, anon;
