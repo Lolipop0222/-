@@ -24,14 +24,36 @@ import {
 const COUNTS = ["10문제", "20문제", "40문제"] as const;
 const LEVELS = ["기본", "응용", "심화", "섞어서"] as const;
 const LEVEL_VALUE: Record<(typeof LEVELS)[number], LevelChoice> = { 기본: "basic", 응용: "applied", 심화: "advanced", 섞어서: "mix" };
+// 문제당 제한 시간 (셀프 옵션). 시간이 지나면 오답 처리
+const LIMITS = ["끄기", "5초", "10초", "15초"] as const;
+type Limit = (typeof LIMITS)[number];
+const LIMIT_KEY = "wm:timeLimit";
+const TIMEOUT = -1; // picked 값: 시간 초과
 
-type Setup = { mode: QuizMode; level: LevelChoice };
-type Answer = { q: Question; correct: boolean };
+type Setup = { mode: QuizMode; level: LevelChoice; timeLimit: number }; // timeLimit: 초, 0이면 끄기
+type Answer = { q: Question; correct: boolean; timedOut?: boolean };
+
+function readLimit(): Limit {
+  try {
+    const v = localStorage.getItem(LIMIT_KEY) as Limit | null;
+    return v && LIMITS.includes(v) ? v : "끄기";
+  } catch {
+    return "끄기";
+  }
+}
+
+function saveLimit(v: Limit) {
+  try {
+    localStorage.setItem(LIMIT_KEY, v);
+  } catch {
+    // 저장소를 못 쓰면 매번 끄기로 시작
+  }
+}
 
 export default function WordQuiz({ day }: { day: number }) {
   const [data, setData] = useState<WmDay | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [setup, setSetup] = useState<Setup>({ mode: "meaning", level: "basic" });
+  const [setup, setSetup] = useState<Setup>({ mode: "meaning", level: "basic", timeLimit: 0 });
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
 
@@ -78,7 +100,15 @@ export default function WordQuiz({ day }: { day: number }) {
       />
     );
   }
-  return <QuizScreen key={questions.map((q) => q.word.id).join()} questions={questions} onDone={finish} onExit={() => setQuestions(null)} />;
+  return (
+    <QuizScreen
+      key={questions.map((q) => q.word.id).join()}
+      questions={questions}
+      timeLimit={setup.timeLimit}
+      onDone={finish}
+      onExit={() => setQuestions(null)}
+    />
+  );
 }
 
 function Shell({ day, children }: { day: number; children: React.ReactNode }) {
@@ -101,6 +131,8 @@ function SetupScreen({ data, onStart }: { data: WmDay; onStart: (targets: WmWord
   const [mode, setMode] = useState<QuizMode>("meaning");
   const [level, setLevel] = useState<(typeof LEVELS)[number]>("기본");
   const [count, setCount] = useState<(typeof COUNTS)[number]>("20문제");
+  // 이 화면은 브라우저에서만 그려지므로 바로 localStorage를 읽어도 된다
+  const [limit, setLimit] = useState<Limit>(readLimit);
   const [showList, setShowList] = useState(false);
   // 이 화면은 단어를 받은 뒤 브라우저에서만 그려지므로 바로 localStorage를 읽어도 된다
   const [best] = useState<Record<QuizMode, Best | null>>(() => ({
@@ -112,7 +144,8 @@ function SetupScreen({ data, onStart }: { data: WmDay; onStart: (targets: WmWord
     const n = parseInt(count);
     // 문제 수만큼 무작위로 고른다 (40이면 DAY 전체)
     const pick = shuffle(data.words).slice(0, n);
-    onStart(pick, { mode, level: LEVEL_VALUE[level] });
+    saveLimit(limit);
+    onStart(pick, { mode, level: LEVEL_VALUE[level], timeLimit: limit === "끄기" ? 0 : parseInt(limit) });
   }
 
   return (
@@ -147,6 +180,15 @@ function SetupScreen({ data, onStart }: { data: WmDay; onStart: (targets: WmWord
       <div className="mt-5">
         <p className="mb-2 text-[13px] font-medium text-muted">문제 수</p>
         <Segmented items={COUNTS} value={count} onChange={setCount} />
+      </div>
+
+      <div className="mt-5">
+        <p className="mb-2 text-[13px] font-medium text-muted">문제당 제한 시간</p>
+        <Segmented items={LIMITS} value={limit} onChange={setLimit} />
+        <p className="mt-2 text-[12px] text-faint">
+          {limit === "끄기" ? "시간 제한 없이 풀어요." : "시간 안에 못 고르면 틀린 걸로 쳐요."}
+          {limit === "5초" && mode === "blank" && " 빈칸 채우기는 10초 이상을 추천해요."}
+        </p>
       </div>
 
       <PrimaryButton onClick={begin} className="mt-6">
@@ -194,13 +236,39 @@ function ModeCard({ active, onClick, title, desc, best }: { active: boolean; onC
 
 // ───────────────────────── 문제 화면 ─────────────────────────
 
-function QuizScreen({ questions, onDone, onExit }: { questions: Question[]; onDone: (a: Answer[]) => void; onExit: () => void }) {
+function QuizScreen({
+  questions,
+  timeLimit,
+  onDone,
+  onExit,
+}: {
+  questions: Question[];
+  timeLimit: number;
+  onDone: (a: Answer[]) => void;
+  onExit: () => void;
+}) {
   const [i, setI] = useState(0);
-  const [picked, setPicked] = useState<number | null>(null); // 뜻: 보기 번호, 빈칸: 단어 id
+  const [picked, setPicked] = useState<number | null>(null); // 뜻: 보기 번호, 빈칸: 단어 id, TIMEOUT: 시간 초과
   const [answers, setAnswers] = useState<Answer[]>([]);
   const q = questions[i];
 
   const correct = picked === null ? null : q.kind === "meaning" ? picked === q.answerIdx : picked === q.word.id;
+  const timedOut = picked === TIMEOUT;
+
+  // 제한 시간 — 문제마다 새로 잰다. 답을 고르면 멈춘다
+  const limitMs = timeLimit * 1000;
+  const [deadline, setDeadline] = useState(() => Date.now() + limitMs);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!limitMs || picked !== null) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (t >= deadline) setPicked((p) => (p === null ? TIMEOUT : p));
+    }, 100);
+    return () => clearInterval(id);
+  }, [limitMs, picked, deadline]);
+  const remainingMs = Math.max(0, deadline - now);
 
   function pick(v: number) {
     if (picked !== null) return;
@@ -208,7 +276,7 @@ function QuizScreen({ questions, onDone, onExit }: { questions: Question[]; onDo
   }
 
   function next() {
-    const all = [...answers, { q, correct: !!correct }];
+    const all = [...answers, { q, correct: !!correct, timedOut }];
     if (i + 1 >= questions.length) {
       onDone(all);
       return;
@@ -216,6 +284,9 @@ function QuizScreen({ questions, onDone, onExit }: { questions: Question[]; onDo
     setAnswers(all);
     setPicked(null);
     setI(i + 1);
+    const t = Date.now();
+    setDeadline(t + limitMs);
+    setNow(t);
   }
 
   // 빈칸: 같은 상자에서 이미 맞힌 단어는 흐리게
@@ -236,6 +307,8 @@ function QuizScreen({ questions, onDone, onExit }: { questions: Question[]; onDo
           {i + 1}/{questions.length}
         </span>
       </header>
+
+      {limitMs > 0 && <Countdown remainingMs={remainingMs} limitMs={limitMs} stopped={picked !== null} />}
 
       {q.kind === "meaning" ? (
         <>
@@ -310,10 +383,28 @@ function QuizScreen({ questions, onDone, onExit }: { questions: Question[]; onDo
       <div className="mt-4 h-14">
         {picked !== null && (
           <PrimaryButton onClick={next} tone={correct ? "accent" : "danger"}>
-            {correct ? "정답!" : "틀렸어요"} · {i + 1 >= questions.length ? "결과 보기" : "다음"}
+            {correct ? "정답!" : timedOut ? "시간 초과" : "틀렸어요"} · {i + 1 >= questions.length ? "결과 보기" : "다음"}
           </PrimaryButton>
         )}
       </div>
+    </div>
+  );
+}
+
+/** 남은 시간 막대 + 초. 마지막 3초는 빨간색 */
+function Countdown({ remainingMs, limitMs, stopped }: { remainingMs: number; limitMs: number; stopped: boolean }) {
+  const urgent = remainingMs <= 3000;
+  return (
+    <div className="flex items-center gap-3" aria-label="남은 시간">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+        <div
+          className={`h-full rounded-full ${urgent ? "bg-danger" : "bg-accent"} ${stopped ? "opacity-40" : ""}`}
+          style={{ width: `${(remainingMs / limitMs) * 100}%` }}
+        />
+      </div>
+      <span className={`num w-10 text-right text-[13px] font-semibold ${urgent ? "text-danger" : "text-muted"}`}>
+        {Math.ceil(remainingMs / 1000)}초
+      </span>
     </div>
   );
 }
@@ -371,6 +462,7 @@ function Example({ sentence, answer }: { sentence: string; answer: string }) {
 function ResultScreen({ day, answers, onRetryWrong, onRestart }: { day: number; answers: Answer[]; onRetryWrong: () => void; onRestart: () => void }) {
   const right = answers.filter((a) => a.correct).length;
   const wrong = answers.filter((a) => !a.correct);
+  const timedOut = answers.filter((a) => a.timedOut).length;
   const score = Math.round((right / answers.length) * 100);
 
   return (
@@ -383,6 +475,7 @@ function ResultScreen({ day, answers, onRetryWrong, onRestart }: { day: number; 
         </p>
         <p className="mt-2 text-[14px] text-muted">
           {answers.length}문제 중 <span className="font-semibold text-live">{right}개</span> 맞힘
+          {timedOut > 0 && <span className="text-danger"> · 시간 초과 {timedOut}개</span>}
         </p>
       </div>
 
@@ -390,10 +483,11 @@ function ResultScreen({ day, answers, onRetryWrong, onRestart }: { day: number; 
         <div className="mt-8 flex-1">
           <p className="mb-2 text-[15px] font-semibold">틀린 단어 {wrong.length}개</p>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
-            {wrong.map(({ q }) => (
+            {wrong.map(({ q, timedOut }) => (
               <li key={q.word.id} className="px-4 py-3">
                 <p className="text-[15px]">
                   <span className="font-semibold">{q.word.word}</span> <span className="text-muted">{q.word.meaning}</span>
+                  {timedOut && <span className="ml-1.5 rounded-md bg-danger-soft px-1.5 py-0.5 text-[11px] font-semibold text-danger">시간 초과</span>}
                 </p>
                 {q.kind === "blank" && <p className="mt-1 text-[13px] leading-relaxed text-faint">{q.sentence.text}</p>}
               </li>
