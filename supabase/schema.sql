@@ -1,4 +1,4 @@
--- 대고 일품타 · Supabase 스키마 (1단계: 프로필 · 공부 기록 · 과목별 순위)
+-- 대고 일품타 · Supabase 스키마 (프로필 · 공부 기록 · 과목별 순위 · 디데이)
 -- Supabase 대시보드 → SQL Editor 에 통째로 붙여넣고 Run. 여러 번 실행해도 된다.
 --
 -- 원칙 (계획서 3장, 6.1)
@@ -172,6 +172,40 @@ language sql stable security definer set search_path = public as $$
      or (p_scope = 'class' and p.grade = me.grade and p.class_no = me.class_no)
   order by rank, p.nickname
 $$;
+
+-- ───────────────────────── 디데이 (직접 만든 것) ─────────────────────────
+-- 학교 시험 디데이는 NEIS 학사일정에서 자동으로 만든다. 여기에는 학생이 직접 추가한 날만 저장한다.
+
+create table if not exists ddays (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null default auth.uid() references profiles (id) on delete cascade,
+  title       text not null check (char_length(trim(title)) between 1 and 30),
+  target_date date not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists ddays_user_idx on ddays (user_id, target_date);
+
+alter table ddays enable row level security;
+drop policy if exists "내 디데이 조회" on ddays;
+create policy "내 디데이 조회" on ddays for select to authenticated using (auth.uid() = user_id);
+drop policy if exists "내 디데이 추가" on ddays;
+create policy "내 디데이 추가" on ddays for insert to authenticated with check (auth.uid() = user_id);
+drop policy if exists "내 디데이 수정" on ddays;
+create policy "내 디데이 수정" on ddays for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "내 디데이 삭제" on ddays;
+create policy "내 디데이 삭제" on ddays for delete to authenticated using (auth.uid() = user_id);
+
+-- 한 사람당 30개까지
+create or replace function ddays_limit() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if (select count(*) from ddays where user_id = new.user_id) >= 30 then
+    raise exception '디데이는 30개까지 만들 수 있어요';
+  end if;
+  return new;
+end $$;
+drop trigger if exists ddays_limit on ddays;
+create trigger ddays_limit before insert on ddays for each row execute function ddays_limit();
 
 -- 함수는 로그인한 사용자만 부를 수 있다
 revoke execute on function create_profile(text, int, int, text) from public, anon;
