@@ -17,6 +17,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 안드로이드 | Capacitor 8 (`android/`). APK는 배포 주소를 여는 껍데기라 웹을 다시 배포하면 앱도 바뀐다. **켜 둔 앱도 `UpdateWatcher`가 새 배포를 감지해 반영**(아래). APK를 다시 나눠 줘야 하는 건 아이콘·시작 화면·이름·권한·플러그인·주소가 바뀔 때뿐 |
 | 학교 데이터 | NEIS 오픈 API (급식·학사일정) — 서버에서만 호출 |
 
+**APK 만들기**: GitHub Actions `.github/workflows/apk.yml` — `main`에서 `android/**`·`android-shell/**`·`capacitor.config.ts`·`scripts/build-apk.mjs`·워크플로가 바뀌면 자동 빌드, Actions 탭 "Run workflow"로도(기본 브랜치가 main일 때만 버튼 보임). 결과는 실행의 Artifacts `daego-ilpumta-apk`(30일). 디버그 서명이라 **실행마다 서명 키가 달라** 새 APK를 깔 때 예전 앱을 지워야 한다 → 고정하려면 저장소 Secret `ANDROID_DEBUG_KEYSTORE_BASE64`(debug.keystore를 base64로) 추가. 이 클라우드 환경에는 Android SDK가 없고 받을 수도 없어 여기서는 못 만든다.
+
 **자동 업데이트 (2026-11-06, 사용자 요청: "패치할 때마다 APK를 받게 하기 번거롭다")**
 - `next.config.ts`가 `NEXT_PUBLIC_BUILD_ID`(Vercel 커밋 SHA, 로컬은 `local-시각`)를 빌드에 넣고, `/api/version`(요청마다·no-store)이 지금 배포의 값을 돌려준다.
 - `components/UpdateWatcher.tsx`(layout): 시작 5초 뒤·10분마다·앱으로 돌아올 때 비교. 다르면 → 3초 넘게 다른 앱에 갔다 돌아왔고 공부 중이 아니면 **바로 새로고침**(같은 버전으로는 탭당 한 번만, sessionStorage `daego-reloaded-for`), 그 밖에는 아래쪽 "새 버전이 나왔어요 · 업데이트" 알림. 서비스 워커는 없음(HTML은 Vercel이 `max-age=0`).

@@ -84,6 +84,12 @@ npm run dev
 APK는 **배포된 웹 주소를 여는 안드로이드 앱**이다 (Capacitor). 화면과 기능은 웹과 같고, 웹을 다시 배포하면 앱도 바로 바뀐다.
 NEIS 키 같은 비밀은 앱에 들어가지 않고 서버(Vercel)에만 있다.
 
+**가장 쉬운 방법 — GitHub에서 만들기 (컴퓨터 설치 필요 없음)**: `.github/workflows/apk.yml`
+- 휴대폰 쪽 파일(`android/`, `android-shell/`, `capacitor.config.ts`)이 `main`에서 바뀌면 **자동으로** 만든다.
+- 손으로 만들려면: 저장소 → **Actions** 탭 → 왼쪽 **APK 만들기** → **Run workflow** (저장소 기본 브랜치가 `main`이어야 버튼이 보인다).
+- 끝난 실행을 누르고 맨 아래 **Artifacts**의 `daego-ilpumta-apk`(zip)를 내려받아 압축을 풀면 `daego-ilpumta.apk`. 30일 동안 보관.
+
+**내 컴퓨터에서 만들기**
 ```bash
 npm run apk -- https://배포주소.vercel.app
 # → dist/daego-ilpumta.apk
