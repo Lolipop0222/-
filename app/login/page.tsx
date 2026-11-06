@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Hash, KeyRound, Lock, Mail, Timer, UserRound } from "lucide-react";
+import { Hash, KeyRound, Lock, Mail, UserRound } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { ErrorText, InputRow, PrimaryButton, Segmented, inputCls } from "@/components/ui";
 import { MIN_PASSWORD } from "@/lib/account";
-import { TRACKS, type Track } from "@/lib/subjects";
+import { Emblem } from "@/components/BrandLoader";
+import { TIME_QUOTES } from "@/lib/quotes";
+import { TRACKS, needsTrack, type Track } from "@/lib/subjects";
 import { koreanError, saveTrack, supabase } from "@/lib/supabase";
 
 const MODES = ["로그인", "가입"] as const;
@@ -33,7 +35,16 @@ export default function LoginPage() {
   const profileOnly = auth.status === "needsProfile";
   const signingUp = mode === "가입" || profileOnly;
 
-  const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && code.trim().length > 0 && track !== null;
+  // 계열은 2학년만 고른다 (1·3학년은 문이과 구분 없이 같은 세부 과목)
+  const gradeNo = GRADES.indexOf(grade) + 1;
+  const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && code.trim().length > 0 && (!needsTrack(gradeNo) || track !== null);
+  // 시간 명언: 첫 화면은 첫 번째로 그리고, 브라우저에서 하나를 골라 바꾼다 (서버·브라우저 화면이 어긋나지 않게)
+  const [quoteIdx, setQuoteIdx] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setQuoteIdx(Math.floor(Math.random() * TIME_QUOTES.length)), 0);
+    return () => clearTimeout(t);
+  }, []);
+  const quote = TIME_QUOTES[quoteIdx];
   const canSubmit = profileOnly
     ? profileValid
     : email.includes("@") && password.length >= (mode === "가입" ? MIN_PASSWORD : 6) && (mode === "로그인" || profileValid);
@@ -49,7 +60,7 @@ export default function LoginPage() {
     // 초대코드가 틀리면 DB가 오류 대신 빈 값을 준다 (틀린 횟수를 기록해 마구 넣어 보기를 막으려고)
     const id = (data as { id?: string } | null)?.id;
     if (!id) throw new Error("초대코드가 맞지 않습니다");
-    if (track) await saveTrack(id, track).catch(() => false); // 계열은 나중에 내정보에서도 바꿀 수 있어서 실패해도 가입은 진행
+    if (track && needsTrack(GRADES.indexOf(grade) + 1)) await saveTrack(id, track).catch(() => false); // 계열은 나중에 내정보에서도 바꿀 수 있어서 실패해도 가입은 진행
     await auth.refreshProfile();
   }
 
@@ -78,13 +89,16 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-dvh flex-col px-6 pb-10 pt-[calc(env(safe-area-inset-top)+48px)]">
-      <div className="grid size-14 place-items-center rounded-2xl bg-accent text-bg">
-        <Timer size={30} strokeWidth={2.4} />
-      </div>
-      <h1 className="mt-5 text-[28px] font-bold leading-tight">대고 일품타</h1>
-      <p className="mt-1.5 text-[15px] text-muted">
-        {profileOnly ? "거의 다 왔어요. 프로필만 만들면 시작할 수 있어요." : "야자 시간을 기록하고, 겨루고, 그 사이에 단어를 외우자."}
-      </p>
+      <Emblem size={64} fast />
+      <h1 className="mt-5 text-[28px] font-bold leading-tight">대품타</h1>
+      {profileOnly ? (
+        <p className="mt-1.5 text-[15px] text-muted">거의 다 왔어요. 프로필만 만들면 시작할 수 있어요.</p>
+      ) : (
+        <figure key={quote.text} className="toast-in mt-2 border-l-2 border-brand-gold pl-3">
+          <blockquote className="text-[15px] leading-relaxed text-muted">“{quote.text}”</blockquote>
+          <figcaption className="mt-1 text-[12px] text-faint">— {quote.who}</figcaption>
+        </figure>
+      )}
 
       {!profileOnly && (
         <div className="mt-8">
@@ -123,8 +137,9 @@ export default function LoginPage() {
               <input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={12} placeholder="닉네임 (2~12자, 순위에 보여요)" className={inputCls} />
             </InputRow>
             <Segmented items={GRADES} value={grade} onChange={setGrade} />
+            {needsTrack(gradeNo) && (
             <div>
-              <p className="mb-1.5 px-1 text-[12px] text-muted">계열 — 타이머에서 고를 수 있는 세부 과목이 달라져요</p>
+              <p className="mb-1.5 px-1 text-[12px] text-muted">계열 (2학년) — 타이머에서 고를 수 있는 세부 과목이 달라져요</p>
               <div className="flex rounded-xl bg-surface-2 p-1" role="radiogroup" aria-label="계열">
                 {TRACKS.map((t) => (
                   <button
@@ -140,6 +155,7 @@ export default function LoginPage() {
                 ))}
               </div>
             </div>
+            )}
             <InputRow icon={<Hash size={18} />}>
               <input
                 inputMode="numeric"

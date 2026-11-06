@@ -271,7 +271,7 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
 
   async function share() {
     const url = `${location.origin}/groups`;
-    const text = `대고 일품타 스터디그룹 '${group.name}'에 들어와! 초대코드: ${group.invite_code}`;
+    const text = `대품타 스터디그룹 '${group.name}'에 들어와! 초대코드: ${group.invite_code}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: "스터디그룹 초대", text, url });

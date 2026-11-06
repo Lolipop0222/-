@@ -267,6 +267,7 @@
   --color-stage: var(--stage);
   --color-stage-text: var(--stage-text);
   --color-on-subject: var(--on-subject);
+  --color-brand-gold: var(--brand-gold);
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 

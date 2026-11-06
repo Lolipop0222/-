@@ -13,7 +13,7 @@ import { reviewToday } from "@/lib/mock";
 export default function HomePage() {
   return (
     <>
-      <PageHeader title="대고 일품타" sub={<TodayLabel />} />
+      <PageHeader title="대품타" sub={<TodayLabel />} />
 
       <div className="space-y-4 px-5">
         {/* 오늘 급식 한 줄 */}

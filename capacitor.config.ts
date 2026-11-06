@@ -9,7 +9,7 @@ const url = process.env.APP_URL;
 
 const config: CapacitorConfig = {
   appId: "com.daegoilpumta.app",
-  appName: "대고 일품타",
+  appName: "대품타",
   // android-shell/을 바탕으로 scripts/build-apk.mjs가 만드는 폴더 (인터넷이 안 될 때 보여 줄 화면)
   webDir: ".apk-web",
   server: url ? { url, errorPath: "offline.html" } : undefined,

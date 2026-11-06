@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { MonitorPlay } from "lucide-react";
-import { SUBJECTS, SUBJECT_COLOR, canLecture, detailsFor, type Subject, type Track } from "@/lib/subjects";
+import { SUBJECTS, SUBJECT_COLOR, canLecture, detailsFor, missingTrackFor, type Subject, type Track } from "@/lib/subjects";
 
 export type SubjectChoice = { subject: Subject | null; detail: string | null; lecture: boolean };
 
@@ -11,9 +11,9 @@ export type SubjectChoice = { subject: Subject | null; detail: string | null; le
  * 과목 → (계열별) 세부 항목 → 인강 고르기. 플래너 과제 추가·편집에서 쓴다.
  * 과목은 학생이 직접 고른다 (과제 이름으로 짐작하지 않음). 다시 누르면 선택 해제.
  */
-export default function SubjectPicker({ value, onChange, track }: { value: SubjectChoice; onChange: (v: SubjectChoice) => void; track: Track | null }) {
-  const details = detailsFor(track, value.subject);
-  const needTrack = !track && !!value.subject && (detailsFor("문과", value.subject).length > 0 || detailsFor("이과", value.subject).length > 0);
+export default function SubjectPicker({ value, onChange, track, grade }: { value: SubjectChoice; onChange: (v: SubjectChoice) => void; track: Track | null; grade: number | null }) {
+  const details = detailsFor(grade, track, value.subject);
+  const needTrack = missingTrackFor(grade, track, value.subject);
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap gap-1.5">

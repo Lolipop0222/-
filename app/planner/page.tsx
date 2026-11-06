@@ -181,6 +181,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
   const study = useStudy();
   const auth = useAuth();
   const track = auth.status === "ready" ? auth.profile.track ?? null : null;
+  const grade = auth.status === "ready" ? auth.profile.grade : null;
   const [draft, setDraft] = useState("");
   // 과목·세부 항목·인강은 학생이 직접 고른다 (자동으로 정하지 않음)
   const [choice, setChoice] = useState<SubjectChoice>({ subject: null, detail: null, lecture: false });
@@ -269,7 +270,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
           />
           {draft.trim() && (
             <div className="mt-2 space-y-2">
-              <SubjectPicker value={choice} onChange={setChoice} track={track} />
+              <SubjectPicker value={choice} onChange={setChoice} track={track} grade={grade} />
               <div className="flex justify-end">
                 <button className="rounded-lg bg-accent px-3 py-1 text-[12px] font-bold text-bg">추가</button>
               </div>
@@ -287,6 +288,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
           needSubject={needSubject}
           canStart={isToday}
           track={track}
+          grade={grade}
           onClose={() => setEditing(null)}
           onSave={(patch) => p.update(editing.id, patch)}
           onDelete={() => (p.remove(editing), setEditing(null))}
@@ -302,6 +304,7 @@ function TaskSheet({
   needSubject,
   canStart,
   track,
+  grade,
   onClose,
   onSave,
   onDelete,
@@ -311,6 +314,7 @@ function TaskSheet({
   needSubject: boolean;
   canStart: boolean;
   track: Track | null;
+  grade: number | null;
   onClose: () => void;
   onSave: (patch: Partial<Pick<Task, "title" | "subject" | "detail" | "lecture">>) => void;
   onDelete: () => void;
@@ -353,7 +357,7 @@ function TaskSheet({
         <p className={`mb-2 mt-4 text-[13px] font-medium ${needSubject && !subject ? "text-warn" : "text-muted"}`}>
           {needSubject && !subject ? "타이머를 켜려면 과목을 먼저 골라 주세요" : "과목 — 이 과제로 잰 시간이 이 과목 공부 시간이 돼요 (인강은 합계 제외)"}
         </p>
-        <SubjectPicker value={choice} onChange={setChoice} track={track} />
+        <SubjectPicker value={choice} onChange={setChoice} track={track} grade={grade} />
         <div className="mt-6 grid grid-cols-2 gap-2.5">
           <button onClick={onDelete} className="h-12 rounded-xl border border-line text-[14px] font-semibold text-danger">
             {task.routine_id ? "오늘만 지우기" : "지우기"}

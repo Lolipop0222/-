@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { kstToday } from "@/lib/dday";
 import { hm, hms } from "@/lib/format";
-import { ETC, SUBJECTS, SUBJECT_COLOR, canLecture, detailsFor, type Subject } from "@/lib/subjects";
+import { ETC, SUBJECTS, SUBJECT_COLOR, canLecture, detailsFor, missingTrackFor, type Subject } from "@/lib/subjects";
 import { usePlanner } from "@/lib/usePlanner";
 
 /**
@@ -18,6 +18,7 @@ export default function StudyTimer() {
   const study = useStudy();
   const auth = useAuth();
   const track = auth.status === "ready" ? auth.profile.track ?? null : null;
+  const grade = auth.status === "ready" ? auth.profile.grade : null;
   const [picked, setPicked] = useState<Subject>("수학");
   const [pickedDetail, setPickedDetail] = useState<string | null>(null); // 세부 항목 (계열에 따라 목록이 다름)
   const [pickedLecture, setPickedLecture] = useState(false); // 인강 — 공부 합계·순위 제외
@@ -34,9 +35,9 @@ export default function StudyTimer() {
   const detail = study.running ? study.running.detail : pickedDetail;
   const lecture = study.running ? study.running.lecture : pickedLecture;
   const running = !!study.running;
-  const details = detailsFor(track, picked);
-  // 계열을 아직 안 골랐는데 세부 항목이 있는 과목이면 안내
-  const needTrack = !track && (detailsFor("문과", picked).length > 0 || detailsFor("이과", picked).length > 0);
+  const details = detailsFor(grade, track, picked); // 학년(2학년은 계열까지)에 따라 다르다
+  // 2학년인데 계열을 아직 안 골라서 세부 항목이 덜 나오면 안내
+  const needTrack = missingTrackFor(grade, track, picked);
 
   function pickSubject(s: Subject) {
     setPicked(s);

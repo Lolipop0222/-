@@ -9,9 +9,9 @@ import { THEME_BOOT_SCRIPT } from "@/lib/themes";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "대고 일품타",
+  title: "대품타",
   description: "야간자습 시간을 기록하고, 겨루고, 그 사이에 단어를 외우는 앱",
-  appleWebApp: { capable: true, title: "일품타", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "대품타", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
