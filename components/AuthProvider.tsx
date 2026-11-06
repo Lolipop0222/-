@@ -31,6 +31,9 @@ export function useProfile(): Profile {
 
 const INTRO_KEY = "daego-intro-seen";
 
+// 프로필 열: track(계열)은 06-subjects, avatar·title_code는 04-titles 조각에서 생긴다
+const PROFILE_COLUMNS = ["id, nickname, grade, class_no, avatar, title_code, track", "id, nickname, grade, class_no, avatar, title_code", "id, nickname, grade, class_no"];
+
 // 로그인하지 않아도 볼 수 있는 화면
 const PUBLIC_PATHS = ["/login", "/login/reset", "/me/privacy"];
 
@@ -49,17 +52,18 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const sb = supabase();
-    let { data, error } = await sb.from("profiles").select("id, nickname, grade, class_no, avatar, title_code").eq("id", user.id).maybeSingle();
-    if (error?.code === "42703") {
-      // schema.sql(칭호·프로필 그림)을 아직 실행하지 않은 DB — 예전 열만 읽는다 (안 그러면 프로필이 없는 걸로 보여 가입 화면에 갇힌다)
-      ({ data, error } = await sb.from("profiles").select("id, nickname, grade, class_no").eq("id", user.id).maybeSingle());
+    // SQL 조각을 아직 실행하지 않은 DB에는 뒤쪽 열이 없다 → 앞에서부터 차례로 시도 (안 그러면 프로필이 없는 걸로 보여 가입 화면에 갇힌다)
+    let res = await sb.from("profiles").select(PROFILE_COLUMNS[0]).eq("id", user.id).maybeSingle();
+    for (const cols of PROFILE_COLUMNS.slice(1)) {
+      if (res.error?.code === "42703") res = await sb.from("profiles").select(cols).eq("id", user.id).maybeSingle();
     }
+    const { data, error } = res;
     if (seq !== loadSeq.current) return;
     if (error) {
       // 인터넷이 끊긴 경우 등 — 로그인 상태는 유지하고 프로필만 다시 시도하게 둔다
       console.error("[auth] 프로필 불러오기 실패", error);
     }
-    setState(data ? { status: "ready", user, profile: data as Profile } : { status: "needsProfile", user });
+    setState(data ? { status: "ready", user, profile: data as unknown as Profile } : { status: "needsProfile", user });
   }, []);
 
   useEffect(() => {

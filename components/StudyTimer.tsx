@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ClipboardList, Eye, Play, Square } from "lucide-react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { ClipboardList, Eye, MonitorPlay, Play, Square } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { kstToday } from "@/lib/dday";
 import { hm, hms } from "@/lib/format";
-import { ETC, SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
+import { ETC, SUBJECTS, SUBJECT_COLOR, canLecture, detailsFor, type Subject } from "@/lib/subjects";
 import { usePlanner } from "@/lib/usePlanner";
 
 /**
@@ -15,7 +16,11 @@ import { usePlanner } from "@/lib/usePlanner";
  */
 export default function StudyTimer() {
   const study = useStudy();
+  const auth = useAuth();
+  const track = auth.status === "ready" ? auth.profile.track ?? null : null;
   const [picked, setPicked] = useState<Subject>("수학");
+  const [pickedDetail, setPickedDetail] = useState<string | null>(null); // 세부 항목 (계열에 따라 목록이 다름)
+  const [pickedLecture, setPickedLecture] = useState(false); // 인강 — 공부 합계·순위 제외
   const [taskId, setTaskId] = useState<string | null>(null); // 연결할 플래너 과제
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => {
@@ -26,12 +31,28 @@ export default function StudyTimer() {
   const openTasks = planner.tasks.filter((t) => !t.done || t.id === taskId);
   const runningTask = planner.tasks.find((t) => t.id === study.running?.task_id);
   const subject = study.running?.subject ?? picked;
+  const detail = study.running ? study.running.detail : pickedDetail;
+  const lecture = study.running ? study.running.lecture : pickedLecture;
   const running = !!study.running;
+  const details = detailsFor(track, picked);
+  // 계열을 아직 안 골랐는데 세부 항목이 있는 과목이면 안내
+  const needTrack = !track && (detailsFor("문과", picked).length > 0 || detailsFor("이과", picked).length > 0);
+
+  function pickSubject(s: Subject) {
+    setPicked(s);
+    setPickedDetail(null);
+    if (!canLecture(s)) setPickedLecture(false);
+  }
 
   function pickTask(id: string | null) {
     setTaskId(id);
     const t = planner.tasks.find((x) => x.id === id);
-    if (t?.subject) setPicked(t.subject); // 과제의 과목으로 맞춘다
+    if (t?.subject) {
+      // 과제의 과목·세부 항목·인강으로 맞춘다
+      setPicked(t.subject);
+      setPickedDetail(t.detail ?? null);
+      setPickedLecture(!!t.lecture && canLecture(t.subject));
+    }
   }
 
   return (
@@ -67,7 +88,7 @@ export default function StudyTimer() {
             <button
               key={s}
               disabled={running || study.busy}
-              onClick={() => setPicked(s)}
+              onClick={() => pickSubject(s)}
               className={`rounded-full border py-2 text-[14px] font-semibold transition-colors ${
                 active ? "border-transparent text-on-subject" : "border-line text-muted disabled:opacity-30"
               }`}
@@ -79,10 +100,54 @@ export default function StudyTimer() {
         })}
       </div>
 
+      {/* 세부 항목 + 인강 (공부 중에는 바꿀 수 없다) */}
+      {!running && (details.length > 0 || canLecture(picked) || needTrack) && (
+        <div className="mt-3 flex flex-wrap gap-1.5" aria-label="세부 항목">
+          {details.map((d) => {
+            const on = pickedDetail === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                disabled={study.busy}
+                aria-pressed={on}
+                onClick={() => setPickedDetail(on ? null : d)}
+                className={`rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${on ? "border-transparent text-on-subject" : "border-line text-muted"}`}
+                style={on ? { background: SUBJECT_COLOR[picked] } : undefined}
+              >
+                {d}
+              </button>
+            );
+          })}
+          {canLecture(picked) && (
+            <button
+              type="button"
+              disabled={study.busy}
+              aria-pressed={pickedLecture}
+              onClick={() => setPickedLecture((v) => !v)}
+              className={`lecture-chip flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold ${pickedLecture ? "border-text text-text" : "border-dashed border-line text-muted"}`}
+              style={pickedLecture ? ({ "--chip": SUBJECT_COLOR[picked] } as CSSProperties) : undefined}
+            >
+              <MonitorPlay size={13} /> 인강
+            </button>
+          )}
+          {needTrack && (
+            <Link href="/me/track" className="rounded-lg px-2 py-1.5 text-[12px] font-semibold text-accent underline underline-offset-2">
+              계열을 고르면 세부 과목이 나와요
+            </Link>
+          )}
+        </div>
+      )}
+      {!running && pickedLecture && canLecture(picked) && (
+        <p className="mt-2 text-[12px] text-faint">인강은 TIMETABLE에는 표시되지만 총 공부 시간·순위에는 들어가지 않아요.</p>
+      )}
+
       {/* 큰 숫자 */}
       <div className="py-12 text-center">
         <p className="text-[14px] font-medium" style={{ color: SUBJECT_COLOR[subject] }}>
           {subject}
+          {detail && <span> · {detail}</span>}
+          {lecture && <span className="text-muted"> · 인강</span>}
           {running && runningTask && <span className="text-muted"> · {runningTask.title}</span>}
         </p>
         <p className="num mt-2 text-[64px] font-bold leading-none text-stage-text">{hms(study.elapsed)}</p>
@@ -114,7 +179,7 @@ export default function StudyTimer() {
           </button>
         ) : (
           <button
-            onClick={() => study.start(picked, taskId)}
+            onClick={() => study.start(picked, { taskId, detail: details.includes(pickedDetail ?? "") ? pickedDetail : null, lecture: pickedLecture && canLecture(picked) })}
             disabled={study.busy || !study.ready}
             aria-label="시작"
             className="grid size-24 place-items-center rounded-full bg-text text-bg shadow-[0_0_0_10px_color-mix(in_srgb,var(--text)_10%,transparent)] active:scale-95 disabled:opacity-50"
@@ -146,6 +211,12 @@ export default function StudyTimer() {
             <p className="num mt-0.5 text-[12px] text-muted">{shortHm(study.summary.todayBySubject[s])}</p>
           </li>
         ))}
+        <li className="rounded-xl bg-surface px-1 py-2.5" title="인강은 총 공부 시간에 들어가지 않아요">
+          <p className="flex items-center justify-center gap-0.5 text-[11px] font-semibold text-muted">
+            <MonitorPlay size={11} /> 인강
+          </p>
+          <p className="num mt-0.5 text-[12px] text-faint">{shortHm(study.summary.todayLectureSec)}</p>
+        </li>
       </ul>
     </section>
   );

@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Play, Repeat, Square, X } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Check, ChevronLeft, ChevronRight, MonitorPlay, Play, Repeat, Square, X } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import SubjectPicker, { type SubjectChoice } from "@/components/SubjectPicker";
 import { useStudy } from "@/components/StudyProvider";
 import { SubHeader } from "@/components/ui";
 import { daysUntil, ddayLabel, kstToday } from "@/lib/dday";
 import { WEEKDAYS, fromYmd, hm } from "@/lib/format";
-import { TIMETABLE_HOURS, addDays, secondsByTask, timetableCells, totalSeconds, type Task } from "@/lib/planner";
-import { SUBJECTS, SUBJECT_COLOR, type Subject } from "@/lib/subjects";
+import { TIMETABLE_HOURS, addDays, secondsByTask, timetableFills, totalSeconds, type CellFill, type Task } from "@/lib/planner";
+import { SUBJECTS, SUBJECT_COLOR, subjectLabel, type Track } from "@/lib/subjects";
 import { useDdays } from "@/lib/useDdays";
 import { usePlanner, type PlannerState } from "@/lib/usePlanner";
 
@@ -48,7 +50,7 @@ export default function PlannerPage() {
   }, [p.sessions, study.running]);
   const total = totalSeconds(sessions, p.dayStart, now);
   const byTask = secondsByTask(sessions, p.dayStart, now);
-  const cells = useMemo(() => timetableCells(sessions, p.dayStart, now), [sessions, p.dayStart, now]);
+  const cells = useMemo(() => timetableFills(sessions, p.dayStart, now), [sessions, p.dayStart, now]);
   const nextDday = ddays.items.find((i) => i.kind === "exam" || daysUntil(i.date, ddays.today) >= 0);
 
   if (!date || !today) return <SubHeader title="플래너" back="/" />;
@@ -177,16 +179,19 @@ function MemoInput({ value, disabled, onSave }: { value: string; disabled: boole
 
 function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string, number>; isToday: boolean }) {
   const study = useStudy();
+  const auth = useAuth();
+  const track = auth.status === "ready" ? auth.profile.track ?? null : null;
   const [draft, setDraft] = useState("");
-  const [subject, setSubject] = useState<Subject | null>(null); // 학생이 직접 고른다 (자동으로 정하지 않음)
+  // 과목·세부 항목·인강은 학생이 직접 고른다 (자동으로 정하지 않음)
+  const [choice, setChoice] = useState<SubjectChoice>({ subject: null, detail: null, lecture: false });
   const [editing, setEditing] = useState<Task | null>(null);
   const [needSubject, setNeedSubject] = useState(false);
 
   async function submit() {
     if (!draft.trim()) return;
-    if (await p.add(draft, subject)) {
+    if (await p.add(draft, choice.subject, { detail: choice.detail, lecture: choice.lecture })) {
       setDraft("");
-      setSubject(null);
+      setChoice({ subject: null, detail: null, lecture: false });
     }
   }
 
@@ -197,7 +202,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
       setEditing(t);
       return;
     }
-    study.start(t.subject, t.id);
+    study.start(t.subject, { taskId: t.id, detail: t.detail, lecture: t.lecture });
   }
 
   return (
@@ -219,9 +224,10 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
                 <p className={`line-clamp-2 text-[14px] leading-snug ${t.done ? "text-faint line-through" : ""}`}>{t.title}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
                   {t.subject ? (
-                    <span className="flex items-center gap-1">
-                      <span className="size-1.5 rounded-full" style={{ background: SUBJECT_COLOR[t.subject] }} />
-                      {t.subject}
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span className="size-1.5 shrink-0 rounded-full" style={{ background: SUBJECT_COLOR[t.subject] }} />
+                      <span className="truncate">{subjectLabel(t.subject, t.detail)}</span>
+                      {t.lecture && <MonitorPlay size={11} className="shrink-0 text-faint" aria-label="인강" />}
                     </span>
                   ) : (
                     <span className="text-faint">과목 없음</span>
@@ -262,9 +268,11 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
             className="w-full bg-transparent text-[14px] outline-none placeholder:text-faint"
           />
           {draft.trim() && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <SubjectChips value={subject} onChange={setSubject} />
-              <button className="ml-auto rounded-lg bg-accent px-3 py-1 text-[12px] font-bold text-bg">추가</button>
+            <div className="mt-2 space-y-2">
+              <SubjectPicker value={choice} onChange={setChoice} track={track} />
+              <div className="flex justify-end">
+                <button className="rounded-lg bg-accent px-3 py-1 text-[12px] font-bold text-bg">추가</button>
+              </div>
             </div>
           )}
         </form>
@@ -278,31 +286,13 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
           task={p.tasks.find((t) => t.id === editing.id) ?? editing}
           needSubject={needSubject}
           canStart={isToday}
+          track={track}
           onClose={() => setEditing(null)}
           onSave={(patch) => p.update(editing.id, patch)}
           onDelete={() => (p.remove(editing), setEditing(null))}
-          onStart={(t) => (t.subject && study.start(t.subject, t.id), setEditing(null))}
+          onStart={(t) => (t.subject && study.start(t.subject, { taskId: t.id, detail: t.detail, lecture: t.lecture }), setEditing(null))}
         />
       )}
-    </>
-  );
-}
-
-/** 과목 고르기 (다시 누르면 선택 해제) */
-function SubjectChips({ value, onChange }: { value: Subject | null; onChange: (s: Subject | null) => void }) {
-  return (
-    <>
-      {SUBJECTS.map((s) => (
-        <button
-          type="button"
-          key={s}
-          onClick={() => onChange(value === s ? null : s)}
-          className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold ${value === s ? "border-transparent text-on-subject" : "border-line text-muted"}`}
-          style={value === s ? { background: SUBJECT_COLOR[s] } : undefined}
-        >
-          {s}
-        </button>
-      ))}
     </>
   );
 }
@@ -311,6 +301,7 @@ function TaskSheet({
   task,
   needSubject,
   canStart,
+  track,
   onClose,
   onSave,
   onDelete,
@@ -319,18 +310,22 @@ function TaskSheet({
   task: Task;
   needSubject: boolean;
   canStart: boolean;
+  track: Track | null;
   onClose: () => void;
-  onSave: (patch: Partial<Pick<Task, "title" | "subject">>) => void;
+  onSave: (patch: Partial<Pick<Task, "title" | "subject" | "detail" | "lecture">>) => void;
   onDelete: () => void;
   onStart: (t: Task) => void;
 }) {
   const [title, setTitle] = useState(task.title);
-  const [subject, setSubject] = useState<Subject | null>(task.subject);
+  const [choice, setChoice] = useState<SubjectChoice>({ subject: task.subject, detail: task.detail, lecture: task.lecture });
+  const subject = choice.subject;
 
   function close() {
-    const patch: Partial<Pick<Task, "title" | "subject">> = {};
+    const patch: Partial<Pick<Task, "title" | "subject" | "detail" | "lecture">> = {};
     if (title.trim() && title.trim() !== task.title) patch.title = title.trim();
-    if (subject !== task.subject) patch.subject = subject;
+    if (choice.subject !== task.subject) patch.subject = choice.subject;
+    if (choice.detail !== task.detail) patch.detail = choice.detail;
+    if (choice.lecture !== task.lecture) patch.lecture = choice.lecture;
     if (Object.keys(patch).length) onSave(patch);
     onClose();
   }
@@ -356,11 +351,9 @@ function TaskSheet({
           className="h-12 w-full rounded-xl border border-line bg-bg px-4 text-[15px] outline-none focus:border-accent"
         />
         <p className={`mb-2 mt-4 text-[13px] font-medium ${needSubject && !subject ? "text-warn" : "text-muted"}`}>
-          {needSubject && !subject ? "타이머를 켜려면 과목을 먼저 골라 주세요" : "과목 — 이 과제로 잰 시간이 이 과목 공부 시간이 돼요"}
+          {needSubject && !subject ? "타이머를 켜려면 과목을 먼저 골라 주세요" : "과목 — 이 과제로 잰 시간이 이 과목 공부 시간이 돼요 (인강은 합계 제외)"}
         </p>
-        <div className="flex flex-wrap gap-1.5">
-          <SubjectChips value={subject} onChange={setSubject} />
-        </div>
+        <SubjectPicker value={choice} onChange={setChoice} track={track} />
         <div className="mt-6 grid grid-cols-2 gap-2.5">
           <button onClick={onDelete} className="h-12 rounded-xl border border-line text-[14px] font-semibold text-danger">
             {task.routine_id ? "오늘만 지우기" : "지우기"}
@@ -370,7 +363,7 @@ function TaskSheet({
               disabled={!subject}
               onClick={() => {
                 close();
-                onStart({ ...task, subject });
+                onStart({ ...task, subject: choice.subject, detail: choice.detail, lecture: choice.lecture });
               }}
               className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-accent text-[14px] font-bold text-bg disabled:opacity-40"
             >
@@ -389,18 +382,29 @@ function TaskSheet({
 
 // ───────────────────────── TIMETABLE ─────────────────────────
 
-function Timetable({ cells }: { cells: (Subject | null)[][] }) {
+function Timetable({ cells }: { cells: CellFill[][][] }) {
   return (
     <div className="border-l border-line">
       {TIMETABLE_HOURS.map((h, row) => (
         <div key={h} className="flex h-[22px] border-b border-line">
           <span className="num w-5 shrink-0 pr-0.5 text-right text-[10px] leading-[22px] text-faint">{h % 12 === 0 ? 12 : h % 12}</span>
-          {cells[row].map((s, c) => (
-            <span
-              key={c}
-              className="flex-1 border-l border-dashed border-line"
-              style={s ? { background: SUBJECT_COLOR[s], opacity: 0.85 } : undefined}
-            />
+          {cells[row].map((fills, c) => (
+            <span key={c} className="relative flex-1 overflow-hidden border-l border-dashed border-line">
+              {fills.map((f) => (
+                <span
+                  key={f.key}
+                  className={`tt-fill ${f.lecture ? "hatch" : ""} ${f.live ? "tt-live" : ""}`}
+                  style={
+                    {
+                      left: `${f.left * 100}%`,
+                      width: `${f.width * 100}%`,
+                      "--c": SUBJECT_COLOR[f.subject],
+                      background: f.lecture ? undefined : SUBJECT_COLOR[f.subject],
+                    } as CSSProperties
+                  }
+                />
+              ))}
+            </span>
           ))}
         </div>
       ))}
@@ -411,6 +415,10 @@ function Timetable({ cells }: { cells: (Subject | null)[][] }) {
             {s}
           </span>
         ))}
+        <span className="flex items-center gap-1 text-[10px] text-faint">
+          <span className="hatch inline-block h-1.5 w-3 rounded-sm" style={{ "--c": "var(--muted)" } as CSSProperties} />
+          인강(합계 제외)
+        </span>
       </div>
     </div>
   );

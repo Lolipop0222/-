@@ -12,7 +12,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 구분 | 내용 |
 |---|---|
 | 프론트·서버 | Next.js 16.4 App Router, React 19, TypeScript, Tailwind CSS v4, lucide-react 아이콘. `next.config.ts`에 `cacheComponents: true` |
-| DB·로그인 | Supabase (Postgres + RLS, 이메일·비밀번호 로그인). 정의는 **`supabase/parts/01~05-*.sql` 조각**이 원본, `supabase/schema.sql`은 이어 붙인 전체본(`npm run schema`로 자동 생성) |
+| DB·로그인 | Supabase (Postgres + RLS, 이메일·비밀번호 로그인). 정의는 **`supabase/parts/01~06-*.sql` 조각**이 원본, `supabase/schema.sql`은 이어 붙인 전체본(`npm run schema`로 자동 생성) |
 | 배포 | Vercel. **`main`에 push하면 자동 배포** → https://daego-ilpumta.vercel.app (고정 주소. `…-xxxx-liyu11.vercel.app` 같은 배포별 주소는 로그인 보호가 걸려 친구들이 못 연다) |
 | 안드로이드 | Capacitor 8 (`android/`). APK는 배포 주소를 여는 껍데기라 웹을 다시 배포하면 앱도 바뀐다 |
 | 학교 데이터 | NEIS 오픈 API (급식·학사일정) — 서버에서만 호출 |
@@ -44,7 +44,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 ## 3. DB 구조 (`supabase/parts/` → `supabase/schema.sql`)
 
-**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
+**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제), `06-subjects`(계열·과목 목록 제약·세부 항목·인강 열과 이를 쓰는 함수 `start_session`·`title_stats`·`get_ranking`·`get_group_ranking`, 프로필 열 권한). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
 - 스키마를 고칠 때: **해당 조각 파일을 고치고** `npm run schema`(전체본 재생성, `npm run lint`가 어긋나면 실패). 사용자에게는 **"바뀐 조각 이름"만** 실행하라고 안내하고 `supabase/README.md`의 변경 기록 표에 한 줄 추가한다. 새 기능이 크면 `06-…sql`처럼 새 조각을 만든다.
 - **같은 제약·함수를 두 조각에서 만들지 않는다.** (예전에 사진 제약을 칭호 부분과 사진 부분에서 따로 만들어서, 사진을 올린 학생이 있으면 전체본 재실행이 `profiles_avatar_check … violated by some row`로 실패하는 버그가 있었다 → 04 한 곳으로 모음)
 - **실제 DB에 무엇이 적용됐는지 확인하는 법**: 배포된 사이트 JS 묶음에 공개 URL·publishable 키가 들어 있다(`curl` 로 `/login` HTML의 `/_next/static/…js`를 받아 `supabase.co`, `sb_publishable_` 검색). 그 키로 읽기만 하는 요청: 함수 `POST /rest/v1/rpc/<함수>` → 있으면 `42501 permission denied`(로그인 필요), 없으면 `PGRST202`. 테이블 `GET /rest/v1/<테이블>?select=id&limit=1` → 있으면 `42501`, 없으면 `PGRST205`. 쓰기 요청이나 계정 만들기는 하지 않는다.
@@ -53,10 +53,10 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 테이블 | 내용 | 접근 |
 |---|---|---|
 | `app_settings` | `invite_code` 가입 초대코드 | 클라이언트 못 읽음 |
-| `profiles` | 닉네임(2~12자, 고유)·학년(1~3)·반·avatar(프로필 그림 `그림:색`)·title_code(대표 칭호). **실명·학번 안 받음** | 본인만 조회. 직접 수정은 **열 권한으로** nickname·grade·class_no·avatar만 (title_code는 `set_title()`로만) |
-| `sessions` | 공부 기록: subject, started_at, ended_at, away_count, duration(계산 열), task_id(플래너 과제), label(기타 이름) | 본인만 조회. 쓰기는 함수로만 (기타만 직접 쓰기) |
+| `profiles` | 닉네임(2~12자, 고유)·학년(1~3)·반·avatar(프로필 그림 `그림:색`/사진)·title_code(대표 칭호)·track(문과/이과). **실명·학번 안 받음** | 본인만 조회. 직접 수정은 **열 권한으로** nickname·grade·class_no·avatar·track만 (title_code는 `set_title()`로만, 열 권한은 06에서) |
+| `sessions` | 공부 기록: subject, started_at, ended_at, away_count, duration(계산 열), task_id(플래너 과제), label(기타 이름), detail(세부 항목), lecture(인강) | 본인만 조회. 쓰기는 함수로만 (기타만 직접 쓰기) |
 | `ddays` | 직접 만든 디데이 (1인 30개) | 본인만 |
-| `tasks` | 플래너 과제 (날짜·제목·과목·완료·skipped·routine_id, 하루 30개) | 본인만 |
+| `tasks` | 플래너 과제 (날짜·제목·과목·detail·lecture·완료·skipped·routine_id, 하루 30개) | 본인만 |
 | `routines` | 데일리 루틴 (요일 배열 0=일…6=토, active, 20개) | 본인만 |
 | `planner_days` | 날짜별 COMMENT·MEMO | 본인만 |
 | `inquiries` | 문의함 (분류·내용 5~1000자·답변, 하루 5개) | 본인 조회·작성·삭제, 수정 불가. 답변은 관리자 함수로만 |
@@ -71,7 +71,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | Storage `prints` (비공개) | 프린트 파일 `<uuid>.<확장자>`, 50MB | 프로필 있는 학생 읽기(서명 주소), 관리자만 올리기·지우기 |
 | `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)` / `start_session(과목, 과제id?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, 칭호 테이블 뒤에 있어야 해서 **`04-titles.sql`** 끝에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)`(계열은 가입 직후 앱이 profiles.track을 따로 저장) / `start_session(과목, 과제id?, 세부 항목?, 인강?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, **`06-subjects.sql`**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
 
 **스터디그룹 규칙**: 한 사람이 들어가는 그룹 5개, 만든 그룹 3개, 그룹 30명, 코드 15분에 10번 틀리면 잠김. 방장이 나가거나 계정을 지우면 `group_member_left` 트리거가 가장 먼저 들어온 사람에게 방장을 넘기고, 아무도 없으면 그룹을 지운다. 그룹 순위 규칙은 `get_ranking`과 같다(4시간 넘는 세션·기타 제외).
 
@@ -137,7 +137,10 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 ## 5. 사용자가 정한 규칙
 
-- **과목**: 순위에 들어가는 7과목 **국어·영어·수학·과학·사회·한국사·인강** + **기타**(순위·합계 제외, 나만 보고 직접 편집). 처음엔 국어·영어·수학·과학·사회 5개였고 나중에 한국사·인강·기타를 추가했다. 목록은 `lib/subjects.ts`와 `01-core.sql`의 subject check 3곳(sessions·tasks·routines)을 같이 고친다.
+- **과목 (2026-11-06 개편)**: 순위에 들어가는 6과목 **국어·영어·수학·사회·과학·역사**(순서도 이대로) + **기타**(순위·합계 제외, 나만 보고 직접 편집). 예전 '한국사'는 '역사'로 바꿨고(06이 기존 기록도 옮김), 예전 '인강' 과목은 없앴다(예전 인강 기록 → 기타 이름 '인강', 과제·루틴 → 과목 없음). 목록은 `lib/subjects.ts`와 `06-subjects.sql`의 subject 제약 4곳(sessions·tasks·routines·prints)을 같이 고친다. 예전 DB 값은 `normalizeSubject()`가 읽을 때 바꿔 준다.
+- **세부 항목·계열**: 가입할 때와 내정보 → 계열(`/me/track`)에서 문과/이과를 고른다. 타이머·플래너 과제에서 과목을 고르면 계열별 세부 항목이 나온다(`lib/subjects.ts`의 `SUBJECT_DETAILS`): 이과 — 과학 물질과 에너지·세포와 물질대사·지구시스템 과학·역학과 에너지·통합과학1·2, 수학 미적분Ⅱ·확률과 통계·대수·미적분Ⅰ, 사회 통합사회1·2 / 문과 — 사회 윤리와 사상·세계사·법과 사회·정치와 법·한국지리·통합사회1·2, 수학 확률과 통계·경제수학·미적분Ⅰ·대수, 과학 통합과학1·2. 국어·영어·역사는 세부 항목 없음. **순위는 과목까지만**. DB는 세부 항목 길이만 검사(목록은 앱). 계열이 없으면 "계열을 고르면 세부 과목이 나와요" 안내. 데일리 루틴은 아직 과목만(세부 항목은 그날 과제에서 고침).
+- **인강**: 과목이 아니라 국영수사과역 각 과목에 붙는 표시(`lecture`). **TIMETABLE에는 빗금으로 보이지만 총 공부 시간·순위·칭호·16시간 상한·"공부 중" 표시에서는 빠진다**(기타와 같은 취급, `isCounted()`/SQL `subject <> '기타' and not lecture`). 홈·타이머에 인강 시간은 따로 보여 준다.
+- **TIMETABLE**: 10분 칸을 통째로 칠하지 않고 실제로 공부한 구간만큼 왼쪽부터 칠한다(`timetableFills`, 칸 안 left·width). 진행 중 기록은 1초마다 너비가 늘고 CSS `transition: width 1s linear`로 이어져 **서서히 차오른다**(`.tt-fill`, 사용자 요청).
 - **과목 자동 짐작 금지**: 과제 이름으로 과목을 자동으로 고르던 기능은 "오류 가능성" 때문에 사용자가 빼라고 했다. 과목은 학생이 직접 고른다. 플래너 과제 ▶ / 타이머 화면 과제 선택은 학생이 고른 과목으로만 시작한다.
 - **다크 모드 기본 + 테마 8개**(기본 다크·라이트·종이·노드·모카·그루브박스·솔라라이즈드·고대비 + 시스템 설정 따라가기). 색은 `app/globals.css` 토큰, 공통 부품은 `components/ui.tsx`. **색을 코드에 직접 쓰지 않는다**(`text-black`, `bg-white`, `#hex` 금지) — 토큰(`bg-surface`, `text-muted`, `bg-stage`, `text-on-subject` 등)과 과목 색 `SUBJECT_COLOR`(=`var(--s-*)`)를 쓴다. 강조색 버튼 글자는 `text-bg`. 새 화면을 만들면 라이트·종이 테마에서도 스크린샷으로 확인한다. 테마를 추가하려면 `globals.css`의 `[data-theme="…"]`(토큰 전부)와 `lib/themes.ts` 목록을 같이 고친다. 테마는 기기 localStorage(`daego-theme`)에 저장, `<head>` 부팅 스크립트가 깜빡임을 막는다. 팔레트 출처: Nord·Catppuccin·Gruvbox·Solarized 공개 팔레트. 휴대폰 화면 기준(`max-w-md`), 한국어 존댓말(해요체) 문구.
 - **가짜 데이터를 실제 데이터와 섞지 않는다**: 실데이터가 들어온 화면의 가짜(학사일정·수행평가·순위·스터디그룹 멤버)는 지웠다. 아직 기능이 없으면 "준비 중"으로 표시.
@@ -153,7 +156,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 **완료 (실데이터)**
 - 로그인·가입(초대코드), 로그인 안 하면 `/login`으로 (개인정보 처리방침만 예외)
-- 공부 타이머(`/timer`): 8과목, 서버 시각 기록, 새로고침·탭 이동에도 이어짐, 30초 이탈 자동 정지, 플래너 과제 연결
+- 공부 타이머(`/timer`): 6과목+기타, 계열별 세부 항목·인강, 서버 시각 기록, 새로고침·탭 이동에도 이어짐, 30초 이탈 자동 정지, 플래너 과제 연결
 - 오늘·이번 주 과목별 공부 시간(홈·타이머·내정보), 기타 시간은 따로 표시
 - 순위: 전교/학년/반 × 전체/과목별, 내 순위 ±3명, 공부 중 초록 점
 - 기타 기록(`/timer/etc`): 최근 30일, 직접 추가·수정·삭제
@@ -177,8 +180,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
 - 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
-**확인된 상태 (2026-11-05, 공개 키로 실제 DB 확인)**
-- 적용됨: 01·02(문의함 `reset_password_with_code`가 `"weak"`)·03(`my_groups` 있음). **아직 안 됨: 04(`my_titles` PGRST202), 05(`prints` PGRST205)** → 사용자에게 `04-titles.sql` → `05-storage.sql` 순서로 실행하라고 안내함. 다음 세션에서 위 방법으로 다시 확인.
+**확인된 상태 (2026-11-06, 공개 키로 실제 DB 확인)**
+- 적용됨: 01~05 전부(`my_titles`·`prints`·`admin_list_photos`가 42501). **06-subjects는 커밋 "세부 항목·계열·인강" 이후 실행 필요** → 확인: `GET /rest/v1/sessions?select=detail&limit=1`이 `42703`(열 없음)이면 아직, `42501`이면 됨. 실행 전에도 앱은 돌아간다(예전 start_session·과목 이름으로 대체, 세부 항목·인강·계열 저장만 안 됨).
 - 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. (아래 줄로 대체: 조각별 확인)
 - **커밋 "사진 프로필·프린트 아카이브" 이후 `schema.sql` 다시 실행 필요** (Storage 버킷 avatars·prints와 정책, prints 테이블, 관리자 함수). 확인: `GET /rest/v1/prints?select=id&limit=1` → `PGRST205`면 아직.
 - **커밋 "칭호·프로필 그림" 이후 `schema.sql` 다시 실행 필요**. 확인: `POST /rest/v1/rpc/my_titles` → `PGRST202`면 아직. 실행 전에는 칭호 "준비 중", 그림 저장 시 "데이터베이스 업데이트가 필요해요".

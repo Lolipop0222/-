@@ -64,8 +64,16 @@ export default function HomeStudy() {
         ) : (
           <p className="mt-3 text-[12px] text-faint">오늘은 아직 기록이 없어요</p>
         )}
-        {study.summary.todayEtcSec >= 60 && (
-          <p className="mt-2 text-[12px] text-faint">+ 기타 {hm(study.summary.todayEtcSec)} (순위 제외)</p>
+        {(study.summary.todayLectureSec >= 60 || study.summary.todayEtcSec >= 60) && (
+          <p className="mt-2 text-[12px] text-faint">
+            {[
+              study.summary.todayLectureSec >= 60 ? `+ 인강 ${hm(study.summary.todayLectureSec)}` : null,
+              study.summary.todayEtcSec >= 60 ? `+ 기타 ${hm(study.summary.todayEtcSec)}` : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}{" "}
+            (총 공부 시간·순위 제외)
+          </p>
         )}
 
         <Link

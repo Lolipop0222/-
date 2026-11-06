@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { ETC, SUBJECTS, type RankedSubject, type Subject } from "@/lib/subjects";
+import { ETC, SUBJECTS, normalizeSubject, type RankedSubject, type Subject } from "@/lib/subjects";
 
 /** sessions 테이블 한 행 (supabase/schema.sql) */
 export type StudySession = {
@@ -15,10 +15,18 @@ export type StudySession = {
   task_id: string | null;
   /** 기타 기록 이름 (예: 독서) */
   label: string | null;
+  /** 세부 항목 (예: 미적분Ⅰ) */
+  detail: string | null;
+  /** 인강 — TIMETABLE에는 보이지만 공부 합계·순위에서 빠진다 */
+  lecture: boolean;
 };
+
+/** 공부 합계·순위에 들어가는 기록인지 (기타·인강 제외 — 서버 규칙과 같게) */
+export const isCounted = (s: Pick<StudySession, "subject" | "lecture">) => s.subject !== ETC && !s.lecture;
 
 // supabase/schema.sql을 다시 실행하기 전 DB에는 뒤쪽 열이 없을 수 있다 → 앞에서부터 차례로 시도한다
 const COLUMN_SETS = [
+  "id, subject, started_at, ended_at, away_count, duration, task_id, label, detail, lecture",
   "id, subject, started_at, ended_at, away_count, duration, task_id, label",
   "id, subject, started_at, ended_at, away_count, duration, task_id",
   "id, subject, started_at, ended_at, away_count, duration",
@@ -33,7 +41,20 @@ async function selectSessions(build: (cols: string) => PromiseLike<{ data: unkno
   let res = await build(COLUMN_SETS[0]);
   for (const cols of COLUMN_SETS.slice(1)) if (isMissingColumn(res.error)) res = await build(cols);
   if (res.error) throw res.error;
-  return (res.data as StudySession[]).map((s) => ({ ...s, task_id: s.task_id ?? null, label: s.label ?? null }));
+  return (res.data as StudySession[]).map(normalizeSession);
+}
+
+/** 예전 DB 값 정리: 열이 없으면 기본값, '한국사'→'역사', 옛 '인강' 과목→기타(이름 '인강') */
+function normalizeSession(s: StudySession): StudySession {
+  const raw = s.subject as string;
+  return {
+    ...s,
+    subject: normalizeSubject(raw) ?? ETC,
+    task_id: s.task_id ?? null,
+    label: s.label ?? (raw === "인강" ? "인강" : null),
+    detail: s.detail ?? null,
+    lecture: !!s.lecture,
+  };
 }
 
 export type RankScope = "school" | "grade" | "class";
@@ -71,13 +92,26 @@ export function kstWeekStart(t: number): number {
 
 // ── 서버 호출 ──
 
-export async function startSession(subject: Subject, taskId?: string | null): Promise<StudySession> {
-  let { data, error } = await supabase().rpc("start_session", { p_subject: subject, p_task_id: taskId ?? null });
-  // 예전 DB(과목만 받는 start_session)면 과제 없이 다시 — 과제 연결은 SQL을 다시 실행한 뒤부터
-  if (isMissingFunction(error) && !taskId) ({ data, error } = await supabase().rpc("start_session", { p_subject: subject }));
+export type StartOptions = { taskId?: string | null; detail?: string | null; lecture?: boolean };
+
+export async function startSession(subject: Subject, opts: StartOptions = {}): Promise<StudySession> {
+  const sb = supabase();
+  const taskId = opts.taskId ?? null;
+  let { data, error } = await sb.rpc("start_session", {
+    p_subject: subject,
+    p_task_id: taskId,
+    p_detail: opts.detail ?? null,
+    p_lecture: !!opts.lecture,
+  });
+  // 06-subjects.sql을 실행하기 전 DB: 세부 항목·인강 없이 예전 방식으로 (과목 이름도 예전 것으로)
+  if (isMissingFunction(error)) {
+    const legacy = subject === "역사" ? "한국사" : subject;
+    ({ data, error } = await sb.rpc("start_session", { p_subject: legacy, p_task_id: taskId }));
+    // 그보다 더 예전 DB(과목만 받는 start_session)면 과제 없이
+    if (isMissingFunction(error) && !taskId) ({ data, error } = await sb.rpc("start_session", { p_subject: legacy }));
+  }
   if (error) throw error;
-  const row = data as StudySession;
-  return { ...row, task_id: row.task_id ?? null, label: row.label ?? null };
+  return normalizeSession(data as StudySession);
 }
 
 /** endAt: 앱을 벗어난 순간처럼 지금보다 이른 종료 시각 (서버는 줄이는 쪽으로만 반영) */
@@ -88,7 +122,7 @@ export async function endSession(id: string, awayCount: number, endAt?: number):
     p_end_at: endAt ? new Date(endAt).toISOString() : null,
   });
   if (error) throw error;
-  return data as StudySession;
+  return normalizeSession(data as StudySession);
 }
 
 /** 이번 주 내 기록 (RLS로 내 것만 온다) */
@@ -158,12 +192,16 @@ export async function getRanking(scope: RankScope, subject: RankedSubject | null
 // ── 합계 ──
 
 export type StudySummary = {
-  /** 공부 과목 합계 (기타 제외) */
+  /** 공부 과목 합계 (기타·인강 제외) */
   todaySec: number;
   weekSec: number;
   /** 기타 타이머 합계 (순위·공부 합계와 따로) */
   todayEtcSec: number;
   weekEtcSec: number;
+  /** 인강 합계 (공부 합계와 따로) */
+  todayLectureSec: number;
+  weekLectureSec: number;
+  /** 과목별 공부 시간 (인강 제외). 기타 칸은 기타 합계 */
   todayBySubject: Record<Subject, number>;
   weekBySubject: Record<Subject, number>;
   /** 월~일 하루별 초 (기타 제외) */
@@ -184,6 +222,8 @@ export function summarize(sessions: StudySession[], now: number): StudySummary {
     weekSec: 0,
     todayEtcSec: 0,
     weekEtcSec: 0,
+    todayLectureSec: 0,
+    weekLectureSec: 0,
     todayBySubject: emptyBySubject(),
     weekBySubject: emptyBySubject(),
     weekDays: [0, 0, 0, 0, 0, 0, 0],
@@ -193,6 +233,12 @@ export function summarize(sessions: StudySession[], now: number): StudySummary {
     const sec = sessionSeconds(s, now);
     if (start < weekStart || sec === 0) continue;
     const today = start >= dayStart;
+    if (s.lecture) {
+      // 인강은 TIMETABLE에만 보이고 공부 합계·과목별 시간에는 넣지 않는다
+      out.weekLectureSec += sec;
+      if (today) out.todayLectureSec += sec;
+      continue;
+    }
     out.weekBySubject[s.subject] += sec;
     if (today) out.todayBySubject[s.subject] += sec;
     if (s.subject === ETC) {

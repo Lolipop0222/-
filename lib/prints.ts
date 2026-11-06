@@ -12,7 +12,7 @@ const BUCKET = "prints";
 
 export const PRINT_CATEGORIES = ["수행평가", "학습지", "시험 대비", "기타"] as const;
 export type PrintCategory = (typeof PRINT_CATEGORIES)[number];
-export const PRINT_SUBJECTS = ["국어", "영어", "수학", "과학", "사회", "한국사", "기타"] as const;
+export const PRINT_SUBJECTS = ["국어", "영어", "수학", "사회", "과학", "역사", "기타"] as const;
 export type PrintSubject = (typeof PRINT_SUBJECTS)[number];
 
 export type Print = {

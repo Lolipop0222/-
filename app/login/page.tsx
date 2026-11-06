@@ -6,7 +6,8 @@ import { Hash, KeyRound, Lock, Mail, Timer, UserRound } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { ErrorText, InputRow, PrimaryButton, Segmented, inputCls } from "@/components/ui";
 import { MIN_PASSWORD } from "@/lib/account";
-import { koreanError, supabase } from "@/lib/supabase";
+import { TRACKS, type Track } from "@/lib/subjects";
+import { koreanError, saveTrack, supabase } from "@/lib/supabase";
 
 const MODES = ["로그인", "가입"] as const;
 const GRADES = ["1학년", "2학년", "3학년"] as const;
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
   const [grade, setGrade] = useState<(typeof GRADES)[number]>("1학년");
+  const [track, setTrack] = useState<Track | null>(null); // 문과·이과 — 타이머 세부 항목 목록이 달라진다
   const [classNo, setClassNo] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,7 @@ export default function LoginPage() {
   const profileOnly = auth.status === "needsProfile";
   const signingUp = mode === "가입" || profileOnly;
 
-  const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && code.trim().length > 0;
+  const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && code.trim().length > 0 && track !== null;
   const canSubmit = profileOnly
     ? profileValid
     : email.includes("@") && password.length >= (mode === "가입" ? MIN_PASSWORD : 6) && (mode === "로그인" || profileValid);
@@ -45,7 +47,9 @@ export default function LoginPage() {
     });
     if (error) throw error;
     // 초대코드가 틀리면 DB가 오류 대신 빈 값을 준다 (틀린 횟수를 기록해 마구 넣어 보기를 막으려고)
-    if (!(data as { id?: string } | null)?.id) throw new Error("초대코드가 맞지 않습니다");
+    const id = (data as { id?: string } | null)?.id;
+    if (!id) throw new Error("초대코드가 맞지 않습니다");
+    if (track) await saveTrack(id, track).catch(() => false); // 계열은 나중에 내정보에서도 바꿀 수 있어서 실패해도 가입은 진행
     await auth.refreshProfile();
   }
 
@@ -119,6 +123,23 @@ export default function LoginPage() {
               <input value={nickname} onChange={(e) => setNickname(e.target.value)} maxLength={12} placeholder="닉네임 (2~12자, 순위에 보여요)" className={inputCls} />
             </InputRow>
             <Segmented items={GRADES} value={grade} onChange={setGrade} />
+            <div>
+              <p className="mb-1.5 px-1 text-[12px] text-muted">계열 — 타이머에서 고를 수 있는 세부 과목이 달라져요</p>
+              <div className="flex rounded-xl bg-surface-2 p-1" role="radiogroup" aria-label="계열">
+                {TRACKS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={track === t}
+                    onClick={() => setTrack(t)}
+                    className={`flex-1 rounded-lg py-2 text-[13px] font-semibold transition-colors ${track === t ? "bg-bg text-text shadow" : "text-muted"}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
             <InputRow icon={<Hash size={18} />}>
               <input
                 inputMode="numeric"

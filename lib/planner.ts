@@ -3,22 +3,36 @@
  * 테이블은 supabase/schema.sql의 tasks · routines · planner_days. 모두 RLS로 내 것만 읽고 쓴다.
  */
 import { supabase } from "@/lib/supabase";
-import { sessionSeconds, type StudySession } from "@/lib/study";
-import { ETC, type Subject } from "@/lib/subjects";
+import { isCounted, sessionSeconds, type StudySession } from "@/lib/study";
+import { normalizeSubject, type Subject } from "@/lib/subjects";
 
 export type Task = {
   id: string;
   task_date: string; // "2026-11-05"
   title: string;
   subject: Subject | null;
+  /** 세부 항목 (예: 미적분Ⅰ) */
+  detail: string | null;
+  /** 인강 — 이 과제로 잰 시간은 TIMETABLE에만 보이고 공부 합계에서 빠진다 */
+  lecture: boolean;
   done: boolean;
   routine_id: string | null;
 };
 
+export type TaskExtra = { detail?: string | null; lecture?: boolean };
+export type TaskPatch = Partial<Pick<Task, "title" | "subject" | "done" | "detail" | "lecture">>;
+
 export type Routine = { id: string; title: string; subject: Subject | null; weekdays: number[]; active: boolean };
 export type PlannerDay = { comment: string; memo: string };
 
-const TASK_COLS = "id, task_date, title, subject, done, routine_id";
+// 06-subjects 조각 전 DB에는 detail·lecture 열이 없다 → 없으면 예전 열로 다시
+const TASK_COLS: string = "id, task_date, title, subject, detail, lecture, done, routine_id";
+const TASK_COLS_OLD: string = "id, task_date, title, subject, done, routine_id";
+const isMissingColumn = (e: unknown) => ["42703", "PGRST204"].includes((e as { code?: string } | null)?.code ?? "");
+
+function normalizeTask(t: Task): Task {
+  return { ...t, subject: normalizeSubject(t.subject), detail: t.detail ?? null, lecture: !!t.lecture };
+}
 const DAY_MS = 86_400_000;
 
 /** "2026-11-05" → 그날 0시(한국 시간)의 ms */
@@ -43,19 +57,34 @@ export async function loadTasks(date: string): Promise<Task[]> {
   const sb = supabase();
   const m = await sb.rpc("materialize_routines", { p_date: date });
   if (m.error) throw m.error;
-  const { data, error } = await sb.from("tasks").select(TASK_COLS).eq("task_date", date).eq("skipped", false).order("created_at");
-  if (error) throw error;
-  return data as Task[];
+  let res = await sb.from("tasks").select(TASK_COLS).eq("task_date", date).eq("skipped", false).order("created_at");
+  if (isMissingColumn(res.error)) res = await sb.from("tasks").select(TASK_COLS_OLD).eq("task_date", date).eq("skipped", false).order("created_at");
+  if (res.error) throw res.error;
+  return (res.data as unknown as Task[]).map(normalizeTask);
 }
 
-export async function addTask(date: string, title: string, subject: Subject | null): Promise<Task> {
-  const { data, error } = await supabase().from("tasks").insert({ task_date: date, title: title.trim(), subject }).select(TASK_COLS).single();
-  if (error) throw error;
-  return data as Task;
+export async function addTask(date: string, title: string, subject: Subject | null, extra: TaskExtra = {}): Promise<Task> {
+  const sb = supabase();
+  const row = { task_date: date, title: title.trim(), subject, detail: extra.detail ?? null, lecture: !!extra.lecture && !!subject && subject !== "기타" };
+  let res = await sb.from("tasks").insert(row).select(TASK_COLS).single();
+  if (isMissingColumn(res.error)) {
+    // 예전 DB: 세부 항목·인강 없이 저장 (과목 이름도 예전 것으로)
+    res = await sb.from("tasks").insert({ task_date: date, title: row.title, subject: subject === "역사" ? "한국사" : subject }).select(TASK_COLS_OLD).single();
+  }
+  if (res.error) throw res.error;
+  return normalizeTask(res.data as unknown as Task);
 }
 
-export async function updateTask(id: string, patch: Partial<Pick<Task, "title" | "subject" | "done">>): Promise<void> {
-  const { error } = await supabase().from("tasks").update(patch).eq("id", id);
+export async function updateTask(id: string, patch: TaskPatch): Promise<void> {
+  const sb = supabase();
+  let { error } = await sb.from("tasks").update(patch).eq("id", id);
+  if (isMissingColumn(error)) {
+    const { detail: _d, lecture: _l, ...old } = patch;
+    void _d;
+    void _l;
+    if (Object.keys(old).length === 0) return;
+    ({ error } = await sb.from("tasks").update(old).eq("id", id));
+  }
   if (error) throw error;
 }
 
@@ -115,8 +144,9 @@ function startedOn(s: StudySession, dayStart: number) {
   return t >= dayStart && t < dayStart + DAY_MS;
 }
 
+/** TOTAL TIME: 공부 합계 (기타·인강 제외) */
 export function totalSeconds(sessions: StudySession[], dayStart: number, now: number): number {
-  return sessions.filter((s) => s.subject !== ETC && startedOn(s, dayStart)).reduce((sum, s) => sum + sessionSeconds(s, now), 0);
+  return sessions.filter((s) => isCounted(s) && startedOn(s, dayStart)).reduce((sum, s) => sum + sessionSeconds(s, now), 0);
 }
 
 /** 과제별 공부 시간 (taskId → 초) */
@@ -132,28 +162,46 @@ export function secondsByTask(sessions: StudySession[], dayStart: number, now: n
 export const TIMETABLE_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5];
 const CELL_MS = 10 * 60_000;
 
+/** TIMETABLE 칸 하나에 채워지는 조각 — 10분 칸 안에서 공부한 구간만큼 (왼쪽 = 칸 시작 시각 기준) */
+export type CellFill = { subject: Subject; lecture: boolean; left: number; width: number; live: boolean; key: string };
+
 /**
- * 10분 칸마다 어느 과목으로 칠할지. [줄][칸 0~5] → 과목 또는 null.
- * 한 칸에서 5분 넘게 공부한 과목으로 칠한다 (여러 과목이면 가장 오래 한 것).
+ * 10분 칸마다 공부한 구간을 그대로 칠한다. [줄][칸 0~5] → 조각들 (left·width는 0~1).
+ * 진행 중인 기록은 지금까지만 칠해져서, 시간이 흐르면 칸이 왼쪽부터 서서히 차오른다.
+ * 인강은 빗금으로 (공부 합계에는 안 들어가지만 TIMETABLE에는 보인다). 기타도 보인다.
  */
-export function timetableCells(sessions: StudySession[], dayStart: number, now: number): (Subject | null)[][] {
+export function timetableFills(sessions: StudySession[], dayStart: number, now: number): CellFill[][][] {
   const spans = sessions
-    .filter((s) => sessionSeconds(s, now) > 0)
-    .map((s) => ({ subject: s.subject, from: Date.parse(s.started_at), to: s.ended_at ? Date.parse(s.ended_at) : now }));
+    .filter((s) => sessionSeconds(s, now) > 0 || !s.ended_at)
+    .map((s) => ({
+      id: s.id,
+      subject: s.subject,
+      lecture: s.lecture,
+      from: Date.parse(s.started_at),
+      to: s.ended_at ? Date.parse(s.ended_at) : now,
+      live: !s.ended_at,
+    }))
+    .filter((sp) => sp.to > sp.from);
 
   return TIMETABLE_HOURS.map((h) =>
     Array.from({ length: 6 }, (_, c) => {
       const cellFrom = dayStart + h * 3600_000 + c * CELL_MS;
       const cellTo = cellFrom + CELL_MS;
-      const bySubject = new Map<Subject, number>();
+      const out: CellFill[] = [];
       for (const sp of spans) {
-        const overlap = Math.min(cellTo, sp.to) - Math.max(cellFrom, sp.from);
-        if (overlap > 0) bySubject.set(sp.subject, (bySubject.get(sp.subject) ?? 0) + overlap);
+        const from = Math.max(cellFrom, sp.from);
+        const to = Math.min(cellTo, sp.to);
+        if (to <= from) continue;
+        out.push({
+          subject: sp.subject,
+          lecture: sp.lecture,
+          left: (from - cellFrom) / CELL_MS,
+          width: (to - from) / CELL_MS,
+          live: sp.live && to === now,
+          key: sp.id,
+        });
       }
-      let best: Subject | null = null;
-      let bestMs = CELL_MS / 2;
-      for (const [subject, ms] of bySubject) if (ms > bestMs) [best, bestMs] = [subject, ms];
-      return best;
+      return out;
     }),
   );
 }

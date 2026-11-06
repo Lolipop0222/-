@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { koreanError } from "@/lib/supabase";
-import { endSession, loadWeekSessions, startSession, summarize, type StudySession, type StudySummary } from "@/lib/study";
+import { endSession, loadWeekSessions, startSession, summarize, type StartOptions, type StudySession, type StudySummary } from "@/lib/study";
 import type { Subject } from "@/lib/subjects";
 
 const AWAY_LIMIT_MS = 30_000;
@@ -18,8 +18,8 @@ type StudyContext = {
   awayCount: number;
   notice: string | null;
   busy: boolean;
-  /** taskId: 플래너 과제와 연결해서 시작 */
-  start: (subject: Subject, taskId?: string | null) => Promise<void>;
+  /** taskId: 플래너 과제와 연결, detail: 세부 항목, lecture: 인강 */
+  start: (subject: Subject, opts?: StartOptions) => Promise<void>;
   stop: () => Promise<void>;
   /** 순위 등 다른 화면이 기록이 바뀐 걸 알 수 있게 — 저장할 때마다 1씩 오른다 */
   version: number;
@@ -111,12 +111,12 @@ export default function StudyProvider({ children }: { children: ReactNode }) {
   );
 
   const start = useCallback(
-    async (subject: Subject, taskId?: string | null) => {
+    async (subject: Subject, opts?: StartOptions) => {
       setBusy(true);
       setNotice(null);
       try {
         const before = Date.now();
-        const s = await startSession(subject, taskId);
+        const s = await startSession(subject, opts);
         // 서버가 찍은 시작 시각으로 기기 시계와의 차이를 잰다 (왕복 시간의 절반만큼 보정)
         const after = Date.now();
         const off = Date.parse(s.started_at) - (before + after) / 2;

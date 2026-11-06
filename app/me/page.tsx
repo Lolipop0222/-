@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, Files, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
+import { Award, Files, GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
@@ -72,6 +72,7 @@ export default function MePage() {
         </div>
 
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
+          <ListRow icon={<GraduationCap size={20} />} label="계열" value={profile.track ?? "고르기"} href="/me/track" />
           <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
           <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
           <ListRow icon={<Award size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />

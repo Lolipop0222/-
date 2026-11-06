@@ -13,7 +13,7 @@ import {
   saveDay,
   updateTask,
   type PlannerDay,
-  type Task,
+  type Task, type TaskExtra, type TaskPatch,
 } from "@/lib/planner";
 import { loadDaySessions, type StudySession } from "@/lib/study";
 import type { Subject } from "@/lib/subjects";
@@ -28,8 +28,8 @@ export type PlannerState = {
   sessions: StudySession[];
   dayStart: number;
   error: string | null;
-  add: (title: string, subject: Subject | null) => Promise<boolean>;
-  update: (id: string, patch: Partial<Pick<Task, "title" | "subject" | "done">>) => Promise<void>;
+  add: (title: string, subject: Subject | null, extra?: TaskExtra) => Promise<boolean>;
+  update: (id: string, patch: TaskPatch) => Promise<void>;
   remove: (task: Task) => Promise<void>;
   saveDay: (patch: Partial<PlannerDay>) => Promise<void>;
 };
@@ -89,10 +89,10 @@ export function usePlanner(date: string | null): PlannerState {
   }, [date, study.version]);
 
   const add = useCallback(
-    async (title: string, subject: Subject | null) => {
+    async (title: string, subject: Subject | null, extra?: TaskExtra) => {
       if (!date) return false;
       try {
-        const t = await addTask(date, title, subject);
+        const t = await addTask(date, title, subject, extra);
         setTasks((list) => [...list, t]);
         return true;
       } catch (e) {
@@ -104,7 +104,7 @@ export function usePlanner(date: string | null): PlannerState {
   );
 
   const update = useCallback(
-    async (id: string, patch: Partial<Pick<Task, "title" | "subject" | "done">>) => {
+    async (id: string, patch: TaskPatch) => {
       const before = tasks;
       setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t))); // 먼저 화면에 반영
       try {

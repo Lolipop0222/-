@@ -61,9 +61,7 @@ create policy "내 프로필 수정" on profiles for update to authenticated usi
 drop policy if exists "내 기록만 조회" on sessions;
 create policy "내 기록만 조회" on sessions for select to authenticated using (auth.uid() = user_id);
 
--- 과목 목록 (이미 만들어진 DB도 새 목록으로). '기타'는 순위·공부 합계에 들어가지 않는 개인 타이머
-alter table sessions drop constraint if exists sessions_subject_check;
-alter table sessions add constraint sessions_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
+-- 과목 목록 제약(sessions·tasks·routines)은 06-subjects.sql 한 곳에서 정한다 (과목이 바뀌면 거기만 고친다)
 -- 기타 기록 이름 (예: 독서, 운동)
 alter table sessions add column if not exists label text;
 alter table sessions drop constraint if exists sessions_label_check;
@@ -124,10 +122,6 @@ drop policy if exists "기타 기록 삭제" on sessions;
 create policy "기타 기록 삭제" on sessions for delete to authenticated
   using (auth.uid() = user_id and subject = '기타');
 
-alter table routines drop constraint if exists routines_subject_check;
-alter table routines add constraint routines_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
-alter table tasks drop constraint if exists tasks_subject_check;
-alter table tasks add constraint tasks_subject_check check (subject in ('국어', '영어', '수학', '과학', '사회', '한국사', '인강', '기타'));
 
 alter table routines enable row level security;
 alter table tasks enable row level security;
@@ -225,35 +219,7 @@ begin
   return r;
 end $$;
 
--- 공부 시작: 서버가 started_at을 찍는다. 켜져 있던 세션은 지금 시각으로 끝낸다.
--- p_task_id: 플래너 과제와 연결 (내 과제만)
-drop function if exists start_session(text);  -- 예전(과목만 받던) 버전
-create or replace function start_session(p_subject text, p_task_id uuid default null)
-returns sessions
-language plpgsql security definer set search_path = public as $$
-declare
-  r sessions;
-  today_sec int;
-begin
-  if not exists (select 1 from profiles where id = auth.uid()) then
-    raise exception '프로필이 없습니다';
-  end if;
-  if p_task_id is not null and not exists (select 1 from tasks where id = p_task_id and user_id = auth.uid()) then
-    raise exception '과제를 찾을 수 없습니다';
-  end if;
-
-  update sessions set ended_at = now() where user_id = auth.uid() and ended_at is null;
-
-  select coalesce(sum(duration), 0) into today_sec
-  from sessions
-  where user_id = auth.uid() and started_at >= kst_day_start() and duration between 1 and 14400 and subject <> '기타';
-  if today_sec >= 16 * 3600 then
-    raise exception '오늘은 16시간을 넘게 공부해서 더 기록할 수 없습니다';
-  end if;
-
-  insert into sessions (user_id, subject, task_id) values (auth.uid(), p_subject, p_task_id) returning * into r;
-  return r;
-end $$;
+-- 공부 시작 start_session은 06-subjects.sql에 있다 (세부 항목·인강을 받는다)
 
 -- 공부 끝: 서버가 ended_at을 찍는다.
 -- p_end_at: 앱을 벗어난 순간처럼 "지금보다 이른" 종료 시각을 줄 수 있다 (시간을 줄이는 쪽으로만 반영).
@@ -275,7 +241,7 @@ begin
   return r;
 end $$;
 
--- 이번 주 순위 get_ranking은 파일 끝 '칭호 · 프로필 그림' 부분에 있다 (칭호·프로필 그림 열을 같이 돌려주므로 그 테이블 뒤에 둔다)
+-- 이번 주 순위 get_ranking은 06-subjects.sql에 있다
 
 -- ───────────────────────── 디데이 (직접 만든 것) ─────────────────────────
 -- 학교 시험 디데이는 NEIS 학사일정에서 자동으로 만든다. 여기에는 학생이 직접 추가한 날만 저장한다.
@@ -328,10 +294,8 @@ $$;
 
 -- 함수는 로그인한 사용자만 부를 수 있다
 revoke execute on function create_profile(text, int, int, text) from public, anon;
-revoke execute on function start_session(text, uuid) from public, anon;
 revoke execute on function materialize_routines(date) from public, anon;
 revoke execute on function end_session(uuid, int, timestamptz) from public, anon;
 grant execute on function create_profile(text, int, int, text) to authenticated;
-grant execute on function start_session(text, uuid) to authenticated;
 grant execute on function materialize_routines(date) to authenticated;
 grant execute on function end_session(uuid, int, timestamptz) to authenticated;
