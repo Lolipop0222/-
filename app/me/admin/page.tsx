@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ImageOff, KeyRound, UserX } from "lucide-react";
@@ -150,7 +151,7 @@ function Inquiries() {
         문의 {rows && <span className="text-muted">· 답변 대기 {waiting}개</span>}
       </h2>
       {error && <ErrorText>{error}</ErrorText>}
-      {rows === null && <p className="px-1 text-[13px] text-faint">불러오는 중…</p>}
+      {rows === null && <AppLoader size="inline" />}
       {rows?.length === 0 && !error && <p className="px-1 text-[13px] text-faint">아직 문의가 없어요.</p>}
       {rows?.map((q) => <InquiryItem key={q.id + (q.replied_at ?? "")} q={q} onSaved={reload} />)}
     </>
@@ -270,7 +271,7 @@ function PhotoReview() {
           <ErrorText>{error}</ErrorText>
         </div>
       )}
-      {rows === null && <p className="mt-3 text-[13px] text-faint">불러오는 중…</p>}
+      {rows === null && <AppLoader size="inline" />}
       {rows?.length === 0 && !error && <p className="mt-3 text-[13px] text-faint">사진을 올린 학생이 없어요.</p>}
       <div className="mt-3 grid grid-cols-2 gap-2">
         {rows?.map((p) => (

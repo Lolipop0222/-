@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, X } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
@@ -87,7 +88,7 @@ export default function EtcPage() {
         {error && <p className="rounded-xl bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p>}
 
         {rows === null ? (
-          <p className="py-8 text-center text-[14px] text-faint">불러오는 중…</p>
+          <AppLoader />
         ) : rows.length === 0 ? (
           <p className="py-8 text-center text-[14px] text-faint">최근 30일 동안 기타 기록이 없어요</p>
         ) : (

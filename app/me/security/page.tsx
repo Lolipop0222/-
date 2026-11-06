@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
 import { Check, Copy, KeyRound, Lock } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
@@ -97,7 +98,7 @@ function RecoveryCodeCard() {
       )}
 
       <div className="mt-4">
-        {state.status === "loading" && <p className="text-[13px] text-faint">불러오는 중…</p>}
+        {state.status === "loading" && <AppLoader size="inline" />}
         {state.status === "notReady" && <p className="text-[13px] text-faint">준비 중이에요 (데이터베이스 업데이트가 필요해요)</p>}
         {state.status === "missing" && <p className="mb-3 text-[13px] text-warn">아직 복구 코드가 없어요. 지금 만들어 두세요.</p>}
         {state.status === "ready" && !code && state.createdAt && (

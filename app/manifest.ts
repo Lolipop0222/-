@@ -11,6 +11,11 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#0b0d12",
     theme_color: "#0b0d12",
     lang: "ko",
-    icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml" }],
+    // 대전고 시계 엠블럼 (사용자가 준 아이콘 그림, public/brand)
+    icons: [
+      { src: "/brand/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/brand/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/brand/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
   };
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Copy, Crown, LogIn, LogOut, Pencil, Plus, RefreshCw, Share2, Trash2, UserMinus, Users } from "lucide-react";
@@ -89,7 +90,7 @@ export default function GroupsPage() {
             <p className="text-[13px] leading-relaxed text-muted">친구들과 그룹을 만들어 이번 주 공부 시간을 겨뤄 보세요. 그룹 순위는 그룹원끼리만 볼 수 있어요.</p>
             {error && <ErrorText>{error}</ErrorText>}
 
-            {groups === null && <p className="text-[13px] text-faint">불러오는 중…</p>}
+            {groups === null && <AppLoader />}
             {groups && groups.length > 0 && (
               <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
                 {groups.map((g) => (
@@ -337,7 +338,7 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
           ))}
         </div>
 
-        {!rows && !error && <p className="py-8 text-center text-[14px] text-faint">불러오는 중…</p>}
+        {!rows && !error && <AppLoader />}
         {rows && (
           <ol className="overflow-hidden rounded-2xl border border-line bg-surface">
             {rows.map((r, i) => (

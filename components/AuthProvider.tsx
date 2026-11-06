@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import PrintArchiveLogo from "@/components/PrintArchiveLogo";
+import { StartSplash } from "@/components/BrandLoader";
 import { supabase, type Profile } from "@/lib/supabase";
 
 type AuthState =
@@ -28,6 +28,8 @@ export function useProfile(): Profile {
   if (auth.status !== "ready") throw new Error("로그인 전에는 프로필이 없습니다");
   return auth.profile;
 }
+
+const INTRO_KEY = "daego-intro-seen";
 
 // 로그인하지 않아도 볼 수 있는 화면
 const PUBLIC_PATHS = ["/login", "/login/reset", "/me/privacy"];
@@ -92,21 +94,25 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     },
   };
 
+  // 앱을 새로 열었을 때(이번 탭에서 처음) 첫 화면 애니메이션을 끝까지 볼 수 있게 1.8초는 보여 준다. 새로고침·이동 때는 바로
+  const [introDone, setIntroDone] = useState(false);
+  useEffect(() => {
+    let wait = 1800;
+    try {
+      if (sessionStorage.getItem(INTRO_KEY)) wait = 0;
+      else sessionStorage.setItem(INTRO_KEY, "1");
+    } catch {
+      // 저장이 막힌 브라우저 — 매번 짧게 보여 줌
+    }
+    const t = setTimeout(() => setIntroDone(true), wait);
+    return () => clearTimeout(t);
+  }, []);
+
   // 로그인 확인 전이거나 넘어가는 중에는 화면을 그리지 않는다 (가짜 화면이 번쩍이지 않게)
-  const show = isPublic || state.status === "ready";
+  const show = introDone && (isPublic || state.status === "ready");
   return (
     <Ctx.Provider value={value}>
-      {show ? children : <Splash />}
+      {show ? children : <StartSplash />}
     </Ctx.Provider>
-  );
-}
-
-/** 로딩 화면 — 프린트 아카이브 로고 */
-function Splash() {
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-8" aria-busy="true" aria-label="불러오는 중">
-      <PrintArchiveLogo width={220} className="pa-breathe" />
-      <div className="size-6 animate-spin rounded-full border-[3px] border-accent/25 border-t-accent" />
-    </div>
   );
 }

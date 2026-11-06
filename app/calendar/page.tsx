@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Flag, Utensils } from "lucide-react";
 import { Badge, Card, PageHeader } from "@/components/ui";
@@ -118,7 +119,7 @@ export default function CalendarPage() {
             )}
           </div>
           {!monthMeals ? (
-            <p className="text-[14px] text-faint">불러오는 중…</p>
+            <AppLoader size="inline" />
           ) : selMeals ? (
             <>
               <div className="space-y-2.5">

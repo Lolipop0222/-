@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, RotateCcw, X } from "lucide-react";
@@ -83,7 +84,7 @@ export default function WordQuiz({ day }: { day: number }) {
   if (!data) {
     return (
       <Shell day={day}>
-        <p className="py-20 text-center text-[14px] text-faint">단어 불러오는 중…</p>
+        <div className="py-8"><AppLoader label="단어 불러오는 중…" /></div>
       </Shell>
     );
   }

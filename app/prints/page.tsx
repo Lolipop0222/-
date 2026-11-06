@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, FileImage, FileText, FileType, Files, Plus, Search, Trash2, Upload, X } from "lucide-react";
@@ -152,7 +153,7 @@ export default function PrintsPage() {
             <ChipRow items={PRINT_SUBJECTS} value={subject} onChange={setSubject} allLabel="모든 과목" />
 
             {error && <ErrorText>{error}</ErrorText>}
-            {rows === null && <p className="py-8 text-center text-[14px] text-faint">불러오는 중…</p>}
+            {rows === null && <AppLoader />}
             {rows && shown.length === 0 && (
               <Card className="py-10 text-center">
                 <Files size={28} className="mx-auto text-faint" />

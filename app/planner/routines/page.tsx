@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
 import { Repeat, Trash2 } from "lucide-react";
 import { Card, SubHeader } from "@/components/ui";
@@ -160,7 +161,7 @@ export default function RoutinesPage() {
         )}
 
         {routines === null ? (
-          <p className="py-8 text-center text-[14px] text-faint">불러오는 중…</p>
+          <AppLoader />
         ) : routines.length === 0 ? (
           !unavailable && <p className="py-8 text-center text-[14px] text-faint">아직 루틴이 없어요</p>
         ) : (

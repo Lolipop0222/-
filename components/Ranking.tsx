@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Crown, Users } from "lucide-react";
@@ -58,7 +59,7 @@ export default function Ranking() {
       </div>
 
       {error && <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-[13px] text-danger">{error}</p>}
-      {!rows && !error && <p className="py-10 text-center text-[14px] text-faint">불러오는 중…</p>}
+      {!rows && !error && <AppLoader />}
 
       {top.length > 0 && (
         <div className="mt-4 grid grid-cols-3 gap-2">

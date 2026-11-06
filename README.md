@@ -103,6 +103,7 @@ npm run apk -- https://배포주소.vercel.app
 - `lib/supabase.ts`, `components/AuthProvider.tsx` — Supabase 연결과 로그인 상태(로그인 안 하면 /login으로)
 - `lib/study.ts`, `components/StudyProvider.tsx` — 공부 기록 시작·정지·합계·순위 (타이머·홈·순위가 같이 씀)
 - `lib/photos.ts`, `lib/prints.ts`, `app/prints/page.tsx` — 사진 프로필(줄이기·올리기)과 프린트 아카이브 (Supabase Storage `avatars`·`prints`)
+- `components/BrandLoader.tsx`, `public/brand/` — 대품타 로딩 화면(첫 화면·앱 안 로딩, 요소별로 움직임)과 앱 아이콘(대전고 시계 엠블럼)
 - `components/PrintArchiveLogo.tsx`, `public/print-archive/` — Print Archive 로고 (테마 색으로 칠하는 마스크 두 장)
 - `lib/titles.ts`, `components/TitleBadge.tsx`, `components/TitlesProvider.tsx` — 칭호(판정 호출·알림·배지)와 프로필 그림. 칭호 정의·판정은 `supabase/parts/04-titles.sql`의 `title_defs`·`title_stats()`·`check_titles()`
 - `lib/groups.ts`, `app/groups/page.tsx` — 스터디그룹 (DB 함수 호출, 화면)

@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
 import { Check, Lock } from "lucide-react";
 import { useProfile } from "@/components/AuthProvider";
@@ -77,7 +78,7 @@ export default function TitlesPage() {
         <p className="-mt-2 px-1 text-[12px] text-faint">얻은 칭호를 누르면 닉네임 옆(순위·내정보)에 달려요. 공부를 끝내거나 앱을 열 때 자동으로 확인해요.</p>
         {error && <ErrorText>{error}</ErrorText>}
 
-        {titles === null && <p className="py-8 text-center text-[14px] text-faint">불러오는 중…</p>}
+        {titles === null && <AppLoader />}
 
         {titles &&
           GRADES.map((g) => {

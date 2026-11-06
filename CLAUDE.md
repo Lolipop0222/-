@@ -89,7 +89,13 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 사진 프로필: 사용자가 "무조건 넣어"라고 해서 넣음. 부적절한 사진은 관리자가 `/me/admin`에서 내리거나 계정 삭제(사용자 방침). 앱(`lib/photos.ts`)이 가운데를 정사각형으로 잘라 320px webp(안 되면 jpg)로 다시 그려 올린다 → 용량 작고 EXIF(위치 등) 제거. avatar = `photo:<user id>/<16자>.webp`, `profiles_avatar_guard` 트리거가 **내 폴더 사진만** 허용하고 `avatar_at`을 기록. 사진을 바꾸거나 지우면 예전 파일도 지움, 계정 삭제 전에 내 폴더 파일 삭제(`removeAllMyPhotos`).
 - 공개 버킷이라 주소를 아는 사람은 볼 수 있음(경로에 무작위 16자). CSP `img-src`에 `https://*.supabase.co` 추가함.
 - 프린트 아카이브(`/prints`): 관리자는 오른쪽 위 "올리기" → 파일 여러 개(끌어다 놓기 가능) + 분류·과목·학년·메모 한 번에 → 학생들에게 바로 보임. 파일은 비공개 버킷, 열 때 10분짜리 서명 주소(`openPrint`, 아이폰 팝업 차단 때문에 빈 창을 먼저 연다). PDF·사진은 바로 보기, 한글·오피스는 내려받기. 학생 화면 기본은 "내 학년"(+전 학년) 필터.
-- 로고: 사용자가 준 Print Archive 로고(검은 바탕 PNG)를 파란 부분·회색 글자 두 장의 투명 마스크(`public/print-archive/logo-blue.png`, `logo-gray.png`)로 나눠 CSS mask로 칠한다(`components/PrintArchiveLogo.tsx`, 색 `--pa-blue`/`--pa-ink`) → 모든 테마에서 보임. 쓰는 곳: 로딩 화면(`AuthProvider`의 Splash), 프린트 아카이브 머리, 홈 카드, 관리자 화면.
+- 로고: 사용자가 준 Print Archive 로고(검은 바탕 PNG)를 파란 부분·회색 글자 두 장의 투명 마스크(`public/print-archive/logo-blue.png`, `logo-gray.png`)로 나눠 CSS mask로 칠한다(`components/PrintArchiveLogo.tsx`, 색 `--pa-blue`/`--pa-ink`) → 모든 테마에서 보임. 쓰는 곳: 프린트 아카이브 머리, 홈 카드, 관리자 화면. (로딩 화면은 2026-11-06부터 대품타 로고로 바뀜 — 아래)
+
+**앱 아이콘·로딩 화면 (2026-11-06, 사용자가 준 그림 3장)**
+- 그림: ① 엠블럼+대전고+「일등급을 품은 타이머」+≡ DAEJEON HIGH SCHOOL · STUDY PLANNER (첫 화면용) ② 엠블럼+「대품타」+≡ 영문 줄 (앱 안 로딩용) ③ 시계 로마 숫자 + 高 방패 엠블럼 (앱 아이콘). 원본은 저장소에 없고, 요소별 투명 마스크로 나눠 `public/brand/`에 둔다: `emblem-ring.png`(로마 숫자), `emblem-shield.png`(高 방패, 둘 다 512 정사각·같은 위치), `title-ildeunggeup.png`, `daepumta-1~3.png`(대·품·타, 같은 틀 크기라 겹치면 제자리). ③ 원본 jpg의 옅은 대각선 워터마크는 밝기 기준으로 지우고 grey closing으로 메움.
+- `components/BrandLoader.tsx`: `StartSplash`(① — `AuthProvider`가 로그인 확인 전에 보여 줌, 이번 탭에서 처음 열 때만 **최소 1.8초**(sessionStorage `daego-intro-seen`), 새로고침·이동 때는 바로), `AppLoader`(② — 화면 단위 "불러오는 중" 자리와 `app/loading.tsx`, `size="inline"`은 작은 엠블럼+글자로 작은 목록용), `Emblem`. 휴대폰 세로라 ①은 엠블럼 아래로 글자를 쌓았다. 영문 줄·대전고는 진짜 글자(Pretendard), ≡는 CSS 막대.
+- 움직임(`globals.css` `.em-*`, `.bl-*`, CSS만): 시계판이 12시부터 시계 방향으로 그려짐(conic mask, `@property --em-sweep`) → 금색 불빛이 숫자를 한 칸씩 째깍 돎(`steps(12)`, 꼬리 두 칸) / 高 방패가 톡 튀어나와 숨 쉼 / 대전고·선이 나타나고 제목이 왼쪽부터 써지듯(clip-path) + 금빛이 스쳐 감 / ≡ 막대가 차례로 / 대품타 글자가 차례로 통통. `prefers-reduced-motion`이면 멈춤. 색은 테마 글자색 + `--brand-gold`(어두운 테마 #d1aa3a, 라이트·종이·솔라라이즈드 #8c6f17).
+- 아이콘: 크림색(#F4F2EC) 바탕에 검은 엠블럼. 웹 `public/brand/icon-192/512.png`, `icon-maskable-512.png`(안전 영역), `app/icon.png`(탭), `app/apple-icon.png`(아이폰), 안드로이드 `android/app/src/main/res/mipmap-*/ic_launcher*.png`(적응형 전경 + 배경색 `values/ic_launcher_background.xml`). 안드로이드 시작 화면 `drawable*/splash.png`는 기본 다크 테마 바탕에 밝은 엠블럼+제목(웹 첫 화면과 이어지게). **APK 아이콘·시작 화면은 APK를 다시 빌드해야 바뀐다**(`npm run apk -- https://daego-ilpumta.vercel.app`, 웹 쪽은 배포만으로 바뀜).
 
 **관리자 등록**: `insert into admins (user_id) select id from profiles where nickname = '닉네임' on conflict do nothing;` — 사용자(앱 주인)가 직접 실행. 관리자면 내정보에 "관리자" 메뉴(`/me/admin`)가 보인다.
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useState } from "react";
 import { CalendarPlus, School, Trash2 } from "lucide-react";
 import { Card, SubHeader } from "@/components/ui";
@@ -76,7 +77,7 @@ export default function DdayPage() {
 
         {/* 다가오는 디데이 */}
         {!d.ready ? (
-          <p className="py-10 text-center text-[14px] text-faint">불러오는 중…</p>
+          <AppLoader />
         ) : upcoming.length === 0 ? (
           <p className="py-10 text-center text-[14px] text-faint">다가오는 디데이가 없어요</p>
         ) : (

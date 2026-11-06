@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState } from "react";
 import { MessageCircleReply, Trash2 } from "lucide-react";
 import { Badge, Card, ErrorText, InfoText, PrimaryButton, Segmented, SubHeader } from "@/components/ui";
@@ -126,7 +127,7 @@ export default function InquiryPage() {
         </Card>
 
         <h2 className="px-1 pt-2 text-[15px] font-semibold">내 문의</h2>
-        {rows === null && <p className="px-1 text-[13px] text-faint">불러오는 중…</p>}
+        {rows === null && <AppLoader size="inline" />}
         {rows?.length === 0 && <p className="px-1 text-[13px] text-faint">아직 보낸 문의가 없어요.</p>}
         {rows?.map((q) => (
           <Card key={q.id}>
