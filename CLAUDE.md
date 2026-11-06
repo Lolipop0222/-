@@ -51,7 +51,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 ## 3. DB 구조 (`supabase/parts/` → `supabase/schema.sql`)
 
-**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제), `06-subjects`(계열·과목 목록 제약·세부 항목·인강 열과 이를 쓰는 함수 `start_session`·`title_stats`·`get_ranking`·`get_group_ranking`, 프로필 열 권한). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
+**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제), `06-subjects`(계열·과목 목록 제약·세부 항목·인강 열과 이를 쓰는 함수 `start_session`·`title_stats`·`get_ranking`·`get_group_ranking`, 프로필 열 권한), `07-words`(워마 암기 진도 `word_progress`·퀴즈 최고 점수 `word_quiz_best`와 `wm_*` 함수 — profiles만 있으면 됨). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
 - 스키마를 고칠 때: **해당 조각 파일을 고치고** `npm run schema`(전체본 재생성, `npm run lint`가 어긋나면 실패). 사용자에게는 **"바뀐 조각 이름"만** 실행하라고 안내하고 `supabase/README.md`의 변경 기록 표에 한 줄 추가한다. 새 기능이 크면 `06-…sql`처럼 새 조각을 만든다.
 - **같은 제약·함수를 두 조각에서 만들지 않는다.** (예전에 사진 제약을 칭호 부분과 사진 부분에서 따로 만들어서, 사진을 올린 학생이 있으면 전체본 재실행이 `profiles_avatar_check … violated by some row`로 실패하는 버그가 있었다 → 04 한 곳으로 모음)
 - **실제 DB에 무엇이 적용됐는지 확인하는 법**: 배포된 사이트 JS 묶음에 공개 URL·publishable 키가 들어 있다(`curl` 로 `/login` HTML의 `/_next/static/…js`를 받아 `supabase.co`, `sb_publishable_` 검색). 그 키로 읽기만 하는 요청: 함수 `POST /rest/v1/rpc/<함수>` → 있으면 `42501 permission denied`(로그인 필요), 없으면 `PGRST202`. 테이블 `GET /rest/v1/<테이블>?select=id&limit=1` → 있으면 `42501`, 없으면 `PGRST205`. 쓰기 요청이나 계정 만들기는 하지 않는다.
@@ -76,9 +76,11 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `prints` | 프린트 아카이브 목록 (제목·분류 수행평가/학습지/시험 대비/기타·과목·학년(null=전 학년)·메모·file_path·file_name·크기) | 가입한(프로필 있는) 학생 조회, 추가·수정·삭제는 관리자만(RLS `is_admin()`) |
 | Storage `avatars` (공개) | 프로필 사진 `<user id>/<16자>.webp|jpg`, 300KB | 내 폴더만 올리기·지우기, 관리자는 모두 지우기 |
 | Storage `prints` (비공개) | 프린트 파일 `<uuid>.<확장자>`, 50MB | 프로필 있는 학생 읽기(서명 주소), 관리자만 올리기·지우기 |
+| `word_progress` | 워마 단어별 복습 상자 (user_id, word_id 1~2000, box 1~5·6=외움, due 한국 날짜, seen·wrong). DAY = (word_id-1)/40+1 | 본인 조회만. 쓰기는 `wm_record`·`wm_import`·`wm_reset`로만 |
+| `word_quiz_best` | 워마 DAY×방식(meaning·reverse·blank·relation)별 최고 점수 | 본인 조회만. 쓰기는 `wm_save_quiz`로만 |
 | `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
 
-**함수**: `create_profile(닉네임, 학년, 반, 초대코드)`(계열은 가입 직후 앱이 profiles.track을 따로 저장) / `start_session(과목, 과제id?, 세부 항목?, 인강?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, **`06-subjects.sql`**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
+**함수**: `create_profile(닉네임, 학년, 반, 초대코드)`(계열은 가입 직후 앱이 profiles.track을 따로 저장) / `start_session(과목, 과제id?, 세부 항목?, 인강?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가) / 워마: `wm_record(jsonb [{id, ok}] 200개까지)`(라이트너 계산은 서버, KST 날짜), `wm_import(jsonb)`(기기 저장분 옮기기, 있는 단어는 그대로), `wm_reset(day|null)`, `wm_save_quiz(day, mode, correct, total)`(최고만 남김). `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, **`06-subjects.sql`**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
 
 **스터디그룹 규칙**: 한 사람이 들어가는 그룹 5개, 만든 그룹 3개, 그룹 30명, 코드 15분에 10번 틀리면 잠김. 방장이 나가거나 계정을 지우면 `group_member_left` 트리거가 가장 먼저 들어온 사람에게 방장을 넘기고, 아무도 없으면 그룹을 지운다. 그룹 순위 규칙은 `get_ranking`과 같다(4시간 넘는 세션·기타 제외).
 
@@ -135,8 +137,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 |---|---|
 | `docs/NEIS_API.md` | NEIS API 명세. **NEIS 코드는 이 문서 기준**. 8장 = 실제 응답에서 확인한 차이 (숫자 필드, 알레르기 번호 형식, 학년 필드 `*` 등) |
 | `scripts/test-neis.mjs` | 키·학교코드·실제 응답 확인 |
-| `data/wordmaster/README.md` | 워드마스터 수능 2000 데이터 설명 (DAY 1~50 × 40단어, 예문 3개씩, 채점·오답 보기 규칙). `schema.sql`·`seed.py`는 Supabase로 옮길 때용(아직 안 씀) |
-| `public/wordmaster/day-NN.json` | 위 데이터를 DAY별로 나눈 것 (`npm run wordmaster`로 다시 만듦) |
+| `data/wordmaster/README.md` | 워드마스터 수능 2000 데이터 **v2** 설명 (DAY 1~50 × 40단어, 예문 3개씩 + 해석, 유의어·반의어·파생어·숙어 11,130개, 어원 191개, `source` textbook/original). 2026-11-06 사용자가 준 zip으로 교체. `schema.sql`·`seed.py`(service role 키 필요)는 **안 쓴다** — 단어 자료는 정적 JSON, DB에는 학생 진도만(07) |
+| `public/wordmaster/day-NN.json`, `index.json` | DAY별로 나눈 것(필드 `ety`·`syn`·`ant`·`der`·`phr`, 교재 것만 `tb:1`)과 2000단어 [id, day, word, meaning] 목록 (`npm run wordmaster`로 다시 만듦) |
 | `lib/meals.ts` | 2026년 11월 식단표(학교 한글 파일에서 옮김, 알레르기 번호 포함). NEIS 실패 시 대신 쓰고, "슈퍼 프라이데이" 메모는 NEIS에 없어 여기서 덧붙임 |
 | `supabase/parts/`, `supabase/README.md` | DB 정의 조각 01~05(원본)와 실행 순서·변경 기록. `supabase/schema.sql`은 자동 생성 전체본 |
 | `README.md` | 화면 목록, 파일 구조, Supabase·APK 설정 방법 |
@@ -159,6 +161,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - **가짜 데이터를 실제 데이터와 섞지 않는다**: 실데이터가 들어온 화면의 가짜(학사일정·수행평가·순위·스터디그룹 멤버)는 지웠다. 아직 기능이 없으면 "준비 중"으로 표시.
 - **실명 받지 않음**, 닉네임만. 학년·반은 순위 범위용.
 - 워마 퀴즈 제한 시간은 **셀프 옵션, 기본 끄기**.
+- **워마 암기 (2026-11-06, "앱의 핵심 기능, 공들여서")**: 복습 상자 5단계(1·3·7·16·35일, 5단계 맞히면 외움). 처음 보는 단어 알면 2단계·모르면 1단계, 날이 된 단어 맞히면 +1·틀리면 1단계, 날 안 된 단어 맞혀도 그대로. 규칙은 SQL `wm_record`와 `lib/wordProgress.ts`의 `nextProgress`(낙관적 갱신)에 **똑같이** 있다 — 바꿀 때 둘 다. 암기 카드·퀴즈·복습 모두 답하면 기록. 07 전 DB에서는 localStorage(`wm:progress:<uid>`)에 저장 → 07 실행 후 처음 열 때 `wm_import`로 옮김. 못 보낸 결과는 `wm:outbox:<uid>`.
 - 디데이: 학교 시험은 NEIS에서 자동(내 학년만) + 학생이 직접 추가.
 - 플래너: 사용자가 준 **종이 플래너 양식**(YEAR/MONTH/DAY · D-DAY · COMMENT · TOTAL TIME · TASKS · TIMETABLE 6시~5시 10분 칸 · MEMO). TIMETABLE은 공부 기록으로 자동 색칠.
 - 보류: 스터디그룹 생성, 캐릭터·재화·스킨(①). "가장 먼저 만들 수 있는 것부터" 순서로 ③퀴즈 타이머 → ②디데이 → ④플래너를 했다.
@@ -176,7 +179,9 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 급식(조·중·석식, 알레르기 번호)·학사일정 — NEIS, 캘린더(`/calendar`)와 홈
 - 디데이(`/dday`, 홈 카드): 학교 시험 자동 + 직접 추가
 - 플래너(`/planner`)·데일리 루틴(`/planner/routines`), 홈 플래너 카드
-- 워마 퀴즈(`/words/day/1~50`): 뜻 고르기 / 빈칸 채우기(단어 상자 10개, 기본·응용·심화), 틀린 것만 다시, 제한 시간 옵션. 최고 점수는 **기기 localStorage**에만 저장
+- 워마(`/words`): 오늘 복습 수·이어서 외우기·내 진도·상자별 단어(실데이터)·DAY 1~50(외운 비율 막대·복습 점·최고 점수), 단어 찾기(`/words/search`, 영어·뜻)
+  - DAY 화면(`/words/day/1~50`, `components/words/DayView.tsx`): 진도 막대, **암기 카드**(`Flashcards.tsx` — 새 단어/약한 단어/전체, 영→뜻·뜻→영, 눌러서 뒤집기(3D, `.wm-*` CSS), 옆으로 밀기·키보드, 뒷면 뜻·어원·예문(단계마다 기본/응용/심화)+해석·유의어·반의어·파생어·숙어, 발음 듣기 = 기기 speechSynthesis, 안 되면 버튼 숨김), **퀴즈** 4가지(뜻 고르기·단어 고르기·빈칸 채우기·유의어·반의어, 제한 시간 옵션, 최고 점수 계정 저장), 단어 목록(뜻 가리기·펼치면 예문 3개), DAY 진도 초기화
+  - 복습(`/words/review`): 날이 된 단어를 낮은 단계부터 20개씩, 단계마다 문제가 어려워짐(1·2 뜻 고르기, 3·4 단어 고르기, 5 응용·심화 예문 빈칸), 틀린 건 끝에 한 번 더(기록 안 함), 홈 카드도 실데이터(`HomeWords`)
 - PWA manifest·아이콘, 안드로이드 APK(Capacitor, 디버그 서명)
 - 문의함(`/me/inquiry`)·관리자 화면(`/me/admin`: 답변, 복구 코드 대신 발급)
 - 비밀번호 찾기(`/login/reset`, 복구 코드)·복구 코드 만들기·비밀번호 바꾸기(`/me/security`), 홈에 "복구 코드 만들어 두세요" 안내(코드 없을 때만)
@@ -189,11 +194,11 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 홈 공지 배너(가짜 "간식 나눔" 등)는 사용자 요청으로 **삭제**함 (`EventBanner`, `lib/mock.ts`의 events)
 
 **아직 가짜 / 준비 중** (`lib/mock.ts` 등)
-- 워마 "오늘 복습할 단어 23개", 상자 5단계 분포, `/words/review`(상자 복습) — 가짜
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
 - 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
 **확인된 상태 (2026-11-06, 공개 키로 실제 DB 확인)**
+- **07-words는 커밋 "워마 암기" 이후 실행 필요** → 확인: `GET /rest/v1/word_progress?select=word_id&limit=1`이 `PGRST205`면 아직, `42501`이면 됨. 실행 전에도 워마는 돌아간다(기기 저장 + 화면에 안내).
 - 적용됨: 01~05 전부(`my_titles`·`prints`·`admin_list_photos`가 42501). **06-subjects는 커밋 "세부 항목·계열·인강" 이후 실행 필요** → 확인: `GET /rest/v1/sessions?select=detail&limit=1`이 `42703`(열 없음)이면 아직, `42501`이면 됨. 실행 전에도 앱은 돌아간다(예전 start_session·과목 이름으로 대체, 세부 항목·인강·계열 저장만 안 됨).
 - 실제 Supabase에 `schema.sql`(커밋 d2da6e1)이 끝까지 실행됨: `tasks`·`routines`·`ddays`·`planner_days`, `sessions.label`, 과제를 받는 새 `start_session` 모두 있음. (아래 줄로 대체: 조각별 확인)
 - **커밋 "사진 프로필·프린트 아카이브" 이후 `schema.sql` 다시 실행 필요** (Storage 버킷 avatars·prints와 정책, prints 테이블, 관리자 함수). 확인: `GET /rest/v1/prints?select=id&limit=1` → `PGRST205`면 아직.
@@ -206,7 +211,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 **다음 할 일 후보** (사용자와 순서를 정할 것)
 1. 친구들에게 초대코드를 주고 1주일 써 보게 하기 — 계획서 1단계 완료 기준
 2. ① 공부 시간으로 성장하는 캐릭터 → 나중에 재화·스킨 상점 (그림 작업 필요, 계획서 6단계)
-3. 워마 상자 5단계 복습을 실제 데이터로 (Supabase `reviews` 테이블, 퀴즈 점수도 계정에 저장)
+3. (완료: 워마 복습 상자·퀴즈 점수 계정 저장) 다음 후보 — 워마 칭호(`title_stats`에 `quiz_…`/외운 단어 수 metric, 06의 함수라 06에서 고칠 것), 스펠링 쓰기 퀴즈
 4. NEIS 하루 1회 cron + `school_cache` (문서 6장)
 5. 수행평가(반장 등록), 공지(이벤트 배너) 관리자 화면 — 사용자가 보류한 것 포함
 6. 스터디그룹 다음 단계 후보: 그룹 목표 시간, 그룹 안 응원/콕 찌르기(알림 필요)

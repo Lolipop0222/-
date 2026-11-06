@@ -19,18 +19,36 @@ here = os.path.dirname(os.path.abspath(__file__))
 data = json.load(open(os.path.join(here, "wordmaster_2000.json"), encoding="utf-8"))
 
 words = [
-    {"id": w["id"], "day": w["day"], "ord": w["order"], "word": w["word"], "meaning": w["meaning"]}
+    {
+        "id": w["id"], "day": w["day"], "ord": w["order"], "word": w["word"],
+        "meaning": w["meaning"],
+        "etymology": w["etymology"]["text"] if w["etymology"] else None,
+    }
     for w in data["words"]
 ]
 sentences = [
-    {"word_id": w["id"], **{k: s[k] for k in ("level", "source", "text", "answer", "blanked")}}
+    {"word_id": w["id"], **{k: s[k] for k in ("level", "source", "text", "translation", "answer", "blanked")}}
     for w in data["words"]
     for s in w["sentences"]
 ]
+KIND = {"synonyms": "synonym", "antonyms": "antonym", "derivatives": "derivative", "phrases": "phrase"}
+relations = [
+    {"word_id": w["id"], "kind": KIND[k], "text": r["text"], "meaning": r.get("meaning"), "source": r["source"]}
+    for w in data["words"]
+    for k in KIND
+    for r in w[k]
+]
 
-for i in range(0, len(words), 500):
-    db.table("wm_words").upsert(words[i:i + 500]).execute()
-for i in range(0, len(sentences), 500):
-    db.table("wm_sentences").upsert(sentences[i:i + 500], on_conflict="word_id,level").execute()
 
-print(f"완료: 단어 {len(words)}개, 문장 {len(sentences)}개")
+def upsert(table, rows, conflict=None):
+    for i in range(0, len(rows), 500):
+        q = db.table(table).upsert(rows[i:i + 500], on_conflict=conflict) if conflict \
+            else db.table(table).upsert(rows[i:i + 500])
+        q.execute()
+
+
+upsert("wm_words", words)
+upsert("wm_sentences", sentences, "word_id,level")
+upsert("wm_relations", relations, "word_id,kind,text")
+
+print(f"완료: 단어 {len(words)}개, 문장 {len(sentences)}개, 관련어 {len(relations)}개")

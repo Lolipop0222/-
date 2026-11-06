@@ -657,3 +657,29 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .tt-fill { transition: none; }
 }
+
+/* 워마 암기 카드: 눌러서 뒤집기 (앞면 단어 → 뒷면 뜻·예문) */
+.wm-scene { perspective: 1400px; }
+.wm-card {
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.wm-card.is-flipped { transform: rotateY(180deg); }
+.wm-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.wm-back { transform: rotateY(180deg); }
+/* 카드를 옆으로 밀 때 (알아요 → 오른쪽, 몰라요 → 왼쪽) */
+.wm-drag { touch-action: pan-y; }
+.wm-drag.is-settling { transition: transform 0.22s ease-out, opacity 0.22s ease-out; }
+/* 새 카드가 아래에서 살짝 올라옴 */
+@keyframes wm-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.wm-enter { animation: wm-in 0.28s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .wm-card, .wm-drag.is-settling { transition: none; }
+  .wm-enter { animation: none; }
+}

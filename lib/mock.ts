@@ -11,13 +11,6 @@ export const books = [
   { id: "b2", title: "수능 영단어 2000", days: 40, words: 615, mastered: 96 },
 ];
 
-export const reviewToday = 23;
-
-// 상자 단계별 단어 수 (1~5)
-export const boxCounts = [64, 112, 158, 207, 318];
-
-export const BOX_INTERVAL_DAYS = [1, 3, 7, 16, 35];
-
 export const words: Word[] = [
   { id: "w1", book: "능률 VOCA 고교필수", day: 12, en: "abandon", ko: "버리다, 포기하다", pos: "v.", box: 1 },
   { id: "w2", book: "능률 VOCA 고교필수", day: 12, en: "abundant", ko: "풍부한", pos: "adj.", box: 2 },
