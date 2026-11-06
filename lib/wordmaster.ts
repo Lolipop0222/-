@@ -24,6 +24,9 @@ export type WmDay = { day: number; words: WmWord[] };
 /** index.json 한 줄: [id, day, word, meaning] */
 export type WmIndexEntry = [number, number, string, string];
 
+/** 데이터를 바꾸면 올린다 — 브라우저·CDN에 남은 예전 JSON을 안 쓰게 */
+const DATA_VERSION = 2;
+
 export const WM_DAYS = 50;
 export const WM_WORDS = 2000;
 export const WORDS_PER_DAY = 40;
@@ -38,7 +41,7 @@ let indexCache: Promise<WmIndexEntry[]> | null = null;
 export function loadDay(day: number): Promise<WmDay> {
   let p = dayCache.get(day);
   if (!p) {
-    p = fetch(`/wordmaster/day-${String(day).padStart(2, "0")}.json`).then((res) => {
+    p = fetch(`/wordmaster/day-${String(day).padStart(2, "0")}.json?v=${DATA_VERSION}`).then((res) => {
       if (!res.ok) throw new Error(`DAY ${day} 단어를 불러오지 못했어요 (${res.status})`);
       return res.json() as Promise<WmDay>;
     });
@@ -57,7 +60,7 @@ export async function loadDays(days: Iterable<number>): Promise<Map<number, WmDa
 
 export function loadIndex(): Promise<WmIndexEntry[]> {
   if (!indexCache) {
-    indexCache = fetch("/wordmaster/index.json").then((res) => {
+    indexCache = fetch(`/wordmaster/index.json?v=${DATA_VERSION}`).then((res) => {
       if (!res.ok) throw new Error(`단어 목록을 불러오지 못했어요 (${res.status})`);
       return res.json() as Promise<WmIndexEntry[]>;
     });
