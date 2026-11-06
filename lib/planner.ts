@@ -31,7 +31,7 @@ const TASK_COLS_OLD: string = "id, task_date, title, subject, done, routine_id";
 const isMissingColumn = (e: unknown) => ["42703", "PGRST204"].includes((e as { code?: string } | null)?.code ?? "");
 
 function normalizeTask(t: Task): Task {
-  return { ...t, subject: normalizeSubject(t.subject), detail: t.detail ?? null, lecture: !!t.lecture };
+  return { ...t, subject: normalizeSubject(t.subject), detail: t.detail ?? ((t.subject as string) === "한국사" ? "한국사" : null), lecture: !!t.lecture };
 }
 const DAY_MS = 86_400_000;
 

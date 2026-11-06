@@ -52,7 +52,7 @@ function normalizeSession(s: StudySession): StudySession {
     subject: normalizeSubject(raw) ?? ETC,
     task_id: s.task_id ?? null,
     label: s.label ?? (raw === "인강" ? "인강" : null),
-    detail: s.detail ?? null,
+    detail: s.detail ?? (raw === "한국사" ? "한국사" : null),
     lecture: !!s.lecture,
   };
 }

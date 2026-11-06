@@ -56,7 +56,7 @@ export default function TrackPage() {
                 {on ? <Check size={20} className="text-accent" /> : busy === t ? <span className="text-[12px] text-faint">저장 중…</span> : null}
               </div>
               <dl className="mt-2 space-y-1 text-[12px] leading-relaxed">
-                {(["수학", "사회", "과학"] as const).map((s) => (
+                {(["수학", "사회", "과학", "역사"] as const).map((s) => (
                   <div key={s} className="flex gap-2">
                     <dt className="w-8 shrink-0 font-semibold text-muted">{s}</dt>
                     <dd className="text-faint">{d[s]?.join(" · ")}</dd>

@@ -44,8 +44,9 @@ alter table tasks drop constraint if exists tasks_subject_check;
 alter table routines drop constraint if exists routines_subject_check;
 alter table prints drop constraint if exists prints_subject_check;
 
-update sessions set subject = '역사' where subject = '한국사';
-update tasks set subject = '역사' where subject = '한국사';
+-- 예전 '한국사' → 과목 '역사' + 세부 항목 '한국사'
+update sessions set subject = '역사', detail = coalesce(detail, '한국사') where subject = '한국사';
+update tasks set subject = '역사', detail = coalesce(detail, '한국사') where subject = '한국사';
 update routines set subject = '역사' where subject = '한국사';
 update prints set subject = '역사' where subject = '한국사';
 -- 예전 '인강' 과목: 어느 과목인지 알 수 없어서 기록은 '기타'(이름 '인강')로, 과제·루틴은 과목 없음으로 옮긴다

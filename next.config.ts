@@ -34,8 +34,15 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+/**
+ * 이번 배포의 버전 — 앱이 /api/version과 비교해서 새 배포가 나왔는지 안다 (components/UpdateWatcher.tsx).
+ * Vercel은 배포마다 커밋 SHA를 준다. 내 컴퓨터에서 빌드하면 빌드 시각.
+ */
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || `local-${Date.now()}`;
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  env: { NEXT_PUBLIC_BUILD_ID: BUILD_ID },
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

@@ -32,17 +32,19 @@ export const TRACKS = ["문과", "이과"] as const;
 export type Track = (typeof TRACKS)[number];
 export const isTrack = (v: unknown): v is Track => v === "문과" || v === "이과";
 
-/** 계열별 세부 항목 (사용자가 정한 목록). 여기 없는 과목(국어·영어·역사)은 세부 항목 없이 과목만 */
+/** 계열별 세부 항목 (사용자가 정한 목록). 여기 없는 과목(국어·영어)은 세부 항목 없이 과목만 */
 export const SUBJECT_DETAILS: Record<Track, Partial<Record<RankedSubject, readonly string[]>>> = {
   이과: {
     수학: ["미적분Ⅱ", "확률과 통계", "대수", "미적분Ⅰ"],
     과학: ["물질과 에너지", "세포와 물질대사", "지구시스템 과학", "역학과 에너지", "통합과학1", "통합과학2"],
     사회: ["통합사회1", "통합사회2"],
+    역사: ["한국사"],
   },
   문과: {
     수학: ["확률과 통계", "경제수학", "미적분Ⅰ", "대수"],
-    사회: ["윤리와 사상", "세계사", "법과 사회", "정치와 법", "한국지리", "통합사회1", "통합사회2"],
+    사회: ["윤리와 사상", "법과 사회", "정치와 법", "한국지리", "통합사회1", "통합사회2"],
     과학: ["통합과학1", "통합과학2"],
+    역사: ["한국사", "세계사"],
   },
 };
 
@@ -66,6 +68,6 @@ export function subjectLabel(subject: Subject | null | undefined, detail?: strin
  */
 export function normalizeSubject(v: string | null | undefined): Subject | null {
   if (v == null) return null;
-  if (v === "한국사") return "역사";
+  if (v === "한국사") return "역사"; // 세부 항목 '한국사'는 06-subjects.sql이 옮길 때 붙인다
   return (SUBJECTS as readonly string[]).includes(v) ? (v as Subject) : ETC;
 }
