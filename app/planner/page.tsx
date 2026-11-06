@@ -111,7 +111,7 @@ export default function PlannerPage() {
         {p.error && <p className="mt-4 rounded-xl bg-danger-soft px-3 py-2.5 text-[13px] text-danger">{p.error}</p>}
 
         {/* TASKS + MEMO | TIMETABLE */}
-        <div className="mt-5 grid grid-cols-[1fr_128px] gap-3">
+        <div className="mt-5 grid grid-cols-[1fr_112px] gap-2.5 min-[380px]:grid-cols-[1fr_128px] min-[380px]:gap-3">
           <div className="min-w-0">
             <Label>TASKS</Label>
             <TaskList p={p} byTask={byTask} isToday={isToday} />
@@ -222,7 +222,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
               </button>
               <button onClick={() => (setNeedSubject(false), setEditing(t))} className="min-w-0 flex-1 text-left">
                 <p className={`line-clamp-2 text-[14px] leading-snug ${t.done ? "text-faint line-through" : ""}`}>{t.title}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted">
+                <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted">
                   {t.subject ? (
                     <span className="flex min-w-0 items-center gap-1">
                       <span className="size-1.5 shrink-0 rounded-full" style={{ background: SUBJECT_COLOR[t.subject] }} />
@@ -232,7 +232,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
                   ) : (
                     <span className="text-faint">과목 없음</span>
                   )}
-                  {sec >= 60 && <span className="num">· {hm(sec)}</span>}
+                  {sec >= 60 && <span className="num shrink-0 whitespace-nowrap">· {hm(sec)}</span>}
                   {t.routine_id && <Repeat size={11} className="text-faint" aria-label="루틴" />}
                 </p>
               </button>

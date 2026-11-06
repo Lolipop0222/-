@@ -243,6 +243,7 @@ alter default privileges in schema public grant all on functions to anon, authen
 - 스키마 변경 시 업그레이드 경로: `git show <커밋>:supabase/schema.sql`로 예전 버전(97885ae 처음, b944369 디데이, 0f40384 플래너, d2da6e1 한국사·기타, 그 뒤는 `git log --oneline -- supabase/schema.sql`)을 꺼내 각각 올린 DB에 새 전체본을 2번 실행. **조각도** 시험: 사용자 DB와 같은 상태의 예전 버전에 바뀐 조각만 2번 실행, 새 DB에 01→05 순서로 실행 후 아무 조각이나 다시 실행.
 - 칭호 테스트: 학생 여럿을 만들고 `insert into sessions (…, started_at, ended_at)`에 `'2026-11-02 23:30+09'`처럼 KST 시각을 직접 넣어 경계·소급·기타 제외·중복을 확인했다. 화면 테스트의 가짜 서버는 schema.sql의 `title_defs` insert 줄을 정규식으로 읽어 쓴다.
 - Storage 화면 테스트: 가짜 서버가 `/storage/v1/object/<bucket>/<path>`(업로드, supabase-js는 multipart로 보내고 `cacheControl` 칸 다음에 파일 칸이 온다 → filename 있는 칸을 꺼낼 것), `/object/public/…`, `/object/sign/…`, DELETE를 흉내 낸다. Playwright `setInputFiles`에 한글·띄어쓰기 경로를 주면 조용히 실패 → `{ name, mimeType, buffer }`로 넘긴다.
+- **반응형 점검 (2026-11-06)**: 화면 7가지(320·360·390·412 세로, 844×390 가로, 820 태블릿, 1366 PC) × 주요 화면 16개를 Playwright로 열어 `scrollWidth > clientWidth`와 화면 밖으로 나간 요소(가로 스크롤 줄 안은 제외), 글자 넘침을 자동 검사 → 모두 통과. 레이아웃 원칙: 앱은 휴대폰 폭 기준 `max-w-md`(448px) 한 줄을 가운데에 두고, 태블릿·PC에서는 그 줄이 가운데에 놓인다. 로딩 화면은 컨테이너 쿼리(`@container` + `cqw` 단위)로 폭에 비례해 줄어든다. 사라지는 화면(로딩)은 자동 검사에 안 잡히니 응답을 늦춰 따로 잰다. 새 화면을 만들면 320px에서도 확인한다(배지는 `whitespace-nowrap`, 긴 글은 `truncate`/`min-w-0`).
 - Next 16은 떠난 페이지를 숨긴 채 DOM에 남겨 둔다 → Playwright 선택자는 `:visible`이나 열린 dialog 안으로 범위를 좁힌다.
 
 ## 8. 구현하며 알게 된 함정

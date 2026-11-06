@@ -58,7 +58,7 @@ const TONE: Record<Tone, string> = {
 };
 
 export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: Tone }) {
-  return <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${TONE[tone]}`}>{children}</span>;
+  return <span className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${TONE[tone]}`}>{children}</span>;
 }
 
 /** 가로 탭 (전교/학년/반/그룹 같은 것) */

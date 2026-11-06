@@ -8,7 +8,7 @@
 const SUB = "Daejeon High School · Study Planner";
 
 /** 대전고 시계 엠블럼: 시계판이 그려지고 금색 불빛이 숫자를 한 칸씩 돈다, 가운데 高 방패는 톡 튀어나와 숨 쉼 */
-export function Emblem({ size, fast = false }: { size: number; fast?: boolean }) {
+export function Emblem({ size, fast = false }: { size: number | string; fast?: boolean }) {
   return (
     <span className={`em-box ${fast ? "em-fast" : ""}`} style={{ width: size, height: size }} aria-hidden>
       <span className="bl-mask em-ring" />
@@ -18,9 +18,9 @@ export function Emblem({ size, fast = false }: { size: number; fast?: boolean })
   );
 }
 
-function Bars({ width, className = "" }: { width: number; className?: string }) {
+function Bars({ width, className = "" }: { width: number | string; className?: string }) {
   return (
-    <span className={`bl-bars flex shrink-0 flex-col justify-between ${className}`} style={{ width, height: width * 0.62 }} aria-hidden>
+    <span className={`bl-bars flex shrink-0 flex-col justify-between ${className}`} style={{ width, aspectRatio: "1 / 0.62" }} aria-hidden>
       <span />
       <span />
       <span />
@@ -32,19 +32,24 @@ function Bars({ width, className = "" }: { width: number; className?: string }) 
 export function StartSplash() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6" role="status" aria-label="대품타 — 일등급을 품은 타이머, 불러오는 중">
-      <Emblem size={176} />
-      <div className="mt-9 flex w-full max-w-[330px] flex-col items-start">
-        <div className="flex items-center gap-3">
-          <span className="bl-kicker text-[15px] font-extrabold tracking-[0.35em]">대전고</span>
-          <span className="bl-kicker-line h-[2px] w-12" />
+      {/* 폭 330px 기준으로 그린 뒤, 화면이 좁으면 글자·그림이 같은 비율로 줄어든다 (cqw = 이 틀 폭의 1%) */}
+      <div className="@container w-full max-w-[330px]">
+        <div className="flex flex-col items-center">
+          <Emblem size="53cqw" />
         </div>
-        <span className="bl-title mt-3 block w-full" style={{ aspectRatio: "1096 / 129" }} aria-hidden>
-          <span className="bl-mask bl-title-ink" />
-          <span className="bl-mask bl-title-shine" />
-        </span>
-        <div className="mt-4 flex items-center gap-2.5">
-          <Bars width={22} />
-          <span className="bl-sub text-[9px] tracking-[0.24em]">{SUB}</span>
+        <div className="mt-[11cqw] flex flex-col items-start">
+          <div className="flex items-center gap-[3.6cqw]">
+            <span className="bl-kicker text-[4.5cqw] font-extrabold tracking-[0.35em]">대전고</span>
+            <span className="bl-kicker-line h-[2px] w-[14.5cqw]" />
+          </div>
+          <span className="bl-title mt-[3.6cqw] block w-full" style={{ aspectRatio: "1096 / 129" }} aria-hidden>
+            <span className="bl-mask bl-title-ink" />
+            <span className="bl-mask bl-title-shine" />
+          </span>
+          <div className="mt-[4.8cqw] flex w-full items-center gap-[3cqw]">
+            <Bars width="6.6cqw" />
+            <span className="bl-sub text-[2.62cqw] tracking-[0.24em]">{SUB}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -67,17 +72,20 @@ export function AppLoader({ size = "page", label = "불러오는 중…" }: { si
   }
   return (
     <div className="flex flex-col items-center justify-center py-12" role="status" aria-label={`대품타 — ${label}`}>
-      <div className="flex items-center gap-4">
-        <Emblem size={96} fast />
-        <div className="flex flex-col">
-          <span className="bl-dpt block w-[176px]" style={{ aspectRatio: "900 / 309" }} aria-hidden>
-            <span className="bl-mask" />
-            <span className="bl-mask" />
-            <span className="bl-mask" />
-          </span>
-          <div className="mt-2.5 flex items-center gap-1.5">
-            <Bars width={15} className="bl-dpt-bars" />
-            <span className="bl-sub bl-dpt-sub text-[8px] tracking-[0.12em]">{SUB}</span>
+      {/* 폭 340px 기준, 좁은 화면에서는 같은 비율로 줄어든다 (cqw = 이 틀 폭의 1%) */}
+      <div className="@container w-full max-w-[340px] px-1">
+        <div className="flex items-center gap-[4.7cqw]">
+          <Emblem size="28cqw" fast />
+          <div className="flex min-w-0 flex-col">
+            <span className="bl-dpt block w-[52cqw]" style={{ aspectRatio: "900 / 309" }} aria-hidden>
+              <span className="bl-mask" />
+              <span className="bl-mask" />
+              <span className="bl-mask" />
+            </span>
+            <div className="mt-[3cqw] flex items-center gap-[1.8cqw]">
+              <Bars width="4.4cqw" className="bl-dpt-bars" />
+              <span className="bl-sub bl-dpt-sub text-[2.3cqw] tracking-[0.1em]">{SUB}</span>
+            </div>
           </div>
         </div>
       </div>
