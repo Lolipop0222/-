@@ -1,0 +1,59 @@
+# 안드로이드 APK 만들기 — GitHub 웹사이트에서 버튼 하나로 (컴퓨터에 Android Studio·JDK 설치 필요 없음)
+# 사용법: GitHub 저장소 → Actions 탭 → 왼쪽 "APK 만들기" → 오른쪽 "Run workflow" → 초록 버튼
+#         5~10분 뒤 끝난 실행을 눌러 맨 아래 Artifacts의 "daego-ilpumta-apk"를 내려받는다 (zip 안에 APK)
+# 앱 화면·기능은 배포된 웹 주소를 열기 때문에, APK는 아이콘·시작 화면·권한 같은 휴대폰 쪽이 바뀔 때만 다시 만들면 된다.
+#
+# (선택) 서명 키 고정: 저장소 Settings → Secrets and variables → Actions에 ANDROID_DEBUG_KEYSTORE_BASE64를 넣으면
+# 매번 같은 키로 서명돼서, 나중에 새 APK를 깔 때 예전 앱을 지우지 않고 바로 덮어쓸 수 있다. 없으면 실행마다 키가 달라진다.
+name: APK 만들기
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "앱이 열 주소"
+        required: true
+        default: "https://daego-ilpumta.vercel.app"
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: 서명 키 (설정했으면 고정 키 사용)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "고정 서명 키를 씁니다"
+          else
+            echo "고정 서명 키가 없어 이번 실행용 키로 서명합니다"
+          fi
+
+      - run: npm ci
+
+      - name: APK 빌드
+        run: npm run apk -- "${{ inputs.app_url }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daego-ilpumta-apk
+          path: dist/daego-ilpumta.apk
+          retention-days: 30
