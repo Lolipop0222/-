@@ -2,6 +2,8 @@
 
 import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { LevelBadge, NameTag } from "@/components/NameTag";
+import { usePlayerCards } from "@/lib/levels";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Copy, Crown, LogIn, LogOut, Pencil, Plus, RefreshCw, Share2, Trash2, UserMinus, Users } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
@@ -244,6 +246,7 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const cards = usePlayerCards((rows ?? []).map((r) => r.nickname));
 
   useEffect(() => {
     let alive = true;
@@ -353,11 +356,12 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1">
-                    <span className="truncate text-[15px] font-medium">{r.nickname}</span>
+                    <NameTag name={r.nickname} frame={cards.get(r.nickname)?.frame} className="min-w-0 text-[15px] font-medium" />
                     {r.is_owner && <Crown size={13} className="shrink-0 text-warn" fill="currentColor" />}
                     {r.is_me && <span className="text-[12px] text-accent">나</span>}
                   </span>
-                  <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="mt-1 flex min-w-0 items-center gap-1.5">
+                    <LevelBadge level={cards.get(r.nickname)?.level} />
                     {r.title_name && <TitleBadge name={r.title_name} grade={r.title_grade} size="xs" />}
                     <span className="num shrink-0 text-[12px] text-faint">
                       {r.grade}-{r.class_no} · 오늘 {hm(r.today_sec)}

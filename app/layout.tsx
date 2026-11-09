@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import StudyProvider from "@/components/StudyProvider";
 import ThemeProvider from "@/components/ThemeProvider";
 import TitlesProvider from "@/components/TitlesProvider";
+import LevelWatcher from "@/components/LevelWatcher";
 import UpdateWatcher from "@/components/UpdateWatcher";
 import { THEME_BOOT_SCRIPT } from "@/lib/themes";
 import "./globals.css";
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   <main className="flex-1 pb-28">{children}</main>
                   <BottomNav />
                   <UpdateWatcher />
+                  <LevelWatcher />
                 </TitlesProvider>
               </StudyProvider>
             </AuthProvider>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, Files, GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
+import { Award, ChartNoAxesColumnIncreasing, Files, GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { useTheme } from "@/components/ThemeProvider";
+import { LevelBadge, NameTag } from "@/components/NameTag";
 import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
+import { useMyLevel } from "@/lib/levels";
 import { useMyTitles, useTitles } from "@/components/TitlesProvider";
 import { Badge, Card, ListRow, PageHeader } from "@/components/ui";
 import { isAdmin } from "@/lib/account";
@@ -17,7 +19,8 @@ import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 export default function MePage() {
   const auth = useAuth();
   const profile = useProfile();
-  const { summary } = useStudy();
+  const { summary, version } = useStudy();
+  const { level: myLevel, available: levelOn } = useMyLevel(version);
   const themeLabel = themeName(useTheme().choice);
   const top = RANKED_SUBJECTS.reduce((a, b) => (summary.weekBySubject[b] > summary.weekBySubject[a] ? b : a));
   const hasTop = summary.weekBySubject[top] >= 60;
@@ -53,7 +56,10 @@ export default function MePage() {
             </span>
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[20px] font-bold">{profile.nickname}</p>
+            <Link href="/me/level" className="flex min-w-0 items-center gap-1.5 text-[20px] font-bold">
+              <NameTag name={profile.nickname} frame={myLevel?.frame} className="min-w-0" />
+              <LevelBadge level={myLevel?.level} />
+            </Link>
             {equipped && (
               <Link href="/me/titles" className="mt-1 flex">
                 <TitleBadge name={equipped.name} grade={equipped.grade} size="sm" />
@@ -75,6 +81,7 @@ export default function MePage() {
           <ListRow icon={<GraduationCap size={20} />} label="학년·반·계열" value={`${profile.grade}학년 ${profile.class_no}반${profile.grade === 2 ? ` · ${profile.track ?? "계열 고르기"}` : ""}`} href="/me/track" />
           <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
           <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
+          <ListRow icon={<ChartNoAxesColumnIncreasing size={20} />} label="레벨" value={!levelOn ? "준비 중" : myLevel ? `Lv.${myLevel.level}` : undefined} href="/me/level" />
           <ListRow icon={<Award size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
           <ListRow icon={<Smile size={20} />} label="프로필 사진" href="/me/avatar" />
           <ListRow icon={<Files size={20} />} label="프린트 아카이브" href="/prints" />

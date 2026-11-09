@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Crown, Users } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
+import { LevelBadge, NameTag } from "@/components/NameTag";
 import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
+import { usePlayerCards, type PlayerCard } from "@/lib/levels";
 import { Segmented } from "@/components/ui";
 import { hm } from "@/lib/format";
 import { koreanError } from "@/lib/supabase";
@@ -40,6 +42,8 @@ export default function Ranking() {
   const around = rows && meIdx >= 0 ? rows.slice(Math.max(0, meIdx - 3), meIdx + 4) : (rows ?? []).slice(0, 7);
   // 위아래 세 명 안에 1등이 들어오면 상위 3명은 따로 보여주지 않는다
   const top = rows && (around[0]?.rank ?? 1) > 1 ? rows.slice(0, 3) : [];
+  // 레벨·닉네임 테두리 (08-levels 실행 전이면 비어 있음)
+  const cards = usePlayerCards([...top, ...around].map((r) => r.nickname));
 
   return (
     <section id="ranking" className="scroll-mt-4 px-5 pt-8">
@@ -69,7 +73,14 @@ export default function Ranking() {
               <span className="mt-1.5 flex justify-center">
                 <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} size={36} />
               </span>
-              <p className="mt-1 truncate text-[13px] font-semibold">{r.nickname}</p>
+              <p className="mt-1 flex min-w-0 justify-center text-[13px] font-semibold">
+                <NameTag name={r.nickname} frame={cards.get(r.nickname)?.frame} className="min-w-0" />
+              </p>
+              {cards.get(r.nickname) && (
+                <span className="mt-0.5 flex justify-center">
+                  <LevelBadge level={cards.get(r.nickname)?.level} />
+                </span>
+              )}
               {r.title_name && (
                 <span className="flex justify-center">
                   <TitleBadge name={r.title_name} grade={r.title_grade} size="xs" />
@@ -85,7 +96,7 @@ export default function Ranking() {
         <ol className="mt-4 overflow-hidden rounded-2xl border border-line bg-surface">
           {top.length > 0 && around[0].rank > 4 && <li className="py-1 text-center text-[12px] tracking-[0.3em] text-faint">⋯</li>}
           {around.map((r) => (
-            <RankItem key={r.nickname} row={r} />
+            <RankItem key={r.nickname} row={r} card={cards.get(r.nickname)} />
           ))}
         </ol>
       )}
@@ -118,7 +129,7 @@ function SubjectChip({ active, onClick, label, color }: { active: boolean; onCli
   );
 }
 
-function RankItem({ row }: { row: RankRow }) {
+function RankItem({ row, card }: { row: RankRow; card?: PlayerCard }) {
   return (
     <li
       className={`flex items-center gap-3 px-4 py-3 ${
@@ -132,17 +143,16 @@ function RankItem({ row }: { row: RankRow }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[15px] font-medium">{row.nickname}</span>
+          <NameTag name={row.nickname} frame={card?.frame} className="min-w-0 text-[15px] font-medium" />
           {row.is_me && <span className="shrink-0 text-[12px] text-accent">나</span>}
+        </span>
+        <span className="mt-1 flex min-w-0 items-center gap-1.5">
+          <LevelBadge level={card?.level} />
+          {row.title_name && <TitleBadge name={row.title_name} grade={row.title_grade} size="xs" />}
           <span className="shrink-0 text-[11px] text-faint">
             {row.grade}-{row.class_no}
           </span>
         </span>
-        {row.title_name && (
-          <span className="mt-0.5 flex">
-            <TitleBadge name={row.title_name} grade={row.title_grade} size="xs" />
-          </span>
-        )}
       </span>
       <span className="num text-[14px] font-semibold">{hm(row.total_sec)}</span>
     </li>
