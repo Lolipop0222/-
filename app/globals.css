@@ -239,6 +239,35 @@
   --texture: none;
 }
 
+/* 체리 마법서 — 사용자가 GPT로 디자인한 팔레트 (2026-11-09). 밤 보라 바탕 + 벚꽃 분홍.
+   danger만 원안 #c16c78 → #d07c87로 밝힘: 카드 위 빨간 글자 대비 4.05 → 4.92 (WCAG 4.5 이상) */
+[data-theme="cherry-grimoire"] {
+  color-scheme: dark;
+  --bg: #1d1b29;
+  --surface: #282534;
+  --surface-2: #363142;
+  --line: #62566c;
+  --text: #ebe1e5;
+  --muted: #b9acbe;
+  --faint: #928699;
+  --accent: #dfa3bf;
+  --live: #badbbb;
+  --warn: #e3a46d;
+  --danger: #d07c87;
+  --stage: #201e30;
+  --stage-text: #ecd3a4;
+  --on-subject: #1d1b29;
+  --s-kor: #e1a4b9;
+  --s-eng: #81b6da;
+  --s-math: #b198d1;
+  --s-sci: #77bca4;
+  --s-soc: #dac17c;
+  --s-his: #cf936d;
+  --s-lec: #70bec6;
+  --s-etc: #a3a4af;
+  --texture: none;
+}
+
 /* 옅은 색은 테마의 진한 색에서 자동으로 만든다 (그 요소의 테마 기준) */
 :root,
 [data-theme] {

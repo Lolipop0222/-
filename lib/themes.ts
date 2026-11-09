@@ -5,7 +5,7 @@
  * 팔레트 출처: Nord(nordtheme.com), Catppuccin(github.com/catppuccin/palette), Gruvbox(github.com/morhetz/gruvbox),
  * Solarized(ethanschoonover.com/solarized). 모두 공개 팔레트이고 앱 화면에 맞게 역할(배경·글자·강조)을 나눠 썼다.
  */
-export type ThemeId = "dark" | "light" | "paper" | "nord" | "mocha" | "gruvbox" | "solarized" | "contrast";
+export type ThemeId = "dark" | "light" | "paper" | "nord" | "mocha" | "gruvbox" | "solarized" | "contrast" | "cherry-grimoire";
 export type ThemeChoice = ThemeId | "system";
 
 export type ThemeInfo = { id: ThemeId; name: string; desc: string; dark: boolean; bg: string };
@@ -18,6 +18,7 @@ export const THEMES: readonly ThemeInfo[] = [
   { id: "mocha", name: "모카", desc: "부드러운 파스텔 · Catppuccin Mocha", dark: true, bg: "#181825" },
   { id: "gruvbox", name: "그루브박스", desc: "따뜻한 레트로 · Gruvbox", dark: true, bg: "#1d2021" },
   { id: "solarized", name: "솔라라이즈드", desc: "눈이 편한 저대비 · Solarized Light", dark: false, bg: "#eee8d5" },
+  { id: "cherry-grimoire", name: "체리 마법서", desc: "밤 보라 바탕에 벚꽃빛 분홍", dark: true, bg: "#1d1b29" },
   { id: "contrast", name: "고대비", desc: "글자가 가장 또렷하게 (접근성)", dark: true, bg: "#000000" },
 ];
 
