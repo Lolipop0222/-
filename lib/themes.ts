@@ -5,7 +5,8 @@
  * 팔레트 출처: Nord(nordtheme.com), Catppuccin(github.com/catppuccin/palette), Gruvbox(github.com/morhetz/gruvbox),
  * Solarized(ethanschoonover.com/solarized). 모두 공개 팔레트이고 앱 화면에 맞게 역할(배경·글자·강조)을 나눠 썼다.
  */
-export type ThemeId = "dark" | "light" | "paper" | "nord" | "mocha" | "gruvbox" | "solarized" | "contrast" | "cherry-grimoire";
+export type ThemeId = "dark" | "light" | "paper" | "nord" | "mocha" | "gruvbox" | "solarized" | "contrast" | "cherry-grimoire"
+  | "silver-plum" | "garnet-globe" | "lunar-compass" | "mint-circuit" | "amber-archive";
 export type ThemeChoice = ThemeId | "system";
 
 export type ThemeInfo = { id: ThemeId; name: string; desc: string; dark: boolean; bg: string };
@@ -19,6 +20,11 @@ export const THEMES: readonly ThemeInfo[] = [
   { id: "gruvbox", name: "그루브박스", desc: "따뜻한 레트로 · Gruvbox", dark: true, bg: "#1d2021" },
   { id: "solarized", name: "솔라라이즈드", desc: "눈이 편한 저대비 · Solarized Light", dark: false, bg: "#eee8d5" },
   { id: "cherry-grimoire", name: "체리 마법서", desc: "밤 보라 바탕에 벚꽃빛 분홍", dark: true, bg: "#1d1b29" },
+  { id: "silver-plum", name: "실버 플럼", desc: "잿빛 자두색에 은은한 베이지", dark: true, bg: "#211e22" },
+  { id: "garnet-globe", name: "가넷 글로브", desc: "석류석빛 보라에 장밋빛 분홍", dark: true, bg: "#211926" },
+  { id: "lunar-compass", name: "달빛 나침반", desc: "깊은 남색 밤하늘에 달빛 파랑", dark: true, bg: "#191e32" },
+  { id: "mint-circuit", name: "민트 서킷", desc: "짙은 청록 바탕에 민트빛", dark: true, bg: "#182427" },
+  { id: "amber-archive", name: "호박빛 서고", desc: "오래된 서고의 갈색과 호박색", dark: true, bg: "#251d1a" },
   { id: "contrast", name: "고대비", desc: "글자가 가장 또렷하게 (접근성)", dark: true, bg: "#000000" },
 ];
 
