@@ -35,6 +35,7 @@
         <ul class="guide">
           <li>폰(또는 노트북)을 앉은 사람의 <b>옆쪽 1~1.5m</b> 거리에 세워 두세요.</li>
           <li><b>머리와 어깨</b>가 화면에 다 들어오게 맞추세요. (옆모습)</li>
+          <li>거치대에 폰을 <b>똑바로</b> 세우고, 카메라 높이는 어깨~귀 높이쯤으로 맞추세요.</li>
           <li>귀가 머리카락이나 후드에 가리지 않게 해 주세요.</li>
           <li>측정하는 동안 이 화면을 켜 둔 채로 두세요.</li>
         </ul>
@@ -47,6 +48,19 @@
           <label><input type="radio" name="facing" value="user"> <span>전면 카메라</span></label>
         </div>
         <p class="hint">노트북은 어느 쪽을 골라도 웹캠이 켜져요.</p>
+      </div>
+
+      <div class="card form">
+        <h2>정확도 설정</h2>
+        <label class="check"><input id="opt-tilt" type="checkbox" checked> 폰 기울기 자동 보정
+          <span class="hint">폰의 기울기 센서로 진짜 수직선을 찾아요 (노트북은 센서가 없어 보정 안 함)</span></label>
+        <fieldset>
+          <legend>자세 인식 모델</legend>
+          <div class="seg" role="radiogroup" aria-label="자세 인식 모델">
+            <label><input type="radio" name="model" value="full"> <span>보통<small>폰 추천</small></span></label>
+            <label><input type="radio" name="model" value="heavy"> <span>정밀<small>노트북 추천 · 느림</small></span></label>
+          </div>
+        </fieldset>
       </div>
 
       <div class="menu">
@@ -76,6 +90,8 @@
           </div>
           <p class="hint" id="s-mode-hint"></p>
         </fieldset>
+        <label class="check"><input id="s-baseline" type="checkbox" checked> 측정 전에 기준 자세 10초 재기
+          <span class="hint">(똑바로 앉은 자세를 재 두고, 결과를 "기준보다 몇 도 더 숙였나"로도 기록)</span></label>
         <div id="s-on-options" hidden>
           <label>기준 각도 이상이 몇 초 이어지면 알릴까요? <input id="s-hold" type="number" inputmode="decimal" min="1" max="120" step="any" value="5" required></label>
           <label class="check"><input id="s-sound" type="checkbox"> 알림 소리 켜기 <span class="hint">(기본 꺼짐 — 교실에서는 끄세요)</span></label>
@@ -89,10 +105,30 @@
       <h2 id="prep-title">카메라 맞추기</h2>
       <p id="prep-instruction" class="instruction" hidden></p>
       <p id="prep-status" class="status" role="status">카메라를 여는 중…</p>
-      <p class="hint">귀와 어깨에 점이 찍히면 준비된 거예요. 각도는 일부러 보여 주지 않아요.</p>
+      <p id="prep-tilt" class="status small" role="status"></p>
+      <p id="prep-side" class="warn" hidden></p>
+      <p class="hint">귀와 어깨에 점이 찍히면 준비된 거예요. 흰 점선이 진짜 수직선이에요(문틀·벽 모서리와 나란한지 확인해 보세요). 각도는 일부러 보여 주지 않아요.</p>
       <div class="actions">
         <button id="prep-start" class="btn primary" type="button" disabled>측정 시작</button>
         <button id="prep-flip" class="btn" type="button">카메라 바꾸기</button>
+      </div>
+    </section>
+
+    <!-- ================= 기준 자세 재기 ================= -->
+    <section data-screen="baseline" hidden>
+      <div class="measuring">
+        <p class="live">기준 자세 재기</p>
+        <p class="instruction">허리를 펴고 앉아 앞(먼 곳)을 바라봐 주세요</p>
+        <p class="time" id="b-remaining">10</p>
+        <p class="hint">초 동안 가만히 있어 주세요</p>
+        <p id="b-detect" class="status small" role="status"></p>
+        <div id="b-fail" hidden>
+          <p class="warn" id="b-fail-text"></p>
+          <div class="actions">
+            <button id="b-retry" class="btn primary" type="button">다시 재기</button>
+            <button id="b-skip" class="btn" type="button">기준 자세 없이 측정 시작</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -132,6 +168,8 @@
         <b>어깨 점에서 위로 그은 점선</b>과 <b>어깨→귀 선</b> 사이의 각도를 재서 아래에 적어 주세요.</p>
       <canvas id="freeze" hidden></canvas>
       <p id="v-status" class="status" role="status">카메라를 여는 중…</p>
+      <p id="v-tilt" class="status small" role="status"></p>
+      <p id="v-side" class="warn" hidden></p>
       <div class="actions">
         <button id="v-shot" class="btn primary" type="button" disabled>지금 멈춰서 재기</button>
         <button id="v-resume" class="btn" type="button" hidden>다시 찍기</button>
@@ -184,6 +222,8 @@
           <label>기준 각도(°) <input id="t-threshold" type="number" inputmode="decimal" min="1" max="90" step="any" value="20" required></label>
         </div>
         <label class="check"><input id="t-shuffle" type="checkbox" checked> 측정 순서를 무작위로 섞기 <span class="hint">(순서 효과 줄이기)</span></label>
+        <label class="check"><input id="t-baseline" type="checkbox" checked> 첫 측정 전에 기준 자세 10초 재기
+          <span class="hint">(모든 각도에 같은 기준을 써요)</span></label>
         <p id="t-error" class="warn" hidden></p>
         <button class="btn primary" type="submit">시작</button>
       </form>

@@ -7,18 +7,36 @@
 const MP_VERSION = "0.10.14";
 const MP_BUNDLE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/vision_bundle.mjs`;
 const MP_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
-// 자세 인식 모델 (full: lite보다 조금 느리지만 더 정확)
-const MP_MODEL =
-  "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+// 자세 인식 모델 2가지
+//   full  : 보통 (약 9MB). 폰에서도 부드럽게 돈다
+//   heavy : 정밀 (약 30MB). 점이 덜 흔들리지만 느려서 노트북에 알맞다
+const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker";
+export const MODELS = {
+  full: { label: "보통 (full)", url: `${MODEL_BASE}/pose_landmarker_full/float16/1/pose_landmarker_full.task` },
+  heavy: { label: "정밀 (heavy)", url: `${MODEL_BASE}/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task` },
+};
 
 let landmarker = null;
+let landmarkerKind = null;
 let loading = null;
+let loadingKind = null;
 let lastTimestamp = 0;
 
-/** 자세 인식 모델을 불러온다 (처음 한 번만 내려받는다. 몇 초 걸릴 수 있다) */
-export function loadPose() {
-  if (landmarker) return Promise.resolve(landmarker);
-  if (!loading) {
+/** 지금 쓰고 있는 모델 이름 ("full" / "heavy") */
+export function loadedModel() {
+  return landmarkerKind;
+}
+
+/**
+ * 자세 인식 모델을 불러온다 (처음 한 번만 내려받는다. 몇 초 걸릴 수 있다)
+ * @param {"full"|"heavy"} kind
+ */
+export function loadPose(kind = "full") {
+  if (!MODELS[kind]) kind = "full";
+  if (landmarker && landmarkerKind === kind) return Promise.resolve(landmarker);
+  if (!loading || loadingKind !== kind) {
+    loadingKind = kind;
+    const MP_MODEL = MODELS[kind].url;
     loading = (async () => {
       const { FilesetResolver, PoseLandmarker } = await import(MP_BUNDLE);
       const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
@@ -28,11 +46,19 @@ export function loadPose() {
           runningMode: "VIDEO",
           numPoses: 1,
         });
+      let made;
       try {
-        landmarker = await make("GPU"); // 그래픽 장치를 쓰면 빠르다
+        made = await make("GPU"); // 그래픽 장치를 쓰면 빠르다
       } catch {
-        landmarker = await make("CPU"); // 안 되는 기기에서는 CPU로
+        made = await make("CPU"); // 안 되는 기기에서는 CPU로
       }
+      if (loadingKind !== kind) {
+        made.close?.(); // 그사이 다른 모델을 고르면 이것은 버린다
+        return loadPose(loadingKind);
+      }
+      landmarker?.close?.();
+      landmarker = made;
+      landmarkerKind = kind;
       return landmarker;
     })().catch((err) => {
       loading = null; // 다음에 다시 시도할 수 있게
@@ -71,7 +97,8 @@ export async function startCamera(video, facing) {
   }
   stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
-    video: { facingMode: facing, width: { ideal: 640 }, height: { ideal: 480 } },
+    // 화질이 높을수록 귀·어깨 점이 덜 흔들린다 (안 되는 기기는 알아서 낮춘다)
+    video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
   });
   video.srcObject = stream;
   await video.play();

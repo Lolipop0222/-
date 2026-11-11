@@ -4,7 +4,10 @@
 //       (2) 브라우저에서 tests/tests.html 열기
 // ============================================================
 
-import { neckAngleDeg, measureNeck, pickSide, MovingAverage } from "../js/angle.js";
+import {
+  neckAngleDeg, measureNeck, pickSide, MovingAverage, upFromTilt, sideViewRatio, median,
+} from "../js/angle.js";
+import { tiltFromGravity } from "../js/tilt.js";
 import { fitQuadratic, quadraticMinimum, estimateBestAngle, evalQuadratic } from "../js/quadfit.js";
 import {
   summarize, AlertTracker, analyzeStand, meanAbsError, toCsv, sessionCsv, standCsv,
@@ -260,23 +263,112 @@ export const cases = [
     near(shareBelow([10, 20, 30, 40], 30), 50, 1e-9, "30 미만 비율");
   }],
 
+  // ---------- 정확도 높이기: 기울기 보정, 옆모습 점검, 중앙값, 기준 자세 ----------
+  ["기울기 보정: 위쪽 방향을 바꿔 끼우지 않으면 예전 식과 같다", () => {
+    near(neckAngleDeg({ x: 200, y: 50 }, { x: 100, y: 150 }, upFromTilt(0)), 45, 1e-9);
+  }],
+  ["기울기 보정: 카메라가 10° 기울어 귀가 사진에서 10° 기운 선 위에 있으면 0°", () => {
+    // 진짜 위쪽이 사진에서 오른쪽으로 10° 기울어 보이는 경우
+    const up = upFromTilt(10);
+    const shoulder = { x: 100, y: 200 };
+    const ear = { x: shoulder.x + 100 * up.x, y: shoulder.y + 100 * up.y };
+    near(neckAngleDeg(ear, shoulder, up), 0, 1e-9, "보정함");
+    near(neckAngleDeg(ear, shoulder), 10, 1e-9, "보정 안 하면 10° 틀림");
+  }],
+  ["기울기 보정: 진짜 목 각도 20°를 기울어진 카메라로 찍어도 20°", () => {
+    for (const tilt of [-15, -5, 7, 12]) {
+      const up = upFromTilt(tilt);
+      const forward = upFromTilt(tilt + 20); // 진짜 위쪽에서 20° 더 돈 방향
+      const shoulder = { x: 300, y: 300 };
+      const ear = { x: shoulder.x + 80 * forward.x, y: shoulder.y + 80 * forward.y };
+      near(neckAngleDeg(ear, shoulder, up), 20, 1e-9, `기울기 ${tilt}°`);
+    }
+  }],
+  ["기울기 센서: 폰을 세로로 똑바로 세우면 0°", () => {
+    near(tiltFromGravity(0, 9.81, 0, 0, "environment").tilt, 0, 1e-9);
+  }],
+  ["기울기 센서: 폰을 시계 방향으로 10° 돌리면 진짜 위쪽이 사진 왼쪽으로 10° (후면)", () => {
+    const r = (10 * Math.PI) / 180;
+    // 폰이 시계 방향으로 돌면, 폰 기준으로 본 위쪽은 반시계 방향으로 돈다
+    near(tiltFromGravity(-9.81 * Math.sin(r), 9.81 * Math.cos(r), 0, 0, "environment").tilt, -10, 1e-9);
+  }],
+  ["기울기 센서: 전면 카메라는 좌우가 뒤집혀 부호가 반대", () => {
+    const r = (10 * Math.PI) / 180;
+    near(tiltFromGravity(-9.81 * Math.sin(r), 9.81 * Math.cos(r), 0, 0, "user").tilt, 10, 1e-9);
+  }],
+  ["기울기 센서: 폰을 가로로 돌려도(화면 90°) 똑바로면 0°", () => {
+    // 왼쪽으로 눕혀 가로로 세우면 폰의 오른쪽(x)이 위를 향한다
+    near(tiltFromGravity(9.81, 0, 0, 90, "environment").tilt, 0, 1e-9, "90°");
+    near(tiltFromGravity(-9.81, 0, 0, 270, "environment").tilt, 0, 1e-9, "270°");
+  }],
+  ["기울기 센서: 부호를 반대로 주는 기기도 같은 값", () => {
+    const r = (10 * Math.PI) / 180;
+    near(tiltFromGravity(9.81 * Math.sin(r), -9.81 * Math.cos(r), 0, 0, "environment").tilt, -10, 1e-9);
+  }],
+  ["기울기 센서: 뒤로 젖혀도(세로 성분만 줄어도) 좌우 기울기는 같다, 너무 눕히면 측정 안 함", () => {
+    const r = (10 * Math.PI) / 180;
+    const k = Math.cos((40 * Math.PI) / 180); // 40° 뒤로 젖힘
+    const z = 9.81 * Math.sin((40 * Math.PI) / 180);
+    near(tiltFromGravity(-9.81 * k * Math.sin(r), 9.81 * k * Math.cos(r), z, 0, "environment").tilt, -10, 1e-9, "젖힘");
+    same(tiltFromGravity(0, 1, 9.81, 0, "environment").flat, true, "책상에 눕힘");
+  }],
+  ["옆모습 점검: 두 어깨가 겹치면 0, 정면이면 크다", () => {
+    const side = landmarks({ 11: { x: 0.5, y: 0.6, visibility: 0.9 }, 12: { x: 0.5, y: 0.6, visibility: 0.2 } });
+    near(sideViewRatio(side, 640, 480, { x: 320, y: 188 }, { x: 320, y: 288 }), 0, 1e-9, "옆");
+    const front = landmarks({ 11: { x: 0.65, y: 0.6, visibility: 0.9 }, 12: { x: 0.35, y: 0.6, visibility: 0.9 } });
+    near(sideViewRatio(front, 640, 480, { x: 320, y: 188 }, { x: 320, y: 288 }), 1.92, 1e-9, "정면");
+  }],
+  ["중앙값: 튀는 값 하나에 흔들리지 않는다 (평균과 비교)", () => {
+    same(median([20, 21, 19, 80, 20]), 20, "홀수 개");
+    same(median([10, 30]), 20, "짝수 개");
+    same(median([]), null, "없음");
+  }],
+  ["요약: 기준 자세 대비 = 평균 목 각도 − 기준 자세, 카메라 기울기 평균", () => {
+    const records = [
+      { t: 1, angle: 20, valid: true, alert: false, tilt: 2 },
+      { t: 2, angle: 30, valid: true, alert: false, tilt: 4 },
+      { t: 3, angle: null, valid: false, alert: false, tilt: null },
+    ];
+    const s = summarize(records, 20, 0, 12);
+    same(s.baseline, 12, "기준 자세");
+    same(s.meanDelta, 13, "기준 대비 (25 − 12)");
+    same(s.meanTilt, 3, "기울기 평균");
+    same(summarize(records, 20, 0).meanDelta, null, "기준 자세 없음");
+  }],
+
   // ---------- CSV ----------
   ["CSV: 쉼표·따옴표가 든 칸은 따옴표로 감싼다", () => {
     same(toCsv([["a,b", 'c"d', 1, null]]), '﻿"a,b","c""d",1,\r\n');
   }],
-  ["CSV: 세션 파일에 요약과 1초별 기록이 들어간다", () => {
+  ["CSV: 세션 파일에 요약과 1초별 기록(기준 대비·카메라 기울기 포함)이 들어간다", () => {
     const csv = sessionCsv({
       code: "A", condition: "평평", mode: "ON", startedAt: "2026-11-11 14:00:00",
-      threshold: 20, holdSec: 5, plannedSec: 2,
-      summary: { totalSec: 2, validPct: 50, meanAngle: 21.5, overPct: 100, alertCount: 0 },
-      records: [[1, 21.5, 1, 0], [2, null, 0, 0]],
+      threshold: 20, holdSec: 5, plannedSec: 2, tiltMode: "on", model: "보통 (full)",
+      resolution: "1280×720", secondStat: "median",
+      summary: { totalSec: 2, validPct: 50, meanAngle: 21.5, overPct: 100, alertCount: 0, baseline: 8, meanDelta: 13.5, meanTilt: 2.1 },
+      records: [[1, 21.5, 1, 0, 2.1], [2, null, 0, 0, null]],
     });
-    const lines = csv.replace("﻿", "").trim().split("\r\n");
+    const lines = csv.replace("\uFEFF", "").trim().split("\r\n");
     same(lines[1], "참여자 코드,A");
     same(lines.includes("평균 목 각도(도),21.5"), true, "요약");
-    same(lines.at(-3), "경과 시간(초),목 각도(도),측정 가능(1/0),알림 표시(1/0)");
-    same(lines.at(-2), "1,21.5,1,0");
-    same(lines.at(-1), "2,,0,0");
+    same(lines.includes("기준 자세 각도(도),8"), true, "기준 자세");
+    same(lines.includes("카메라 기울기 보정,사용(센서로 자동 보정)"), true, "기울기 보정");
+    same(lines.includes("1초 대표값,그 1초 동안 잰 값의 중앙값"), true, "중앙값");
+    same(lines.at(-3), "경과 시간(초),목 각도(도),기준 대비(도),측정 가능(1/0),알림 표시(1/0),카메라 기울기(도)");
+    same(lines.at(-2), "1,21.5,13.5,1,0,2.1");
+    same(lines.at(-1), "2,,,0,0,");
+  }],
+  ["CSV: 예전 기록(기준 자세·기울기 없음)도 내려받을 수 있다", () => {
+    const csv = sessionCsv({
+      code: "A", condition: "평평", mode: "OFF", startedAt: "2026-11-11 14:00:00",
+      threshold: 20, plannedSec: 1,
+      summary: { totalSec: 1, validPct: 100, meanAngle: 10, overPct: 0, alertCount: 0 },
+      records: [[1, 10, 1, 0]],
+    });
+    const lines = csv.replace("\uFEFF", "").trim().split("\r\n");
+    same(lines.includes("기준 자세 각도(도),안 잼"), true, "기준 자세");
+    same(lines.includes("1초 대표값,그 1초 동안 잰 값의 평균"), true, "예전 방식");
+    same(lines.at(-1), "1,10,,1,0,");
   }],
   ["CSV: 독서대 추천 파일의 열", () => {
     const csv = standCsv({
@@ -284,9 +376,15 @@ export const cases = [
       results: [{ standAngle: 45, order: 1, meanAngle: 15, overPct: 20, validPct: 95, comfort: 4 }],
       analysis: { fit: { x: 44.8 } },
     });
-    const lines = csv.replace("﻿", "").trim().split("\r\n");
-    same(lines[0].split(",").length, 8, "열 개수");
-    same(lines[1], "B,45,1,15,20,4,95,44.8");
+    const lines = csv.replace("\uFEFF", "").trim().split("\r\n");
+    same(lines[0].split(",").length, 10, "열 개수");
+    same(lines[1], "B,45,1,15,20,4,95,44.8,안 잼,");
+    const withBase = standCsv({
+      code: "B", baseline: 9,
+      results: [{ standAngle: 45, order: 1, meanAngle: 15, overPct: 20, validPct: 95, comfort: 4 }],
+      analysis: { fit: { x: null } },
+    });
+    same(withBase.replace("\uFEFF", "").trim().split("\r\n")[1], "B,45,1,15,20,4,95,추정 안 함,9,6", "기준 자세 있음");
   }],
 ];
 

@@ -3,16 +3,19 @@
 // 핵심 계산은 angle.js(목 각도), quadfit.js(2차 곡선), stats.js(통계)에 있다.
 // ============================================================
 
-import { measureNeck, MovingAverage } from "./angle.js";
+import { measureNeck, MovingAverage, median, SIDE_VIEW_LIMIT } from "./angle.js";
+import { startTilt, currentTilt, tiltMessage } from "./tilt.js";
 import { evalQuadratic } from "./quadfit.js";
 import {
   summarize, AlertTracker, meanAbsError, analyzeStand, round1, LOW_TRUST_PCT,
   sessionCsv, sessionsSummaryCsv, verifyCsv, standCsv,
-  referenceSummary, percentileRank, shareBelow,
+  referenceSummary, percentileRank, shareBelow, tiltLabel,
 } from "./stats.js";
 import { CVA_SITTING_EVALUATOR1, CVA_SITTING_EVALUATOR2, CVA_CUTOFFS, REFERENCE_SOURCE } from "./reference.js";
 import * as store from "./storage.js";
-import { loadPose, detect, startCamera, stopCamera, cameraIsOn, cameraErrorMessage } from "./pose.js";
+import {
+  loadPose, detect, startCamera, stopCamera, cameraIsOn, cameraErrorMessage, MODELS, loadedModel,
+} from "./pose.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -71,7 +74,7 @@ function numberFrom(id) {
 
 // ---------------- 저장된 것들 ----------------
 
-const settings = store.load("settings", { facing: "environment" });
+const settings = { facing: "environment", tiltOn: true, model: "full", ...store.load("settings", {}) };
 const getSessions = () => store.load("sessions", []);
 const getStands = () => store.load("stands", []);
 const getVerify = () => store.load("verify", []);
@@ -83,7 +86,9 @@ const overlay = $("overlay");
 const stage = $("stage");
 
 /** 카메라가 필요한 화면 */
-const CAMERA_SCREENS = new Set(["prep", "measuring", "verify", "stand-comfort"]);
+const CAMERA_SCREENS = new Set(["prep", "baseline", "measuring", "verify", "stand-comfort"]);
+/** 참여자가 자기 모습을 보지 않도록 카메라 화면을 숨기는 화면 */
+const HIDDEN_CAMERA = new Set(["baseline", "measuring"]);
 
 let currentScreen = "home";
 let cameraToken = 0;     // 화면이 바뀌면 늘어난다 → 늦게 끝난 카메라 준비를 무시하는 데 쓴다
@@ -102,13 +107,13 @@ function show(name) {
   }
   // 카메라 화면은 자세 잡기·검증에서만 보인다. 측정 중에는 숨긴다.
   stage.hidden = !CAMERA_SCREENS.has(name) || name === "stand-comfort";
-  stage.classList.toggle("concealed", name === "measuring");
+  stage.classList.toggle("concealed", HIDDEN_CAMERA.has(name));
   stage.classList.toggle("mirror", settings.facing === "user");
-  loopPaused = !(name === "prep" || name === "measuring" || name === "verify");
-  if (name !== "measuring") frameHandler = null;
+  loopPaused = !(name === "prep" || name === "verify" || HIDDEN_CAMERA.has(name));
+  if (!HIDDEN_CAMERA.has(name)) frameHandler = null;
 
-  $("btn-home").hidden = name === "home" || name === "measuring";
-  document.body.classList.toggle("is-measuring", name === "measuring");
+  $("btn-home").hidden = name === "home" || HIDDEN_CAMERA.has(name);
+  document.body.classList.toggle("is-measuring", HIDDEN_CAMERA.has(name));
   window.scrollTo(0, 0);
 }
 
@@ -139,7 +144,7 @@ $("btn-home").addEventListener("click", goHome);
 let loopOn = false;
 let loopPaused = true;
 let lastDetect = 0;
-let frameHandler = null; // 프레임마다 불리는 함수 (측정 결과, 지금 시각 ms)
+let frameHandler = null; // 프레임마다 불리는 함수 (측정 결과, 지금 시각 ms, 기울기 상태)
 
 const DETECT_EVERY_MS = 100; // 1초에 약 10번 잰다 (배터리·발열을 줄이려고)
 
@@ -161,14 +166,36 @@ function loopTick() {
   if (video.readyState < 2 || !video.videoWidth) return;
   lastDetect = now;
 
+  const t = readTilt();
   let m;
   try {
-    m = measureNeck(detect(video), video.videoWidth, video.videoHeight);
+    m = measureNeck(detect(video), video.videoWidth, video.videoHeight, t.status === "on" ? t.tilt : null);
   } catch {
     m = { ok: false, reason: "인식 중 오류가 났어요" };
   }
   if (currentScreen === "prep" || currentScreen === "verify") drawOverlay(m);
-  if (frameHandler) frameHandler(m, Date.now());
+  if (frameHandler) frameHandler(m, Date.now(), t);
+}
+
+/** 지금 카메라 기울기 (보정을 끄면 status "off") */
+function readTilt() {
+  return settings.tiltOn ? currentTilt(settings.facing) : { status: "off" };
+}
+
+// 자세 잡기·검증 화면의 안내 (기울기, 옆모습). 옆모습 값은 1초 평균으로 부드럽게 해서 깜빡이지 않게 한다
+const sideAverage = new MovingAverage(1000);
+function showSetupHints(m, t, tiltEl, sideEl) {
+  const msg = tiltMessage(t, settings.tiltOn);
+  tiltEl.textContent = msg.text;
+  tiltEl.className = `status small${msg.warn ? " bad" : ""}`;
+  const now = performance.now();
+  if (m.ok && m.sideRatio != null) sideAverage.add(now, m.sideRatio);
+  const ratio = sideAverage.value(now);
+  const notSide = ratio != null && ratio > SIDE_VIEW_LIMIT;
+  sideEl.hidden = !notSide;
+  if (notSide) {
+    sideEl.textContent = "양쪽 어깨가 떨어져 보여요. 카메라가 정면 쪽으로 돌아가 있으면 목 각도가 실제보다 작게 나와요. 카메라를 앉은 사람의 정확히 옆으로 옮겨 주세요.";
+  }
 }
 
 /** 카메라 화면 위에 귀·어깨 점과 연결선만 그린다 (각도 숫자는 그리지 않는다) */
@@ -183,6 +210,16 @@ function drawOverlay(m) {
   ctx.clearRect(0, 0, w, h);
   if (!m.ok) return;
   const s = Math.max(w, h) / 640;
+  // 진짜 수직선 (기울기 보정을 하면 폰이 기운 만큼 기울어져 그려진다)
+  const len = Math.hypot(m.ear.x - m.shoulder.x, m.ear.y - m.shoulder.y) * 1.2;
+  ctx.lineWidth = 3 * s;
+  ctx.setLineDash([10 * s, 7 * s]);
+  ctx.strokeStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(m.shoulder.x, m.shoulder.y);
+  ctx.lineTo(m.shoulder.x + m.up.x * len, m.shoulder.y + m.up.y * len);
+  ctx.stroke();
+  ctx.setLineDash([]);
   ctx.lineWidth = 4 * s;
   ctx.strokeStyle = "#ffd400";
   ctx.beginPath();
@@ -228,8 +265,12 @@ async function ensureCamera(statusEl) {
     return false;
   }
   try {
-    say("자세 인식 프로그램을 불러오는 중… (처음에는 몇 초 걸려요)");
-    await loadPose();
+    if (loadedModel() !== settings.model) {
+      say(settings.model === "heavy"
+        ? "정밀 자세 인식 프로그램을 불러오는 중… (약 30MB, 처음에는 시간이 좀 걸려요)"
+        : "자세 인식 프로그램을 불러오는 중… (처음에는 몇 초 걸려요)");
+    }
+    await loadPose(settings.model);
   } catch {
     if (token === cameraToken) {
       say("자세 인식 프로그램을 내려받지 못했어요. 인터넷 연결을 확인하고 페이지를 새로 고쳐 주세요.", "bad");
@@ -263,13 +304,28 @@ for (const r of document.querySelectorAll('input[name="facing"]')) {
 }
 syncFacingRadios();
 
+// 정확도 설정: 기울기 보정, 자세 인식 모델
+$("opt-tilt").checked = settings.tiltOn;
+$("opt-tilt").addEventListener("change", () => {
+  settings.tiltOn = $("opt-tilt").checked;
+  store.save("settings", settings);
+  if (settings.tiltOn) startTilt(); // 아이폰은 이 순간(터치)에만 센서 권한을 물을 수 있다
+});
+for (const r of document.querySelectorAll('input[name="model"]')) {
+  r.checked = r.value === settings.model;
+  r.addEventListener("change", () => {
+    settings.model = r.value;
+    store.save("settings", settings);
+  });
+}
+
 // 화면 꺼짐 방지 (Wake Lock). 지원하는 브라우저에서만 동작한다.
 let wakeLock = null;
 let wakeWanted = false;
 async function wakeOn() {
   wakeWanted = true;
   try {
-    if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+    if ("wakeLock" in navigator && !wakeLock) wakeLock = await navigator.wakeLock.request("screen");
   } catch {
     // 지원하지 않거나 거절됨 — 그냥 진행한다
   }
@@ -316,7 +372,10 @@ function beep() {
 let prepOnStart = null;
 
 async function openPrep({ title, instruction, onStart }) {
+  if (settings.tiltOn) startTilt(); // 버튼을 누른 순간에 불러야 아이폰이 권한을 물을 수 있다
   prepOnStart = onStart;
+  $("prep-tilt").textContent = "";
+  $("prep-side").hidden = true;
   $("prep-title").textContent = title;
   $("prep-instruction").textContent = instruction ?? "";
   $("prep-instruction").hidden = !instruction;
@@ -328,9 +387,10 @@ async function openPrep({ title, instruction, onStart }) {
 function watchPrep() {
   $("prep-start").disabled = false;
   const status = $("prep-status");
-  frameHandler = (m) => {
+  frameHandler = (m, now, t) => {
     status.textContent = m.ok ? "귀와 어깨가 인식됐어요. 시작해도 좋아요." : `${m.reason}. 카메라 위치를 조정해 주세요.`;
     status.className = `status ${m.ok ? "ok" : "bad"}`;
+    showSetupHints(m, t, $("prep-tilt"), $("prep-side"));
   };
 }
 
@@ -345,8 +405,8 @@ $("prep-flip").addEventListener("click", () => {
 /**
  * 측정을 진행한다. 세션 모드와 독서대 추천 모드가 같이 쓴다.
  * @param {{durationSec:number, threshold:number, alertOn:boolean, holdSec?:number, sound?:boolean, label:string}} opt
- * @returns {Promise<{records:Array, alertCount:number, startedAt:string}>}
- *   records의 한 줄 = [경과 시간(초), 목 각도 또는 null, 측정 가능 1/0, 알림 표시 1/0]
+ * @returns {Promise<{records:Array, alertCount:number, startedAt:string, tiltMode:string, resolution:string, model:string}>}
+ *   records의 한 줄 = [경과 시간(초), 목 각도 또는 null, 측정 가능 1/0, 알림 표시 1/0, 카메라 기울기 또는 null]
  */
 function runMeasurement(opt) {
   return new Promise((resolve) => {
@@ -355,7 +415,9 @@ function runMeasurement(opt) {
     const records = [];
     const average = new MovingAverage(1000);                 // 최근 1초 평균
     const tracker = opt.alertOn ? new AlertTracker(opt.threshold, opt.holdSec) : null;
-    let bucket = { frames: 0, validFrames: 0, sum: 0 };       // 지금 1초 동안 모은 프레임
+    const newBucket = () => ({ frames: 0, angles: [], tilts: [] });
+    let bucket = newBucket();                                // 지금 1초 동안 모은 프레임
+    const tiltSeen = {};                                     // 기울기 상태별 프레임 수 (보정을 했는지 기록용)
 
     $("m-label").textContent = opt.label;
     $("m-angle-box").hidden = !opt.alertOn; // 알림 OFF에서는 실시간 각도를 보여 주지 않는다
@@ -368,11 +430,12 @@ function runMeasurement(opt) {
     wakeOn();
 
     // 프레임마다(약 0.1초마다): 값 모으기 + 알림 판정
-    frameHandler = (m, now) => {
+    frameHandler = (m, now, t) => {
       bucket.frames += 1;
+      tiltSeen[t.status] = (tiltSeen[t.status] ?? 0) + 1;
+      if (t.status === "on") bucket.tilts.push(t.tilt);
       if (m.ok) {
-        bucket.validFrames += 1;
-        bucket.sum += m.angle;
+        bucket.angles.push(m.angle);
         average.add(now, m.angle);
       }
       const smooth = average.value(now); // 최근 1초에 잰 값이 하나도 없으면 null
@@ -389,10 +452,13 @@ function runMeasurement(opt) {
     // 1초가 지날 때마다 기록 한 줄을 남긴다
     function closeSecond() {
       // 그 1초 동안 본 프레임의 절반 이상에서 귀·어깨가 보였을 때만 "측정 가능"
-      const valid = bucket.validFrames > 0 && bucket.validFrames * 2 >= bucket.frames;
-      const angle = valid ? round1(bucket.sum / bucket.validFrames) : null;
-      records.push([records.length + 1, angle, valid ? 1 : 0, tracker?.showing ? 1 : 0]);
-      bucket = { frames: 0, validFrames: 0, sum: 0 };
+      const validFrames = bucket.angles.length;
+      const valid = validFrames > 0 && validFrames * 2 >= bucket.frames;
+      // 그 1초의 대표값 = 중앙값 (팔이 얼굴을 지나가는 순간처럼 한두 번 튄 값에 흔들리지 않게)
+      const angle = valid ? round1(median(bucket.angles)) : null;
+      const tilt = bucket.tilts.length ? round1(median(bucket.tilts)) : null;
+      records.push([records.length + 1, angle, valid ? 1 : 0, tracker?.showing ? 1 : 0, tilt]);
+      bucket = newBucket();
     }
 
     const timer = setInterval(() => {
@@ -408,11 +474,85 @@ function runMeasurement(opt) {
       measuring = null;
       setAlert(false);
       wakeOff();
-      resolve({ records, alertCount: tracker?.count ?? 0, startedAt });
+      resolve({
+        records,
+        alertCount: tracker?.count ?? 0,
+        startedAt,
+        tiltMode: tiltModeOf(tiltSeen),
+        resolution: `${video.videoWidth}×${video.videoHeight}`,
+        model: MODELS[loadedModel()]?.label ?? "",
+      });
     }
     measuring = { finish };
   });
 }
+
+/** 측정 동안 기울기 보정을 어떻게 했는지 한 단어로 (CSV 기록용) */
+function tiltModeOf(seen) {
+  const kinds = Object.keys(seen);
+  if (!kinds.length) return settings.tiltOn ? "none" : "off";
+  if (kinds.length === 1) return kinds[0] === "waiting" ? "none" : kinds[0];
+  return seen.on ? "mixed" : kinds.sort((a, b) => seen[b] - seen[a])[0];
+}
+
+// ---------------- 기준 자세 재기 (10초) ----------------
+
+const BASELINE_SEC = 10;
+let baselineControl = null; // 실패 화면의 "다시 재기"/"건너뛰기" 버튼이 부를 함수들
+
+/**
+ * 똑바로 앉은 자세를 10초 동안 재서 그 중앙값을 돌려준다.
+ * 귀·어깨가 잘 안 보여 실패하면 다시 재거나 건너뛸 수 있다.
+ * @returns {Promise<number|null>} 기준 자세 목 각도. 건너뛰면 null
+ */
+function runBaseline() {
+  return new Promise((resolve) => {
+    let timer = null;
+    const begin = () => {
+      const angles = [];
+      let frames = 0;
+      const startMs = Date.now();
+      $("b-fail").hidden = true;
+      $("b-remaining").textContent = BASELINE_SEC;
+      $("b-detect").textContent = "";
+      frameHandler = (m) => {
+        frames += 1;
+        if (m.ok) angles.push(m.angle);
+        $("b-detect").textContent = m.ok ? "자세 인식 중" : `측정 불가 — ${m.reason}`;
+      };
+      timer = setInterval(() => {
+        const elapsed = (Date.now() - startMs) / 1000;
+        $("b-remaining").textContent = Math.max(0, Math.ceil(BASELINE_SEC - elapsed));
+        if (elapsed < BASELINE_SEC) return;
+        clearInterval(timer);
+        frameHandler = null;
+        // 프레임의 절반 이상에서 보였고, 10프레임(약 1초) 이상 모였을 때만 믿는다
+        if (angles.length >= 10 && angles.length * 2 >= frames) {
+          baselineControl = null;
+          resolve(round1(median(angles)));
+        } else {
+          const seen = frames ? Math.round((angles.length / frames) * 100) : 0;
+          $("b-fail-text").textContent = `귀와 어깨가 잘 보이지 않아서(측정 가능 ${seen}%) 기준 자세를 재지 못했어요. 카메라 위치를 확인하고 다시 재 주세요.`;
+          $("b-fail").hidden = false;
+        }
+      }, 200);
+    };
+    baselineControl = {
+      retry: begin,
+      skip: () => {
+        clearInterval(timer);
+        frameHandler = null;
+        baselineControl = null;
+        resolve(null);
+      },
+    };
+    show("baseline");
+    wakeOn();
+    begin();
+  });
+}
+$("b-retry").addEventListener("click", () => baselineControl?.retry());
+$("b-skip").addEventListener("click", () => baselineControl?.skip());
 
 function setAlert(on) {
   document.body.classList.toggle("alerting", on);
@@ -423,8 +563,9 @@ $("m-stop").addEventListener("click", () => {
   if (measuring && window.confirm("측정을 지금 끝낼까요? 지금까지의 기록은 저장돼요.")) measuring?.finish();
 });
 
-/** records([t, angle, valid, alert] 배열)를 summarize가 읽는 모양으로 바꾼다 */
-const asObjects = (records) => records.map(([t, angle, valid, alert]) => ({ t, angle, valid: !!valid, alert: !!alert }));
+/** records([t, angle, valid, alert, tilt] 배열)를 summarize가 읽는 모양으로 바꾼다 */
+const asObjects = (records) =>
+  records.map(([t, angle, valid, alert, tilt]) => ({ t, angle, valid: !!valid, alert: !!alert, tilt: tilt ?? null }));
 
 /** 세션을 목록 맨 앞에 저장한다. @returns {boolean} 브라우저에 저장됐는가 */
 function saveSession(session) {
@@ -456,6 +597,7 @@ $("form-session").addEventListener("submit", (e) => {
     holdSec: numberFrom("s-hold"),
     plannedSec: Math.max(1, Math.round(numberFrom("s-minutes") * 60)),
     sound: mode === "ON" && $("s-sound").checked,
+    baseline: $("s-baseline").checked,
   };
   openPrep({
     title: "카메라 맞추기",
@@ -466,13 +608,14 @@ $("form-session").addEventListener("submit", (e) => {
 
 async function runSession(cfg) {
   if (cfg.sound) prepareSound();
+  const baseline = cfg.baseline ? await runBaseline() : null;
   const result = await runMeasurement({
     durationSec: cfg.plannedSec,
     threshold: cfg.threshold,
     alertOn: cfg.mode === "ON",
     holdSec: cfg.holdSec,
     sound: cfg.sound,
-    label: `${cfg.code} · ${cfg.condition} · 알림 ${cfg.mode}`,
+    label: `${cfg.code} · ${cfg.condition} · 알림 ${cfg.mode}${baseline == null ? "" : " · 기준 자세 저장됨"}`,
   });
   if (!result.records.length) return show("home"); // 1초도 안 돼 끝냈으면 저장하지 않는다
 
@@ -486,12 +629,21 @@ async function runSession(cfg) {
     threshold: cfg.threshold,
     holdSec: cfg.holdSec,
     plannedSec: cfg.plannedSec,
-    summary: summarize(asObjects(result.records), cfg.threshold, result.alertCount),
+    ...measureInfo(result),
+    summary: summarize(asObjects(result.records), cfg.threshold, result.alertCount, baseline),
     records: result.records,
   };
   const saved = saveSession(session);
   showSummary(session, saved);
 }
+
+/** 측정 방법 정보 (CSV에 남겨서 나중에 어떻게 쟀는지 알 수 있게) */
+function measureInfo(result) {
+  return { tiltMode: result.tiltMode, model: result.model, resolution: result.resolution, secondStat: "median" };
+}
+
+/** "+3.2" / "−1.5" 처럼 부호를 붙인다 */
+const signed = (v) => (v == null ? "–" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v)}`);
 
 function tile(label, value, unit = "", sub = "") {
   const valueEl = el("div", { class: "value", text: value });
@@ -507,13 +659,18 @@ let summarySession = null;
 function showSummary(session, saved) {
   summarySession = session;
   const m = session.summary;
-  $("sum-title").textContent = `${session.code} · ${session.condition} · 알림 ${session.mode} · ${session.startedAt}`;
+  $("sum-title").textContent =
+    `${session.code} · ${session.condition} · 알림 ${session.mode} · ${session.startedAt}` +
+    (session.tiltMode ? ` · 기울기 보정: ${tiltLabel(session.tiltMode)}` : "");
   $("sum-tiles").replaceChildren(
     tile("평균 목 각도", m.meanAngle ?? "–", m.meanAngle == null ? "" : "°"),
     tile(`기준(${session.threshold}°) 이상 시간`, m.overPct ?? "–", m.overPct == null ? "" : "%"),
     tile("알림 횟수", session.mode === "ON" ? m.alertCount : "–", session.mode === "ON" ? "회" : "(알림 OFF)"),
     tile("전체 측정 시간", mmss(m.totalSec)),
     tile("유효 데이터 비율", m.validPct, "%"),
+    m.baseline == null
+      ? tile("기준 자세 대비", "–", "", "기준 자세를 재지 않았어요")
+      : tile("기준 자세 대비", signed(m.meanDelta), m.meanDelta == null ? "" : "°", `기준 자세 ${m.baseline}°보다 평균 이만큼 더 숙임`),
   );
   const notes = [];
   if (m.validPct < LOW_TRUST_PCT) {
@@ -543,6 +700,9 @@ function clearFreeze() {
 }
 
 async function openVerify() {
+  if (settings.tiltOn) startTilt(); // 버튼을 누른 순간에 불러야 아이폰이 권한을 물을 수 있다
+  $("v-tilt").textContent = "";
+  $("v-side").hidden = true;
   show("verify");
   renderVerify();
   $("v-shot").disabled = true;
@@ -552,9 +712,10 @@ async function openVerify() {
 function watchVerify() {
   $("v-shot").disabled = false;
   const status = $("v-status");
-  frameHandler = (m) => {
+  frameHandler = (m, now, t) => {
     status.textContent = m.ok ? "귀와 어깨가 보여요. 버튼을 눌러 재 보세요." : `${m.reason}. 카메라 위치를 조정해 주세요.`;
     status.className = `status ${m.ok ? "ok" : "bad"}`;
+    showSetupHints(m, t, $("v-tilt"), $("v-side"));
   };
 }
 
@@ -577,9 +738,11 @@ $("v-shot").addEventListener("click", () => {
   shot.height = h;
   shot.getContext("2d").drawImage(video, 0, 0, w, h);
 
+  const t = readTilt();
+  const tilt = t.status === "on" ? t.tilt : null;
   let m;
   try {
-    m = measureNeck(detect(shot), w, h);
+    m = measureNeck(detect(shot), w, h, tilt);
   } catch {
     m = { ok: false, reason: "인식 중 오류가 났어요" };
   }
@@ -587,6 +750,7 @@ $("v-shot").addEventListener("click", () => {
   // 2) 멈춘 화면에 그린다. 전면 카메라는 미리보기처럼 좌우를 뒤집어 보여 준다(각도는 그대로다).
   const mirror = settings.facing === "user";
   const flipX = (p) => (mirror ? { x: w - p.x, y: p.y } : p);
+  const flipDir = (d) => (mirror ? { x: -d.x, y: d.y } : d);
   freeze.width = w;
   freeze.height = h;
   const ctx = freeze.getContext("2d");
@@ -601,8 +765,11 @@ $("v-shot").addEventListener("click", () => {
   const status = $("v-status");
   if (m.ok) {
     const angle = round1(m.angle);
-    drawVerifyMarks(ctx, flipX(m.ear), flipX(m.shoulder), angle, w, h);
-    const entries = [...getVerify(), { id: newId(), time: localStamp(), appAngle: angle, manual: null, cva: null }];
+    drawVerifyMarks(ctx, flipX(m.ear), flipX(m.shoulder), flipDir(m.up), angle, w, h);
+    const entries = [
+      ...getVerify(),
+      { id: newId(), time: localStamp(), appAngle: angle, manual: null, cva: null, tilt: round1(tilt) },
+    ];
     store.save("verify", entries);
     renderVerify();
     status.textContent = `앱이 잰 각도: ${angle}° — 각도기로 잰 값을 아래 ${entries.length}번 칸에 적어 주세요.`;
@@ -618,19 +785,22 @@ $("v-shot").addEventListener("click", () => {
   $("v-shot").disabled = true;
 });
 
-/** 멈춘 화면에 귀·어깨 점, 연결선, 수직 기준선, 각도 호, 각도 값을 그린다 */
-function drawVerifyMarks(ctx, ear, shoulder, angle, w, h) {
+/**
+ * 멈춘 화면에 귀·어깨 점, 연결선, 수직 기준선, 각도 호, 각도 값을 그린다
+ * @param {{x:number,y:number}} upDir 진짜 위쪽 방향 (기울기 보정을 하면 기울어져 있다)
+ */
+function drawVerifyMarks(ctx, ear, shoulder, upDir, angle, w, h) {
   const s = Math.max(w, h) / 640;
   const len = Math.hypot(ear.x - shoulder.x, ear.y - shoulder.y);
   const reach = Math.max(len * 1.25, 60 * s);
 
-  // 수직 기준선: 어깨에서 똑바로 위로 (흰 점선)
+  // 수직 기준선: 어깨에서 진짜 위쪽으로 (흰 점선)
   ctx.lineWidth = 3 * s;
   ctx.setLineDash([10 * s, 7 * s]);
   ctx.strokeStyle = "#ffffff";
   ctx.beginPath();
   ctx.moveTo(shoulder.x, shoulder.y);
-  ctx.lineTo(shoulder.x, shoulder.y - reach);
+  ctx.lineTo(shoulder.x + upDir.x * reach, shoulder.y + upDir.y * reach);
   ctx.stroke();
   ctx.setLineDash([]);
 
@@ -645,12 +815,14 @@ function drawVerifyMarks(ctx, ear, shoulder, angle, w, h) {
   ctx.stroke();
 
   // 두 선 사이의 각도 호
-  const up = -Math.PI / 2;
+  const up = Math.atan2(upDir.y, upDir.x);
   const toEar = Math.atan2(uy, ux);
+  // 두 방향 사이의 짧은 쪽으로 호를 그린다
+  const turn = Math.atan2(Math.sin(toEar - up), Math.cos(toEar - up));
   ctx.lineWidth = 3 * s;
   ctx.strokeStyle = "#ff5a36";
   ctx.beginPath();
-  ctx.arc(shoulder.x, shoulder.y, len * 0.45, up, toEar, ear.x < shoulder.x);
+  ctx.arc(shoulder.x, shoulder.y, len * 0.45, up, toEar, turn < 0);
   ctx.stroke();
 
   drawDot(ctx, ear, 7 * s);
@@ -869,6 +1041,8 @@ $("form-stand").addEventListener("submit", (e) => {
     index: 0,
     results: [],
     pending: null,
+    wantBaseline: $("t-baseline").checked,
+    baseline: undefined, // 첫 측정 전에 한 번 잰다 (null = 건너뜀)
   };
   standStep();
 });
@@ -882,6 +1056,9 @@ function standStep() {
     title: `${position}번째 측정`,
     instruction: `독서대를 ${angle}°로 맞추고 시작을 누르세요`,
     onStart: async () => {
+      // 기준 자세는 첫 측정 전에 한 번만 잰다 (같은 학생·같은 카메라 자리이므로 모든 각도에 같이 쓴다)
+      if (run.baseline === undefined) run.baseline = run.wantBaseline ? await runBaseline() : null;
+      if (standRun !== run) return;
       const result = await runMeasurement({
         durationSec: run.perSec,
         threshold: run.threshold,
@@ -891,13 +1068,14 @@ function standStep() {
       if (standRun !== run) return;
       if (!result.records.length) return standStep();
 
-      const summary = summarize(asObjects(result.records), run.threshold, 0);
+      const summary = summarize(asObjects(result.records), run.threshold, 0, run.baseline);
       // 1초별 원자료도 "지난 기록"에서 내려받을 수 있게 세션으로 남긴다
       saveSession({
         id: newId(), kind: "stand", startedAt: result.startedAt, code: run.code,
         condition: `독서대 ${angle}도 (추천 모드)`, mode: "OFF", threshold: run.threshold,
-        holdSec: null, plannedSec: run.perSec, summary, records: result.records,
+        holdSec: null, plannedSec: run.perSec, ...measureInfo(result), summary, records: result.records,
       });
+      run.model = result.model;
       run.pending = {
         standAngle: angle, order: run.index + 1, meanAngle: summary.meanAngle,
         overPct: summary.overPct, validPct: summary.validPct, comfort: null,
@@ -954,6 +1132,8 @@ $("c-next").addEventListener("click", () => {
     threshold: run.threshold,
     perSec: run.perSec,
     shuffled: run.shuffled,
+    baseline: run.baseline ?? null,
+    model: run.model ?? "",
     results: run.results,
     analysis: analyzeStand(run.results, meanAbsError(getVerify())),
   };
@@ -967,7 +1147,9 @@ let shownStand = null;
 function showStandResult(run, saved = true) {
   shownStand = run;
   const a = run.analysis;
-  $("r-title").textContent = `${run.code} · ${run.date} · 기준 각도 ${run.threshold}° · 각도마다 ${mmss(run.perSec)}`;
+  $("r-title").textContent =
+    `${run.code} · ${run.date} · 기준 각도 ${run.threshold}° · 각도마다 ${mmss(run.perSec)}` +
+    (run.baseline == null ? "" : ` · 기준 자세 ${run.baseline}°`);
 
   $("r-tiles").replaceChildren(
     tile("측정한 각도 중 추천", a.best ? a.best.standAngle : "–", a.best ? "°" : "", a.best ? `평균 목 각도 ${a.best.meanAngle}°` : ""),

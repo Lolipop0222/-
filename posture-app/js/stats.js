@@ -15,11 +15,12 @@ export function round1(v) {
 
 /**
  * 1초별 기록으로 세션 요약을 만든다.
- * @param {Array<{t:number, angle:number|null, valid:boolean, alert:boolean}>} records
+ * @param {Array<{t:number, angle:number|null, valid:boolean, alert:boolean, tilt?:number|null}>} records
  * @param {number} threshold  기준 각도(도)
  * @param {number} alertCount 알림이 뜬 횟수
+ * @param {number|null} baseline 기준 자세(똑바로 앉은 자세)의 목 각도. 안 쟀으면 null
  */
-export function summarize(records, threshold, alertCount = 0) {
+export function summarize(records, threshold, alertCount = 0, baseline = null) {
   const totalSec = records.length;
   const valid = records.filter((r) => r.valid && r.angle != null);
   const validSec = valid.length;
@@ -35,6 +36,14 @@ export function summarize(records, threshold, alertCount = 0) {
   // 유효 데이터 비율 = (측정 가능했던 초) ÷ (전체 초) × 100
   const validPct = totalSec ? (validSec / totalSec) * 100 : 0;
 
+  // 기준 자세 대비 = 평균 목 각도 − 기준 자세 각도 ("똑바로 앉았을 때보다 평균 몇 도 더 숙였나")
+  // 사람마다 다른 몸 구조나 카메라 위치 때문에 생기는 고정된 차이를 빼 준다.
+  const meanDelta = meanAngle != null && baseline != null ? meanAngle - baseline : null;
+
+  // 카메라 기울기 평균 (센서가 있을 때만)
+  const tilts = records.map((r) => r.tilt).filter((v) => v != null && Number.isFinite(v));
+  const meanTilt = tilts.length ? tilts.reduce((s, v) => s + v, 0) / tilts.length : null;
+
   return {
     totalSec,
     validSec,
@@ -42,6 +51,9 @@ export function summarize(records, threshold, alertCount = 0) {
     meanAngle: round1(meanAngle),
     overPct: round1(overPct),
     alertCount,
+    baseline: round1(baseline),
+    meanDelta: round1(meanDelta),
+    meanTilt: round1(meanTilt),
   };
 }
 
@@ -199,9 +211,23 @@ export function toCsv(rows) {
 
 const modeLabel = (s) => (s.mode === "ON" ? "알림 ON" : "알림 OFF");
 
+const TILT_LABEL = {
+  on: "사용(센서로 자동 보정)",
+  off: "끔",
+  none: "센서 없음(보정 안 함)",
+  denied: "센서 권한 없음(보정 안 함)",
+  flat: "폰이 눕혀짐(보정 안 함)",
+  mixed: "일부 시간만 보정",
+};
+export const tiltLabel = (mode) => TILT_LABEL[mode] ?? "";
+
+/** 1초별 기록 한 줄에서 기준 대비 값 */
+const deltaOf = (angle, baseline) => (angle == null || baseline == null ? null : round1(angle - baseline));
+
 /** 세션 하나: 위쪽에 세션 정보·요약, 한 줄 띄우고 1초별 기록 */
 export function sessionCsv(s) {
   const m = s.summary;
+  const baseline = m.baseline ?? null;
   const rows = [
     ["항목", "값"],
     ["참여자 코드", s.code],
@@ -216,10 +242,19 @@ export function sessionCsv(s) {
     ["평균 목 각도(도)", m.meanAngle],
     ["기준 각도 이상 시간 비율(%)", m.overPct],
     ["알림 횟수", m.alertCount],
+    ["기준 자세 각도(도)", baseline ?? "안 잼"],
+    ["평균 기준 대비(도)", m.meanDelta],
+    ["카메라 기울기 보정", tiltLabel(s.tiltMode)],
+    ["평균 카메라 기울기(도)", m.meanTilt],
+    ["자세 인식 모델", s.model ?? ""],
+    ["카메라 해상도", s.resolution ?? ""],
+    ["1초 대표값", s.secondStat === "median" ? "그 1초 동안 잰 값의 중앙값" : "그 1초 동안 잰 값의 평균"],
     [],
-    ["경과 시간(초)", "목 각도(도)", "측정 가능(1/0)", "알림 표시(1/0)"],
+    ["경과 시간(초)", "목 각도(도)", "기준 대비(도)", "측정 가능(1/0)", "알림 표시(1/0)", "카메라 기울기(도)"],
   ];
-  for (const [t, angle, valid, alert] of s.records) rows.push([t, angle, valid, alert]);
+  for (const [t, angle, valid, alert, tilt] of s.records) {
+    rows.push([t, angle, deltaOf(angle, baseline), valid, alert, tilt ?? null]);
+  }
   return toCsv(rows);
 }
 
@@ -228,12 +263,14 @@ export function sessionsSummaryCsv(sessions) {
   const rows = [[
     "시작 시각", "참여자 코드", "조건", "모드", "기준 각도(도)", "전체 측정 시간(초)",
     "유효 데이터 비율(%)", "평균 목 각도(도)", "기준 각도 이상 시간 비율(%)", "알림 횟수",
+    "기준 자세 각도(도)", "평균 기준 대비(도)", "평균 카메라 기울기(도)", "자세 인식 모델",
   ]];
   for (const s of sessions) {
     const m = s.summary;
     rows.push([
       s.startedAt, s.code, s.condition, modeLabel(s), s.threshold, m.totalSec,
       m.validPct, m.meanAngle, m.overPct, m.alertCount,
+      m.baseline, m.meanDelta, m.meanTilt, s.model ?? "",
     ]);
   }
   return toCsv(rows);
@@ -243,11 +280,12 @@ export function sessionsSummaryCsv(sessions) {
 export function verifyCsv(entries) {
   const rows = [[
     "번호", "시각", "앱이 잰 각도(도)", "각도기로 잰 각도(도)", "오차(앱-각도기)", "오차 절댓값", "각도기로 잰 CVA(도, 선택)",
+    "카메라 기울기(도)",
   ]];
   entries.forEach((e, i) => {
     const has = e.manual != null && Number.isFinite(e.manual);
     const err = has ? round1(e.appAngle - e.manual) : "";
-    rows.push([i + 1, e.time, e.appAngle, has ? e.manual : "", err, has ? Math.abs(err) : "", e.cva ?? ""]);
+    rows.push([i + 1, e.time, e.appAngle, has ? e.manual : "", err, has ? Math.abs(err) : "", e.cva ?? "", e.tilt ?? ""]);
   });
   const mae = meanAbsError(entries);
   rows.push([]);
@@ -261,12 +299,15 @@ export function standCsv(run) {
   const rows = [[
     "학생 코드", "독서대 각도(도)", "측정 순서", "평균 목 각도(도)", "기준 각도 이상 비율(%)",
     "편안함 점수(1~5)", "유효 데이터 비율(%)", "추정 최적 각도(도)",
+    "기준 자세 각도(도)", "평균 기준 대비(도)",
   ]];
+  const baseline = run.baseline ?? null;
   const sorted = [...run.results].sort((p, q) => p.standAngle - q.standAngle);
   for (const r of sorted) {
     rows.push([
       run.code, r.standAngle, r.order, r.meanAngle, r.overPct, r.comfort, r.validPct,
       best == null ? "추정 안 함" : best,
+      baseline ?? "안 잼", deltaOf(r.meanAngle, baseline),
     ]);
   }
   return toCsv(rows);

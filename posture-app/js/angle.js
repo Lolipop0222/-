@@ -27,6 +27,16 @@
 //     θ = atan2(|가로|, 위로)
 //   atan2는 "위로"가 0이거나 음수(귀가 어깨보다 아래)여도 0°~180° 사이 값을 준다.
 //   가로에 절댓값을 씌우는 이유: 왼쪽을 보고 앉든 오른쪽을 보고 앉든 같은 값이 나오게 하려고.
+//
+// [카메라가 기울었을 때 — 기울기 보정]
+//   위 계산은 "사진의 세로 방향 = 진짜 수직"이라고 가정한다. 폰이 5° 기울면 각도도 5° 틀린다.
+//   그래서 폰의 가속도 센서로 "진짜 위쪽"이 사진에서 어느 방향인지(up 벡터) 알아낸 뒤,
+//   "어깨→귀 벡터 v"와 "진짜 위쪽 u" 사이의 각도를 구한다.
+//     두 벡터 사이의 각도 = atan2(|v × u|, v · u)
+//       v · u (내적)  = vx·ux + vy·uy   → 같은 방향으로 얼마나 가는지 ("위로"에 해당)
+//       v × u (외적)  = vx·uy − vy·ux   → 옆으로 얼마나 벗어났는지 ("가로"에 해당)
+//   u = (0, −1)(사진의 바로 위쪽)을 넣으면 내적 = 어깨y − 귀y, |외적| = |귀x − 어깨x| 가 되어
+//   맨 위의 식과 똑같아진다. 즉 기울기 보정은 "위쪽 방향만 바꿔 끼우는 것"이다.
 
 /** MediaPipe Pose가 정한 랜드마크 번호 */
 export const LM = {
@@ -39,17 +49,56 @@ export const LM = {
 /** 귀·어깨가 이 값보다 덜 보이면(visibility) "측정 불가"로 본다 */
 export const MIN_VISIBILITY = 0.5;
 
+/** 사진의 바로 위쪽 방향 (기울기 보정을 안 할 때) */
+export const IMAGE_UP = { x: 0, y: -1 };
+
 /**
  * 목 각도(도)를 구한다.
  * @param {{x:number, y:number}} ear      귀의 위치 (픽셀 좌표, y는 아래로 갈수록 큼)
  * @param {{x:number, y:number}} shoulder 어깨의 위치 (픽셀 좌표)
+ * @param {{x:number, y:number}} [up]     사진 안에서 "진짜 위쪽" 방향 (길이 1). 기본은 사진의 바로 위쪽
  * @returns {number} 0 ~ 180 사이의 각도. 0 = 귀가 어깨 바로 위.
  */
-export function neckAngleDeg(ear, shoulder) {
-  const sideways = Math.abs(ear.x - shoulder.x); // 가로로 벗어난 거리
-  const upward = shoulder.y - ear.y;             // 위로 올라간 거리 (y축 뒤집기)
+export function neckAngleDeg(ear, shoulder, up = IMAGE_UP) {
+  const vx = ear.x - shoulder.x;                 // 어깨 → 귀 벡터
+  const vy = ear.y - shoulder.y;
+  const upward = vx * up.x + vy * up.y;          // 내적: 위쪽으로 간 거리
+  const sideways = Math.abs(vx * up.y - vy * up.x); // 외적의 크기: 옆으로 벗어난 거리
   const radians = Math.atan2(sideways, upward);  // 수직선과 이루는 각 (라디안)
   return (radians * 180) / Math.PI;              // 라디안 → 도
+}
+
+/**
+ * 카메라 기울기(도)로 사진 안의 "진짜 위쪽" 방향을 만든다.
+ * tiltDeg > 0 : 진짜 위쪽이 사진에서 오른쪽으로 기울어 보인다 (시계 방향)
+ */
+export function upFromTilt(tiltDeg) {
+  const r = (tiltDeg * Math.PI) / 180;
+  return { x: Math.sin(r), y: -Math.cos(r) };
+}
+
+/**
+ * 옆모습 점검 값 = (양쪽 어깨의 가로 간격) ÷ (어깨~귀 거리)
+ * 정확히 옆에서 찍으면 두 어깨가 겹쳐 보여 0에 가깝고, 정면 쪽으로 돌아갈수록 커진다.
+ * (어깨 너비는 어깨~귀 거리의 약 2배라서, 정면에서 찍으면 2 안팎이 된다)
+ * 이 값이 SIDE_VIEW_LIMIT보다 크면 "카메라를 더 옆으로" 안내한다.
+ */
+export const SIDE_VIEW_LIMIT = 0.7;
+export function sideViewRatio(landmarks, width, height, ear, shoulder) {
+  const ls = landmarks[LM.LEFT_SHOULDER];
+  const rs = landmarks[LM.RIGHT_SHOULDER];
+  if (!ls || !rs) return null;
+  const span = Math.abs(ls.x - rs.x) * width;
+  const neck = Math.hypot(ear.x - shoulder.x, ear.y - shoulder.y);
+  return neck > 0 ? span / neck : null;
+}
+
+/** 중앙값: 값들을 크기순으로 늘어놓았을 때 가운데 값. 한두 개 튀는 값에 흔들리지 않는다 */
+export function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 /**
@@ -76,10 +125,11 @@ export function pickSide(landmarks) {
  * @param {Array|null|undefined} landmarks 랜드마크 33개 (사람을 못 찾았으면 null)
  * @param {number} width  영상 가로 픽셀
  * @param {number} height 영상 세로 픽셀
- * @returns {{ok:false, reason:string} | {ok:true, angle:number, side:string,
- *            ear:{x:number,y:number}, shoulder:{x:number,y:number}}}
+ * @param {number|null} [tiltDeg] 카메라 기울기(도). 모르면 null → 보정하지 않음
+ * @returns {{ok:false, reason:string} | {ok:true, angle:number, side:string, up:{x:number,y:number},
+ *            sideRatio:number|null, ear:{x:number,y:number}, shoulder:{x:number,y:number}}}
  */
-export function measureNeck(landmarks, width, height) {
+export function measureNeck(landmarks, width, height, tiltDeg = null) {
   if (!landmarks || landmarks.length < 13) return { ok: false, reason: "사람이 보이지 않아요" };
   const { side, ear, shoulder } = pickSide(landmarks);
   if (!ear || !shoulder) return { ok: false, reason: "사람이 보이지 않아요" };
@@ -88,7 +138,16 @@ export function measureNeck(landmarks, width, height) {
 
   const earPx = { x: ear.x * width, y: ear.y * height };
   const shoulderPx = { x: shoulder.x * width, y: shoulder.y * height };
-  return { ok: true, angle: neckAngleDeg(earPx, shoulderPx), side, ear: earPx, shoulder: shoulderPx };
+  const up = tiltDeg == null ? IMAGE_UP : upFromTilt(tiltDeg);
+  return {
+    ok: true,
+    angle: neckAngleDeg(earPx, shoulderPx, up),
+    side,
+    up,
+    sideRatio: sideViewRatio(landmarks, width, height, earPx, shoulderPx),
+    ear: earPx,
+    shoulder: shoulderPx,
+  };
 }
 
 /**
