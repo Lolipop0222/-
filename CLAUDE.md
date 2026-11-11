@@ -82,6 +82,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `supabase/schema.sql` | DB 전체 정의 |
 | `README.md` | 화면 목록, 파일 구조, Supabase·APK 설정 방법 |
 | `AGENTS.md` | Next.js 16 에이전트 규칙 (`next dev`가 자동으로 다시 씀) |
+| `posture-app/` | **일품타와 별개인** 모둠 탐구용 정적 웹앱(목 각도 측정, MediaPipe). Next·Supabase와 무관, 린트 제외. 설명은 `posture-app/README.md`, 테스트 `node posture-app/tests/run-tests.mjs` |
 
 **NEIS 연동 구조**: `lib/neis.ts`(파싱·페이지 반복·오류 코드, `use cache` 몇 시간) → `/api/meals/[month]`, `/api/schedule/[month]`(토요휴업일 제외), `/api/exams`(앞으로 6개월 시험: 고사·학력평가·모의평가·수능, 며칠짜리 묶음, 학년 거르기는 화면에서). 문서 6장의 "하루 1회 cron → Supabase `school_cache`"는 **아직 안 함**.
 

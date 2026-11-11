@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "android/**",
     ".apk-web/**",
     "dist/**",
+    // 따로 쓰는 정적 웹앱(목 각도 측정) — Next 규칙 대상이 아님
+    "posture-app/**",
   ]),
 ]);
 

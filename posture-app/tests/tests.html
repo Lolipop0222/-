@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>계산 테스트 — 공부 자세 측정기</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; line-height: 1.6; }
+    li { margin: 4px 0; }
+    .ok::marker { content: "✅ "; }
+    .bad::marker { content: "❌ "; }
+    .bad { color: #c0392b; font-weight: 700; }
+    #total { font-size: 1.2rem; font-weight: 800; }
+  </style>
+</head>
+<body>
+  <h1>계산 테스트</h1>
+  <p>답을 이미 아는 값으로 목 각도·2차 곡선·통계 계산이 맞는지 확인해요.</p>
+  <p id="total">돌리는 중…</p>
+  <ul id="list"></ul>
+  <p><a href="../index.html">← 앱으로</a></p>
+  <script type="module">
+    import { runAll } from "./cases.js";
+    const results = runAll();
+    const list = document.getElementById("list");
+    for (const r of results) {
+      const li = document.createElement("li");
+      li.className = r.ok ? "ok" : "bad";
+      li.textContent = r.ok ? r.name : `${r.name} → ${r.message}`;
+      list.append(li);
+    }
+    const failed = results.filter((r) => !r.ok).length;
+    document.getElementById("total").textContent =
+      `${results.length}개 중 ${results.length - failed}개 통과` + (failed ? `, ${failed}개 실패` : " — 모두 통과!");
+  </script>
+</body>
+</html>
