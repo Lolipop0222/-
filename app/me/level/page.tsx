@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Gift, Lock } from "lucide-react";
+import { useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { Check, ChevronRight, Gift, Lock } from "lucide-react";
+import { CharacterArt, CharacterFace } from "@/components/CharacterArt";
 import { AppLoader } from "@/components/BrandLoader";
 import { useProfile } from "@/components/AuthProvider";
 import { LevelBadge, NameTag } from "@/components/NameTag";
 import { useStudy } from "@/components/StudyProvider";
 import { Card, ErrorText, SubHeader } from "@/components/ui";
 import { hm } from "@/lib/format";
-import { LEVEL_REWARDS, MAX_LEVEL, levelFromXp, setNameFrame, useMyLevel, xpForLevel } from "@/lib/levels";
+import { STAGE_LEVELS, STAGE_NAMES, characterById, characterColor, parseCharacter } from "@/lib/characters";
+import { FRAME_LEVEL, LEVEL_REWARDS, MAX_LEVEL, NAME_FRAMES, levelFromXp, setNameFrame, useMyLevel, xpForLevel } from "@/lib/levels";
 import { SUBJECT_COLOR } from "@/lib/subjects";
 import { koreanError } from "@/lib/supabase";
 
@@ -45,6 +48,8 @@ export default function LevelPage() {
   const cur = xpForLevel(lv);
   const next = lv >= MAX_LEVEL ? null : xpForLevel(lv + 1);
   const pct = next === null ? 100 : ((me.xp - cur) / (next - cur)) * 100;
+  const myChar = parseCharacter(me.character);
+  const nextStage = STAGE_LEVELS.find((l) => l > lv) ?? null;
 
   async function wear(code: string | null) {
     setBusy(code ?? "none");
@@ -131,47 +136,54 @@ export default function LevelPage() {
           </p>
         </Card>
 
+        {/* 내 캐릭터 */}
+        <Link href="/me/character" className="char-stage flex items-center gap-3 rounded-2xl border border-line p-3" style={{ "--char": myChar ? characterColor(myChar.id) : "var(--accent)" } as CSSProperties}>
+          <span className="relative z-[1] h-24 w-20 shrink-0">
+            <CharacterArt choice={myChar ?? { id: "history", stage: 1, face: 1 }} />
+          </span>
+          <span className="relative z-[1] min-w-0 flex-1">
+            <span className="block text-[15px] font-bold">{myChar ? `${characterById(myChar.id)?.subject} 캐릭터 · ${STAGE_NAMES[myChar.stage - 1]}` : "캐릭터를 골라 보세요"}</span>
+            <span className="mt-0.5 block text-[12px] text-muted">
+              {nextStage ? `다음 진화 Lv.${nextStage} · ${hm(Math.max(0, xpForLevel(nextStage) - me.xp))} 남음` : "최종 진화까지 했어요!"}
+            </span>
+          </span>
+          <ChevronRight size={18} className="relative z-[1] shrink-0 text-faint" />
+        </Link>
+
         {/* 보상 */}
         <section>
           <h2 className="mb-2 flex items-center gap-1.5 text-[15px] font-semibold">
             <Gift size={17} className="text-accent" /> 레벨 보상
           </h2>
-          {error && <ErrorText>{error}</ErrorText>}
           <ul className="space-y-2">
             {LEVEL_REWARDS.map((r) => {
               const open = lv >= r.level;
-              const worn = !!r.frame && me.frame === r.frame;
+              const preview = myChar ?? { id: "history" as const, stage: 1, face: 1 };
               return (
-                <li key={`${r.level}-${r.title}`} className={`flex items-center gap-3 rounded-2xl border p-3 ${worn ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
+                <li key={r.level} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 ${r.pending ? "opacity-70" : ""}`}>
                   <span className={`num grid size-11 shrink-0 place-items-center rounded-xl text-[13px] font-extrabold ${open ? "bg-accent text-bg" : "bg-surface-2 text-faint"}`}>
                     {r.level}
                   </span>
+                  {(r.kind === "skin" || r.kind === "face") && (
+                    <span className="w-11 shrink-0">
+                      <CharacterFace choice={r.kind === "skin" ? { ...preview, stage: r.stage!, face: 1 } : { ...preview, stage: 1, face: 3 }} locked={!open} />
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
-                    {r.frame ? (
+                    {r.kind === "frame" ? (
                       <div className={`flex min-w-0 text-[14px] font-semibold ${open ? "" : "opacity-50 grayscale"}`}>
-                        <NameTag name={profile.nickname} frame={r.frame} className="min-w-0" />
+                        <NameTag name={r.title} frame="aurora" className="min-w-0" />
                       </div>
                     ) : (
                       <p className="text-[14px] font-semibold">{r.title}</p>
                     )}
                     <p className="mt-1 truncate text-[12px] text-muted">
-                      {r.frame ? r.title.replace("닉네임 테두리 · ", "테두리 · ") : r.desc}
-                      {r.pending && " · 그림 준비 중"}
+                      {r.desc}
+                      {r.pending && " · 준비 중"}
                     </p>
                   </div>
-                  {r.frame ? (
-                    open ? (
-                      <button
-                        type="button"
-                        disabled={busy !== null}
-                        onClick={() => wear(worn ? null : r.frame!)}
-                        className={`shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold ${worn ? "border border-line bg-surface text-muted" : "bg-accent text-bg"} disabled:opacity-50`}
-                      >
-                        {busy === (worn ? "none" : r.frame) ? "…" : worn ? "떼기" : "달기"}
-                      </button>
-                    ) : (
-                      <Lock size={16} className="shrink-0 text-faint" aria-label="잠김" />
-                    )
+                  {r.pending ? (
+                    <span className="shrink-0 text-[11px] text-faint">준비 중</span>
                   ) : open ? (
                     <span className="shrink-0 text-[12px] font-semibold text-live">받음</span>
                   ) : (
@@ -181,9 +193,45 @@ export default function LevelPage() {
               );
             })}
           </ul>
-          <p className="mt-3 text-[12px] leading-relaxed text-faint">
-            10레벨마다 보상이 열려요. 닉네임 테두리는 순위·스터디그룹에서 다른 친구들에게도 보여요. 보상은 앞으로 더 늘어나요.
+        </section>
+
+        {/* 닉네임 테두리 */}
+        <section>
+          <h2 className="mb-1 text-[15px] font-semibold">닉네임 테두리</h2>
+          <p className="mb-2 text-[12px] text-faint">
+            {lv >= FRAME_LEVEL ? "순위·스터디그룹에서 친구들에게도 보여요." : `Lv.${FRAME_LEVEL}에 ${NAME_FRAMES.length}종이 한꺼번에 열려요. 미리 구경해 보세요.`}
           </p>
+          {error && <ErrorText>{error}</ErrorText>}
+          <ul className="grid grid-cols-1 gap-2">
+            {NAME_FRAMES.map((f) => {
+              const open = lv >= f.minLevel;
+              const worn = me.frame === f.code;
+              return (
+                <li key={f.code} className={`flex items-center gap-3 rounded-2xl border p-3 ${worn ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 text-[14px] font-semibold">
+                      <NameTag name={profile.nickname} frame={f.code} className="min-w-0" />
+                    </div>
+                    <p className="mt-1 truncate text-[12px] text-muted">
+                      {f.name} · {f.desc}
+                    </p>
+                  </div>
+                  {open ? (
+                    <button
+                      type="button"
+                      disabled={busy !== null}
+                      onClick={() => wear(worn ? null : f.code)}
+                      className={`shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold ${worn ? "border border-line bg-surface text-muted" : "bg-accent text-bg"} disabled:opacity-50`}
+                    >
+                      {busy === (worn ? "none" : f.code) ? "…" : worn ? "떼기" : "달기"}
+                    </button>
+                  ) : (
+                    <Lock size={16} className="shrink-0 text-faint" aria-label="잠김" />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </section>
 
         <LevelTable />

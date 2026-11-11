@@ -1,3 +1,4 @@
+import HomeCharacter from "@/components/HomeCharacter";
 import HomeDday from "@/components/HomeDday";
 import HomePlanner from "@/components/HomePlanner";
 import HomePrints from "@/components/HomePrints";
@@ -16,6 +17,8 @@ export default function HomePage() {
       <div className="space-y-4 px-5">
         {/* 오늘 급식 한 줄 */}
         <TodayMealLine />
+
+        <HomeCharacter />
 
         <HomeDday />
 

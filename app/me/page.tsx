@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, ChartNoAxesColumnIncreasing, Files, GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
+import { Award, ChartNoAxesColumnIncreasing, Sparkles, Files, GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
@@ -81,6 +81,7 @@ export default function MePage() {
           <ListRow icon={<GraduationCap size={20} />} label="학년·반·계열" value={`${profile.grade}학년 ${profile.class_no}반${profile.grade === 2 ? ` · ${profile.track ?? "계열 고르기"}` : ""}`} href="/me/track" />
           <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
           <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
+          <ListRow icon={<Sparkles size={20} />} label="캐릭터" value={!levelOn ? "준비 중" : undefined} href="/me/character" />
           <ListRow icon={<ChartNoAxesColumnIncreasing size={20} />} label="레벨" value={!levelOn ? "준비 중" : myLevel ? `Lv.${myLevel.level}` : undefined} href="/me/level" />
           <ListRow icon={<Award size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
           <ListRow icon={<Smile size={20} />} label="프로필 사진" href="/me/avatar" />

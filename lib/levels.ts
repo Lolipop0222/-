@@ -5,7 +5,8 @@
  *  - 경험치 = 과목별 공부 시간 합(순위와 같은 기준: 기타·인강 제외, 한 기록 1초~4시간). 과목마다 만렙 시간까지만 센다.
  *  - 만렙 시간: 국어·영어·수학 각 500시간, 사회·과학(탐구) 각 300시간, 역사 150시간 → 합계 2,250시간
  *  - 레벨 = 1 + floor(98 × √(경험치 / 2,250시간))
- *  - 10레벨마다 보상(LEVEL_REWARDS). 지금은 1레벨 캐릭터(그림 준비 중)와 닉네임 테두리. 자세한 보상은 사용자가 나중에 정한다.
+ *  - 보상(LEVEL_REWARDS)은 사용자가 정한 표: 캐릭터 스킨(진화) 1·40·70·99, 표정 10, 칭호 20·50·90, 프로필 사진 30, 테마 60, 닉네임 테두리 80.
+ *    칭호·프로필 사진·테마는 아직 준비 중 (캐릭터 느낌에 맞춰 만들 예정).
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -31,46 +32,64 @@ export function xpForLevel(level: number): number {
 
 export type NameFrame = { code: string; name: string; minLevel: number; desc: string };
 
-/** 테두리 목록 — 모양은 app/globals.css의 .nf-<code>. 열리는 레벨은 08-levels.sql의 name_frame_min_level()과 같게 */
+/** 테두리 목록 — 모양은 app/globals.css의 .nf-<code>. 80레벨에 모두 열린다 (08-levels.sql의 name_frame_min_level()과 같게) */
+export const FRAME_LEVEL = 80;
 export const NAME_FRAMES: readonly NameFrame[] = [
-  { code: "sprout", name: "새싹", minLevel: 10, desc: "초록 새싹 테두리" },
-  { code: "wave", name: "물결", minLevel: 20, desc: "시원한 파랑 두 줄" },
-  { code: "blossom", name: "벚꽃", minLevel: 30, desc: "분홍 꽃잎 점선" },
-  { code: "bronze", name: "청동", minLevel: 40, desc: "단단한 청동빛" },
-  { code: "silver", name: "은빛", minLevel: 50, desc: "반짝이는 은 그라데이션" },
-  { code: "gold", name: "금빛", minLevel: 60, desc: "금빛이 천천히 스쳐 감" },
-  { code: "amethyst", name: "자수정", minLevel: 70, desc: "보랏빛으로 은은하게 빛남" },
-  { code: "aurora", name: "오로라", minLevel: 80, desc: "색이 흐르는 오로라" },
-  { code: "starlight", name: "별빛", minLevel: 90, desc: "밤하늘에 별이 반짝" },
-  { code: "daepumta", name: "대품타", minLevel: 99, desc: "만렙 전용 · 대품타 금장" },
+  { code: "sprout", name: "새싹", minLevel: FRAME_LEVEL, desc: "초록 새싹 테두리" },
+  { code: "wave", name: "물결", minLevel: FRAME_LEVEL, desc: "시원한 파랑 두 줄" },
+  { code: "blossom", name: "벚꽃", minLevel: FRAME_LEVEL, desc: "분홍 꽃잎 점선" },
+  { code: "bronze", name: "청동", minLevel: FRAME_LEVEL, desc: "단단한 청동빛" },
+  { code: "silver", name: "은빛", minLevel: FRAME_LEVEL, desc: "반짝이는 은 그라데이션" },
+  { code: "gold", name: "금빛", minLevel: FRAME_LEVEL, desc: "금빛이 천천히 스쳐 감" },
+  { code: "amethyst", name: "자수정", minLevel: FRAME_LEVEL, desc: "보랏빛으로 은은하게 빛남" },
+  { code: "aurora", name: "오로라", minLevel: FRAME_LEVEL, desc: "색이 흐르는 오로라" },
+  { code: "starlight", name: "별빛", minLevel: FRAME_LEVEL, desc: "밤하늘에 별이 반짝" },
+  { code: "daepumta", name: "대품타", minLevel: FRAME_LEVEL, desc: "대품타 금장 · 왕관" },
 ];
 export const frameByCode = (code: string | null | undefined) => NAME_FRAMES.find((f) => f.code === code) ?? null;
 
 // ───────────────────────── 보상 ─────────────────────────
 
-export type Reward = { level: number; title: string; desc: string; frame?: string; pending?: boolean };
+export type RewardKind = "skin" | "face" | "title" | "photo" | "theme" | "frame";
+export type Reward = { level: number; kind: RewardKind; title: string; desc: string; stage?: number; pending?: boolean };
 
-/** 10레벨마다 보상. 1레벨 캐릭터는 그림을 받으면 넣는다(지금은 "준비 중") */
+/** 사용자가 정한 보상표 (10레벨 스킨은 1레벨로 당기고, 10레벨은 표정으로 바꿈) */
 export const LEVEL_REWARDS: readonly Reward[] = [
-  { level: 1, title: "캐릭터", desc: "나만의 캐릭터 이미지", pending: true },
-  ...NAME_FRAMES.map((f) => ({ level: f.minLevel, title: `닉네임 테두리 · ${f.name}`, desc: f.desc, frame: f.code })),
+  { level: 1, kind: "skin", stage: 1, title: "캐릭터 스킨 1단계", desc: "역사·과학·수학·사회 캐릭터 중 고르기" },
+  { level: 10, kind: "face", title: "표정 바꾸기", desc: "캐릭터 표정 3가지" },
+  { level: 20, kind: "title", title: "칭호", desc: "캐릭터 칭호", pending: true },
+  { level: 30, kind: "photo", title: "캐릭터 프로필 사진", desc: "캐릭터를 프로필 사진으로", pending: true },
+  { level: 40, kind: "skin", stage: 2, title: "캐릭터 스킨 2단계", desc: "첫 번째 진화" },
+  { level: 50, kind: "title", title: "칭호", desc: "캐릭터 칭호", pending: true },
+  { level: 60, kind: "theme", title: "캐릭터 테마", desc: "캐릭터 느낌의 앱 테마", pending: true },
+  { level: 70, kind: "skin", stage: 3, title: "캐릭터 스킨 3단계", desc: "두 번째 진화" },
+  { level: FRAME_LEVEL, kind: "frame", title: "닉네임 테두리", desc: `테두리 ${NAME_FRAMES.length}종 중 고르기` },
+  { level: 90, kind: "title", title: "칭호", desc: "캐릭터 칭호", pending: true },
+  { level: 99, kind: "skin", stage: 4, title: "캐릭터 스킨 최종 진화", desc: "만렙 전용" },
 ];
 
 // ───────────────────────── 서버 ─────────────────────────
 
 export type SubjectXp = { subject: RankedSubject; sec: number; cap: number };
-export type MyLevel = { level: number; xp: number; maxXp: number; frame: string | null; subjects: SubjectXp[] };
+export type MyLevel = { level: number; xp: number; maxXp: number; frame: string | null; character: string | null; subjects: SubjectXp[] };
 
 export async function loadMyLevel(): Promise<MyLevel> {
   const { data, error } = await supabase().rpc("my_level");
   if (error) throw error;
-  const d = data as { level: number; xp: number; max_xp: number; frame: string | null; subjects: SubjectXp[] };
-  return { level: d.level, xp: Number(d.xp), maxXp: Number(d.max_xp), frame: d.frame, subjects: d.subjects.map((s) => ({ ...s, sec: Number(s.sec), cap: Number(s.cap) })) };
+  const d = data as { level: number; xp: number; max_xp: number; frame: string | null; character?: string | null; subjects: SubjectXp[] };
+  return { level: d.level, xp: Number(d.xp), maxXp: Number(d.max_xp), frame: d.frame, character: d.character ?? null, subjects: d.subjects.map((s) => ({ ...s, sec: Number(s.sec), cap: Number(s.cap) })) };
 }
 
 /** 'ok' | 'locked' | 'invalid' */
 export async function setNameFrame(code: string | null): Promise<string> {
   const { data, error } = await supabase().rpc("set_name_frame", { p_code: code });
+  if (error) throw error;
+  return data as string;
+}
+
+/** 캐릭터 고르기 (null이면 안 고름). 'ok' | 'locked' | 'invalid' */
+export async function setCharacter(value: string | null): Promise<string> {
+  const { data, error } = await supabase().rpc("set_character", { p_value: value });
   if (error) throw error;
   return data as string;
 }
