@@ -142,9 +142,21 @@
       <p id="v-mae" class="status"></p>
       <div class="table-wrap">
         <table id="v-table">
-          <thead><tr><th>번호</th><th>앱(°)</th><th>각도기(°)</th><th>오차(°)</th><th></th></tr></thead>
+          <thead><tr><th>번호</th><th>앱(°)</th><th>각도기(°)</th><th>오차(°)</th><th>CVA(°)<br>선택</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+      <details class="card cva-help">
+        <summary>CVA 칸은 무엇인가요? (선택)</summary>
+        <p>논문에서 거북목을 잴 때 쓰는 <b>두개척추각(CVA)</b>이에요. 목 뒤에서 가장 튀어나온 뼈(C7)에 작은 스티커를 붙이고 찍은 뒤,
+          멈춘 화면에서 <b>C7 → 귀 앞 연골(이주)</b> 선이 <b>수평선</b>과 이루는 각도를 각도기로 재서 적어요.
+          작을수록 거북목이에요. 적으면 아래에서 실제 사람 92명의 값과 비교해 줘요.</p>
+      </details>
+
+      <div class="card">
+        <h3>실제 사람 데이터와 비교</h3>
+        <div id="v-reference"></div>
+        <p class="hint" id="v-reference-source"></p>
       </div>
       <div class="actions">
         <button id="v-csv" class="btn" type="button">검증 기록 CSV</button>

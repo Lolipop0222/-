@@ -221,6 +221,10 @@ td .x { width: 40px; height: 40px; border-radius: 50%; border: 0; background: va
 .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn-text); margin-left: 6px; }
 .tag.best { background: var(--accent); color: var(--accent-text); }
 
+.cva-help summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.cva-help p { margin-bottom: 0; }
+#v-reference p { margin: 8px 0; }
+
 /* 지난 기록 */
 .list { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
 .list li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }

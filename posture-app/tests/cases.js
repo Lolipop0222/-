@@ -6,7 +6,11 @@
 
 import { neckAngleDeg, measureNeck, pickSide, MovingAverage } from "../js/angle.js";
 import { fitQuadratic, quadraticMinimum, estimateBestAngle, evalQuadratic } from "../js/quadfit.js";
-import { summarize, AlertTracker, analyzeStand, meanAbsError, toCsv, sessionCsv, standCsv } from "../js/stats.js";
+import {
+  summarize, AlertTracker, analyzeStand, meanAbsError, toCsv, sessionCsv, standCsv,
+  referenceSummary, percentileRank, shareBelow,
+} from "../js/stats.js";
+import { CVA_SITTING_EVALUATOR1, CVA_SITTING_EVALUATOR2 } from "../js/reference.js";
 
 /** 두 수가 거의 같은지 (컴퓨터 계산의 아주 작은 오차는 봐준다) */
 function near(actual, expected, tolerance = 1e-6, what = "값") {
@@ -230,6 +234,30 @@ export const cases = [
       { appAngle: 40, manual: null },
     ]), 1.5, 1e-9);
     same(meanAbsError([{ appAngle: 20, manual: null }]), null, "기록 없음");
+  }],
+
+  // ---------- 실제 사람 데이터(참고 집단) ----------
+  ["참고 데이터: 92명, 평가자 2명 값이 모두 들어 있다", () => {
+    same(CVA_SITTING_EVALUATOR1.length, 92, "평가자 1");
+    same(CVA_SITTING_EVALUATOR2.length, 92, "평가자 2");
+  }],
+  ["참고 데이터: 요약이 원본 분석 결과와 같다 (평균 50.4°, 표준편차 5.3°, 평가자 간 차이 1.0°)", () => {
+    const r = referenceSummary(CVA_SITTING_EVALUATOR1, CVA_SITTING_EVALUATOR2);
+    same(r.mean, 50.4, "평균");
+    same(r.sd, 5.3, "표준편차");
+    same(r.raterDiff, 1, "평가자 간 차이");
+    same([r.min, r.max], [37.7, 63.5], "범위");
+  }],
+  ["참고 데이터: 요약 계산을 작은 예로 확인", () => {
+    const r = referenceSummary([50, 40], [52, 40]);
+    same(r.values, [51, 40], "두 평가자 평균");
+    same(r.raterDiff, 1, "평가자 간 차이 (2와 0의 평균)");
+  }],
+  ["백분위: 작은 값의 비율, 같은 값은 절반만 센다", () => {
+    near(percentileRank([10, 20, 30, 40], 25), 50, 1e-9, "가운데");
+    near(percentileRank([10, 20, 30, 40], 20), 37.5, 1e-9, "동점");
+    near(percentileRank([10, 20, 30, 40], 5), 0, 1e-9, "가장 작음");
+    near(shareBelow([10, 20, 30, 40], 30), 50, 1e-9, "30 미만 비율");
   }],
 
   // ---------- CSV ----------

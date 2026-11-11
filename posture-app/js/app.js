@@ -8,7 +8,9 @@ import { evalQuadratic } from "./quadfit.js";
 import {
   summarize, AlertTracker, meanAbsError, analyzeStand, round1, LOW_TRUST_PCT,
   sessionCsv, sessionsSummaryCsv, verifyCsv, standCsv,
+  referenceSummary, percentileRank, shareBelow,
 } from "./stats.js";
+import { CVA_SITTING_EVALUATOR1, CVA_SITTING_EVALUATOR2, CVA_CUTOFFS, REFERENCE_SOURCE } from "./reference.js";
 import * as store from "./storage.js";
 import { loadPose, detect, startCamera, stopCamera, cameraIsOn, cameraErrorMessage } from "./pose.js";
 
@@ -600,7 +602,7 @@ $("v-shot").addEventListener("click", () => {
   if (m.ok) {
     const angle = round1(m.angle);
     drawVerifyMarks(ctx, flipX(m.ear), flipX(m.shoulder), angle, w, h);
-    const entries = [...getVerify(), { id: newId(), time: localStamp(), appAngle: angle, manual: null }];
+    const entries = [...getVerify(), { id: newId(), time: localStamp(), appAngle: angle, manual: null, cva: null }];
     store.save("verify", entries);
     renderVerify();
     status.textContent = `앱이 잰 각도: ${angle}° — 각도기로 잰 값을 아래 ${entries.length}번 칸에 적어 주세요.`;
@@ -686,6 +688,52 @@ function updateVerifyMae() {
     mae == null
       ? "각도기로 잰 값을 넣으면 평균 오차가 계산돼요."
       : `평균 오차: ${round1(mae)}° (각도기 값을 넣은 ${filled}개의 |앱 − 각도기| 평균)`;
+  renderReference(entries, mae);
+}
+
+// 실제 사람 92명의 CVA 데이터 (js/reference.js) — 한 번만 요약해 둔다
+const REF = referenceSummary(CVA_SITTING_EVALUATOR1, CVA_SITTING_EVALUATOR2);
+const RATER_DIFF = REF.raterDiff.toFixed(1); // 화면에 "1.0"처럼 보이게
+
+/** 검증 기록을 실제 사람 데이터와 비교한 문장들 */
+function renderReference(entries, mae) {
+  const lines = [];
+  const p = (text, cls = "") => lines.push(el("p", { class: cls, text }));
+
+  // 1) 측정 오차 비교: 사람 평가자 두 명이 같은 사진을 재도 생기는 차이
+  if (mae == null) {
+    p(`참고: 사람 평가자 두 명이 같은 사진을 각도기(프로그램)로 따로 재도 평균 ${RATER_DIFF}° 차이가 났어요. 각도기 값을 넣으면 앱의 오차와 비교해 줘요.`);
+  } else {
+    const m = round1(mae);
+    const verdict =
+      m <= REF.raterDiff
+        ? "사람 두 명이 서로 다르게 재는 정도와 비슷하거나 작아요."
+        : m <= REF.raterDiff * 3
+          ? "사람끼리의 차이보다는 크지만, 몇 도 안쪽이에요. 카메라 위치(정확히 옆, 기울지 않게)를 확인해 보세요."
+          : "사람끼리의 차이보다 꽤 커요. 카메라가 정확히 옆에 있는지, 귀가 가려지지 않았는지 확인해 보세요.";
+    p(`앱의 평균 오차 ${m}° ↔ 사람 평가자 두 명 사이의 평균 차이 ${RATER_DIFF}°. ${verdict}`);
+  }
+
+  // 2) CVA를 적었다면 92명 중 어디쯤인지
+  const cvas = entries.map((e) => e.cva).filter((v) => v != null && Number.isFinite(v));
+  if (cvas.length) {
+    const avg = round1(cvas.reduce((s, v) => s + v, 0) / cvas.length);
+    const pr = Math.round(percentileRank(REF.values, avg));
+    p(`적은 CVA 평균 ${avg}° (${cvas.length}개) → 참고 집단 92명 중 CVA가 이보다 작은(더 거북목인) 사람은 약 ${pr}%예요. 참고 집단 평균은 ${REF.mean}° ± ${REF.sd}°(범위 ${REF.min}~${REF.max}°)이고, 작을수록 거북목이에요.`, "status");
+    const below = CVA_CUTOFFS.filter((c) => avg < c);
+    const cut = `${CVA_CUTOFFS.join("°·")}°`;
+    const share48 = Math.round(shareBelow(REF.values, 48));
+    const where =
+      below.length === CVA_CUTOFFS.length ? `연구마다 다른 거북목 기준선(${cut}) 모두보다 작아요.`
+        : below.length ? `거북목 기준선(${cut}) 중 ${below.join("°·")}°보다 작아요. 어느 기준을 쓰느냐에 따라 판정이 달라지는 구간이에요.`
+          : `거북목 기준선(${cut}) 모두보다 커요.`;
+    p(`${where} (참고 집단에서 48° 미만은 ${share48}%)`);
+  } else {
+    p(`참고 집단(성인 92명, 앉은 자세)의 CVA는 평균 ${REF.mean}° ± ${REF.sd}°이고, ${Math.round(shareBelow(REF.values, 48))}%가 48° 미만(거북목 기준 중 하나)이었어요. CVA 칸을 채우면 비교해 줘요.`);
+  }
+  p("앱의 목 각도와 CVA는 기준점이 달라서 서로 바꿔 계산할 수 없어요. (90 − CVA ≠ 앱 각도)", "hint");
+  $("v-reference").replaceChildren(...lines);
+  $("v-reference-source").textContent = `참고 데이터: ${REFERENCE_SOURCE}`;
 }
 
 function renderVerify() {
@@ -710,6 +758,17 @@ function renderVerify() {
         showErr();
         updateVerifyMae();
       });
+      const cvaInput = el("input", {
+        type: "number", inputmode: "decimal", step: "any", min: "0", max: "90",
+        "aria-label": `${i + 1}번 각도기로 잰 CVA (선택)`,
+      });
+      if (entry.cva != null) cvaInput.value = entry.cva;
+      cvaInput.addEventListener("input", () => {
+        const v = cvaInput.value === "" ? null : Number(cvaInput.value);
+        entry.cva = v != null && Number.isFinite(v) ? v : null;
+        store.save("verify", entries);
+        updateVerifyMae();
+      });
       const del = el("button", {
         class: "x", type: "button", text: "✕", "aria-label": `${i + 1}번 기록 지우기`,
         onclick: () => {
@@ -722,12 +781,13 @@ function renderVerify() {
         el("td", { text: entry.appAngle }),
         el("td", {}, input),
         errCell,
+        el("td", {}, cvaInput),
         el("td", {}, del),
       ]);
     }),
   );
   if (!entries.length) {
-    body.append(el("tr", {}, el("td", { colspan: "5", text: "아직 기록이 없어요.", style: "text-align:center" })));
+    body.append(el("tr", {}, el("td", { colspan: "6", text: "아직 기록이 없어요.", style: "text-align:center" })));
   }
   updateVerifyMae();
 }

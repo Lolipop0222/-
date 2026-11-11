@@ -85,6 +85,56 @@ export function meanAbsError(verifyEntries) {
   return done.reduce((s, e) => s + Math.abs(e.appAngle - e.manual), 0) / done.length;
 }
 
+// ---------------- 참고 데이터(실제 사람 92명의 CVA)와 비교 ----------------
+
+const mean = (list) => list.reduce((s, v) => s + v, 0) / list.length;
+function sd(list) {
+  const m = mean(list);
+  return Math.sqrt(list.reduce((s, v) => s + (v - m) ** 2, 0) / (list.length - 1));
+}
+
+/**
+ * 참고 데이터를 요약한다.
+ * - 한 사람의 CVA = 평가자 두 명이 잰 값의 평균
+ * - 평가자 간 차이 = |평가자1 − 평가자2|의 평균
+ *   → "사람이 같은 사진을 각도기로 재도 이만큼은 차이가 난다"는 기준이 된다.
+ * @param {number[]} ev1 평가자 1의 값
+ * @param {number[]} ev2 평가자 2의 값 (같은 순서)
+ */
+export function referenceSummary(ev1, ev2) {
+  const both = ev1.map((v, i) => (v + ev2[i]) / 2);
+  const raterDiff = mean(ev1.map((v, i) => Math.abs(v - ev2[i])));
+  return {
+    n: both.length,
+    values: both,
+    mean: round1(mean(both)),
+    sd: round1(sd(both)),
+    min: round1(Math.min(...both)),
+    max: round1(Math.max(...both)),
+    raterDiff: round1(raterDiff),
+  };
+}
+
+/**
+ * 백분위: 참고 집단에서 x보다 CVA가 "작은" 사람의 비율(%).
+ * 같은 값은 절반만 센다(동점 처리). 예) 결과가 30이면 "100명 중 30명보다 크다"
+ * CVA는 작을수록 거북목이므로, 백분위가 낮을수록 참고 집단보다 고개가 앞으로 나온 편이다.
+ */
+export function percentileRank(values, x) {
+  let below = 0;
+  let equal = 0;
+  for (const v of values) {
+    if (v < x) below += 1;
+    else if (v === x) equal += 1;
+  }
+  return ((below + equal / 2) / values.length) * 100;
+}
+
+/** 참고 집단에서 CVA가 cutoff보다 작은 사람의 비율(%) */
+export function shareBelow(values, cutoff) {
+  return (values.filter((v) => v < cutoff).length / values.length) * 100;
+}
+
 /**
  * 독서대 각도별 결과를 보고 추천을 정한다.
  * @param {Array<{standAngle:number, order:number, meanAngle:number|null, overPct:number|null,
@@ -191,11 +241,13 @@ export function sessionsSummaryCsv(sessions) {
 
 /** 정확도 검증 목록 */
 export function verifyCsv(entries) {
-  const rows = [["번호", "시각", "앱이 잰 각도(도)", "각도기로 잰 각도(도)", "오차(앱-각도기)", "오차 절댓값"]];
+  const rows = [[
+    "번호", "시각", "앱이 잰 각도(도)", "각도기로 잰 각도(도)", "오차(앱-각도기)", "오차 절댓값", "각도기로 잰 CVA(도, 선택)",
+  ]];
   entries.forEach((e, i) => {
     const has = e.manual != null && Number.isFinite(e.manual);
     const err = has ? round1(e.appAngle - e.manual) : "";
-    rows.push([i + 1, e.time, e.appAngle, has ? e.manual : "", err, has ? Math.abs(err) : ""]);
+    rows.push([i + 1, e.time, e.appAngle, has ? e.manual : "", err, has ? Math.abs(err) : "", e.cva ?? ""]);
   });
   const mae = meanAbsError(entries);
   rows.push([]);
