@@ -5,8 +5,8 @@
  *  - 경험치 = 과목별 공부 시간 합(순위와 같은 기준: 기타·인강 제외, 한 기록 1초~4시간). 과목마다 만렙 시간까지만 센다.
  *  - 만렙 시간: 국어·영어·수학 각 500시간, 사회·과학(탐구) 각 300시간, 역사 150시간 → 합계 2,250시간
  *  - 레벨 = 1 + floor(98 × √(경험치 / 2,250시간))
- *  - 보상(LEVEL_REWARDS)은 사용자가 정한 표: 캐릭터 스킨(진화) 1·40·70·99, 표정 10, 칭호 20·50·90, 프로필 사진 30, 테마 60, 닉네임 테두리 80.
- *    칭호·프로필 사진·테마는 아직 준비 중 (캐릭터 느낌에 맞춰 만들 예정).
+ *  - 보상(LEVEL_REWARDS): 칭호 20·50·90, 프로필 사진 30, 테마 60, 닉네임 테두리 80 (사용자가 정한 표에서 캐릭터 스킨·표정은 2026-11-12 캐릭터를 빼면서 지움).
+ *    칭호·프로필 사진·테마는 아직 준비 중.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -50,46 +50,34 @@ export const frameByCode = (code: string | null | undefined) => NAME_FRAMES.find
 
 // ───────────────────────── 보상 ─────────────────────────
 
-export type RewardKind = "skin" | "face" | "title" | "photo" | "theme" | "frame";
-export type Reward = { level: number; kind: RewardKind; title: string; desc: string; stage?: number; pending?: boolean };
+export type RewardKind = "title" | "photo" | "theme" | "frame";
+export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean };
 
-/** 사용자가 정한 보상표 (10레벨 스킨은 1레벨로 당기고, 10레벨은 표정으로 바꿈) */
+/** 레벨 보상표 (사용자가 정한 표에서 캐릭터 스킨·표정을 뺀 것) */
 export const LEVEL_REWARDS: readonly Reward[] = [
-  { level: 1, kind: "skin", stage: 1, title: "캐릭터 스킨 1단계", desc: "역사·과학·수학·사회 캐릭터 중 고르기" },
-  { level: 10, kind: "face", title: "표정 바꾸기", desc: "캐릭터 표정 3가지" },
-  { level: 20, kind: "title", title: "칭호", desc: "캐릭터 칭호", pending: true },
-  { level: 30, kind: "photo", title: "캐릭터 프로필 사진", desc: "캐릭터를 프로필 사진으로", pending: true },
-  { level: 40, kind: "skin", stage: 2, title: "캐릭터 스킨 2단계", desc: "첫 번째 진화" },
-  { level: 50, kind: "title", title: "칭호", desc: "캐릭터 칭호", pending: true },
-  { level: 60, kind: "theme", title: "캐릭터 테마", desc: "캐릭터 느낌의 앱 테마", pending: true },
-  { level: 70, kind: "skin", stage: 3, title: "캐릭터 스킨 3단계", desc: "두 번째 진화" },
+  { level: 20, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
+  { level: 30, kind: "photo", title: "프로필 사진 꾸미기", desc: "프로필 사진 보상", pending: true },
+  { level: 50, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
+  { level: 60, kind: "theme", title: "테마", desc: "레벨 전용 앱 테마", pending: true },
   { level: FRAME_LEVEL, kind: "frame", title: "닉네임 테두리", desc: `테두리 ${NAME_FRAMES.length}종 중 고르기` },
-  { level: 90, kind: "title", title: "칭호", desc: "캐릭터 칭호", pending: true },
-  { level: 99, kind: "skin", stage: 4, title: "캐릭터 스킨 최종 진화", desc: "만렙 전용" },
+  { level: 90, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
 ];
 
 // ───────────────────────── 서버 ─────────────────────────
 
 export type SubjectXp = { subject: RankedSubject; sec: number; cap: number };
-export type MyLevel = { level: number; xp: number; maxXp: number; frame: string | null; character: string | null; subjects: SubjectXp[] };
+export type MyLevel = { level: number; xp: number; maxXp: number; frame: string | null; subjects: SubjectXp[] };
 
 export async function loadMyLevel(): Promise<MyLevel> {
   const { data, error } = await supabase().rpc("my_level");
   if (error) throw error;
-  const d = data as { level: number; xp: number; max_xp: number; frame: string | null; character?: string | null; subjects: SubjectXp[] };
-  return { level: d.level, xp: Number(d.xp), maxXp: Number(d.max_xp), frame: d.frame, character: d.character ?? null, subjects: d.subjects.map((s) => ({ ...s, sec: Number(s.sec), cap: Number(s.cap) })) };
+  const d = data as { level: number; xp: number; max_xp: number; frame: string | null; subjects: SubjectXp[] };
+  return { level: d.level, xp: Number(d.xp), maxXp: Number(d.max_xp), frame: d.frame, subjects: d.subjects.map((s) => ({ ...s, sec: Number(s.sec), cap: Number(s.cap) })) };
 }
 
 /** 'ok' | 'locked' | 'invalid' */
 export async function setNameFrame(code: string | null): Promise<string> {
   const { data, error } = await supabase().rpc("set_name_frame", { p_code: code });
-  if (error) throw error;
-  return data as string;
-}
-
-/** 캐릭터 고르기 (null이면 안 고름). 'ok' | 'locked' | 'invalid' */
-export async function setCharacter(value: string | null): Promise<string> {
-  const { data, error } = await supabase().rpc("set_character", { p_value: value });
   if (error) throw error;
   return data as string;
 }
