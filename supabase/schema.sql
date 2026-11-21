@@ -1840,6 +1840,8 @@ language sql immutable set search_path = public as $$
                       'reset_hunter', 'hour_exact', 'xmas', 'newyear', 'bug_finder') then 'flag'
   end
 $$;
+revoke execute on function title_metric_unit(text) from public, anon;
+grant execute on function title_metric_unit(text) to authenticated;
 
 -- 칭호 전체 (숨긴 것 포함) + 가진 학생 수
 create or replace function admin_list_titles()
@@ -1856,6 +1858,8 @@ begin
     from title_defs t
     order by t.sort, t.code;
 end $$;
+revoke execute on function admin_list_titles() from public, anon;
+grant execute on function admin_list_titles() to authenticated;
 
 -- 칭호 저장. p_code가 null이면 새로 만든다. 고친(만든) 칭호의 코드를 돌려준다.
 -- p_goal은 단위 그대로(시간 단위면 초가 아니라 '시간'으로 받는다 → 여기서 초로 바꿈)
@@ -1913,6 +1917,8 @@ begin
   end if;
   return v_code;
 end $$;
+revoke execute on function admin_save_title(text, text, text, text, text, text, numeric, boolean) from public, anon;
+grant execute on function admin_save_title(text, text, text, text, text, text, numeric, boolean) to authenticated;
 
 -- 관리자가 만든 칭호 지우기 (기본 칭호는 못 지움 → 숨기기로). 그 칭호를 단 학생은 대표 칭호가 비게 된다(외래 키 on delete set null)
 create or replace function admin_delete_title(p_code text) returns boolean
@@ -1927,6 +1933,8 @@ begin
   delete from title_defs where code = p_code;
   return true;
 end $$;
+revoke execute on function admin_delete_title(text) from public, anon;
+grant execute on function admin_delete_title(text) to authenticated;
 
 -- 닉네임으로 칭호 주기. 'ok' | 'no_user' | 'no_title' | 'already'. 받은 학생은 다음에 앱을 열 때 알림을 받는다
 create or replace function admin_grant_title(p_nickname text, p_code text) returns text
@@ -1951,6 +1959,8 @@ begin
   on conflict (user_id, code) do update set revoked = false, seen = false, earned_at = now();
   return 'ok';
 end $$;
+revoke execute on function admin_grant_title(text, text) from public, anon;
+grant execute on function admin_grant_title(text, text) to authenticated;
 
 -- 닉네임에게서 칭호 회수. 'ok' | 'no_user' | 'not_owned'. 대표 칭호로 달고 있었으면 뗀다
 create or replace function admin_revoke_title(p_nickname text, p_code text) returns text
@@ -1972,6 +1982,8 @@ begin
   update profiles set title_code = null where id = v_uid and title_code = p_code;
   return 'ok';
 end $$;
+revoke execute on function admin_revoke_title(text, text) from public, anon;
+grant execute on function admin_revoke_title(text, text) to authenticated;
 
 -- 칭호를 가진 학생 (최근 받은 순, 300명까지)
 create or replace function admin_title_holders(p_code text)
@@ -1988,6 +2000,8 @@ begin
     order by u.earned_at desc
     limit 300;
 end $$;
+revoke execute on function admin_title_holders(text) from public, anon;
+grant execute on function admin_title_holders(text) to authenticated;
 
 -- 닉네임 찾기 (칭호 줄 때 자동 완성용, 20명까지)
 create or replace function admin_find_users(p_query text)
@@ -2006,20 +2020,5 @@ begin
     order by (p.nickname ilike replace(replace(replace(btrim(p_query), '\', '\\'), '%', '\%'), '_', '\_') || '%') desc, p.nickname
     limit 20;
 end $$;
-
-revoke execute on function title_metric_unit(text) from public, anon;
-revoke execute on function admin_list_titles() from public, anon;
-revoke execute on function admin_save_title(text, text, text, text, text, text, numeric, boolean) from public, anon;
-revoke execute on function admin_delete_title(text) from public, anon;
-revoke execute on function admin_grant_title(text, text) from public, anon;
-revoke execute on function admin_revoke_title(text, text) from public, anon;
-revoke execute on function admin_title_holders(text) from public, anon;
 revoke execute on function admin_find_users(text) from public, anon;
-grant execute on function title_metric_unit(text) to authenticated;
-grant execute on function admin_list_titles() to authenticated;
-grant execute on function admin_save_title(text, text, text, text, text, text, numeric, boolean) to authenticated;
-grant execute on function admin_delete_title(text) to authenticated;
-grant execute on function admin_grant_title(text, text) to authenticated;
-grant execute on function admin_revoke_title(text, text) to authenticated;
-grant execute on function admin_title_holders(text) to authenticated;
 grant execute on function admin_find_users(text) to authenticated;
