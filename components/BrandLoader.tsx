@@ -32,8 +32,8 @@ function Bars({ width, className = "" }: { width: number | string; className?: s
 export function StartSplash() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6" role="status" aria-label="대품타 — 일등급을 품은 타이머, 불러오는 중">
-      {/* 폭 330px 기준으로 그린 뒤, 화면이 좁으면 글자·그림이 같은 비율로 줄어든다 (cqw = 이 틀 폭의 1%) */}
-      <div className="@container w-full max-w-[330px]">
+      {/* 폭 330px 기준으로 그린 뒤, 화면이 좁거나 낮으면(가로로 눕힌 휴대폰) 글자·그림이 같은 비율로 줄어든다 (cqw = 이 틀 폭의 1%, 높이는 85dvh까지) */}
+      <div className="@container w-full max-w-[min(330px,85dvh)]">
         <div className="flex flex-col items-center">
           <Emblem size="53cqw" />
         </div>

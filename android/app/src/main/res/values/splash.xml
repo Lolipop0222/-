@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 시작 화면 바탕색 = 웹 기본 다크 테마 바탕(--bg #0b0d12)과 같게 -->
+    <color name="splash_background">#0B0D12</color>
+</resources>

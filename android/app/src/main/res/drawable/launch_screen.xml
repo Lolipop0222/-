@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  앱 시작 화면 (대품타). 예전에는 splash.png 한 장을 화면 전체에 늘려 깔아서, 화면이 긴 휴대폰에서 그림이 위아래로 늘어났다.
+  이제는 바탕색을 칠하고 로고(splash_logo.png, 해상도별)를 늘리지 않고 가운데에 둔다 → 어떤 화면 비율·가로·태블릿에서도 비율 그대로.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/splash_logo" />
+    </item>
+</layer-list>

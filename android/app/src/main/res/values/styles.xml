@@ -16,7 +16,10 @@
     </style>
 
 
+    <!-- 앱 시작 화면: 로고를 늘리지 않고 가운데에 (drawable/launch_screen.xml).
+         Android 12 이상은 시스템이 먼저 아이콘 화면을 보여 주므로 그 바탕색도 맞춘다 -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="android:background">@drawable/launch_screen</item>
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
     </style>
 </resources>
