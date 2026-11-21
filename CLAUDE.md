@@ -11,7 +11,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 | 구분 | 내용 |
 |---|---|
-| 프론트·서버 | Next.js 16.4 App Router, React 19, TypeScript, Tailwind CSS v4, lucide-react 아이콘. `next.config.ts`에 `cacheComponents: true` |
+| 프론트·서버 | Next.js 16.4.6 App Router, React 19, TypeScript, Tailwind CSS v4, lucide-react 아이콘. `next.config.ts`에 `cacheComponents: true` |
 | DB·로그인 | Supabase (Postgres + RLS, 이메일·비밀번호 로그인). 정의는 **`supabase/parts/01~06-*.sql` 조각**이 원본, `supabase/schema.sql`은 이어 붙인 전체본(`npm run schema`로 자동 생성) |
 | 배포 | Vercel. **`main`에 push하면 자동 배포** → https://daego-ilpumta.vercel.app (고정 주소. `…-xxxx-liyu11.vercel.app` 같은 배포별 주소는 로그인 보호가 걸려 친구들이 못 연다) |
 | 안드로이드 | Capacitor 8 (`android/`). APK는 배포 주소를 여는 껍데기라 웹을 다시 배포하면 앱도 바뀐다. **켜 둔 앱도 `UpdateWatcher`가 새 배포를 감지해 반영**(아래). APK를 다시 나눠 줘야 하는 건 아이콘·시작 화면·이름·권한·플러그인·주소가 바뀔 때뿐 |
@@ -207,7 +207,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 **확인된 상태 (2026-11-21, 공개 키로 실제 DB 확인)**
 - 01~08 모두 적용됨(사용자가 2026-11-21 실행, `my_level`·`word_progress`·`sessions.detail` 42501, `character_skin` 42703). **09-admin-titles와 다시 고친 04는 커밋 "관리자 칭호 관리" 이후 실행 필요** → 확인: `POST /rest/v1/rpc/admin_list_titles`가 `PGRST202`면 아직.
 - 2026-11-21에 Supabase 무료 프로젝트가 일시 정지돼(주소 DNS 없음) 사용자가 Restore함 → 오래 안 쓰면 또 멈춘다.
-- 이 환경의 `npm run build`는 Next.js가 '알려진 보안 취약점(16.4.2)' 업그레이드 안내로 첫 실행을 멈추고, 바로 다시 실행하면 통과한다. 업그레이드는 사용자에게 물어볼 것.
+- Next.js 16.4.2 → 16.4.6으로 올림(2026-11-21, 알려진 보안 취약점, 사용자 허락). Next.js가 에이전트 환경에서 보안 업데이트가 나오면 `npm run build` 첫 실행을 멈추고 안내한다 → 사용자에게 물어보고 올릴 것. `npm audit --omit=dev`는 0개(남은 건 린트 도구 쪽 moderate).
 
 **예전 확인 (2026-11-06)**
 - **08-levels는 커밋 "레벨·닉네임 테두리" 이후 실행 필요**(06 다음에) → 확인: `POST /rest/v1/rpc/my_level`이 `PGRST202`면 아직. 실행 전에는 레벨 "준비 중", 순위에 테두리 없음.
