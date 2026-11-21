@@ -51,7 +51,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 
 ## 3. DB 구조 (`supabase/parts/` → `supabase/schema.sql`)
 
-**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제), `06-subjects`(계열·과목 목록 제약·세부 항목·인강 열과 이를 쓰는 함수 `start_session`·`title_stats`·`get_ranking`·`get_group_ranking`, 프로필 열 권한), `07-words`(워마 암기 진도 `word_progress`·퀴즈 최고 점수 `word_quiz_best`와 `wm_*` 함수 — profiles만 있으면 됨), `08-levels`(레벨·닉네임 테두리 `profiles.name_frame`과 `my_level`·`set_name_frame`·`player_cards` — **06이 먼저 있어야 함**: sessions.lecture·과목 '역사'). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
+**적용 방법 (2026-11-05부터 조각)**: 전체본(1,300줄)을 SQL Editor에 붙여넣으면 느리고 렉이 심하다고 사용자가 말해서 **조각 5개**로 나눴다 — `01-core`(설정·프로필·기록·플래너·디데이·타이머), `02-security`(보안·문의함·복구 코드·계정 삭제·관리자), `03-groups`(스터디그룹), `04-titles`(칭호·프로필 그림/사진 제약·**순위 함수**), `05-storage`(Storage 버킷·사진·프린트 아카이브·관리자 사진/계정 삭제), `06-subjects`(계열·과목 목록 제약·세부 항목·인강 열과 이를 쓰는 함수 `start_session`·`title_stats`·`get_ranking`·`get_group_ranking`, 프로필 열 권한), `07-words`(워마 암기 진도 `word_progress`·퀴즈 최고 점수 `word_quiz_best`와 `wm_*` 함수 — profiles만 있으면 됨), `08-levels`(레벨·닉네임 테두리 `profiles.name_frame`과 `my_level`·`set_name_frame`·`player_cards` — **06이 먼저 있어야 함**: sessions.lecture·과목 '역사'), `09-admin-titles`(관리자 칭호 관리 `admin_*_title*` 함수 — 04의 `title_defs.custom·edited`, `user_titles.revoked` 열이 있어야 함). 번호 순으로 앞 조각이 있어야 하고, 각 조각은 여러 번 실행해도 안전(idempotent)하다.
 - 스키마를 고칠 때: **해당 조각 파일을 고치고** `npm run schema`(전체본 재생성, `npm run lint`가 어긋나면 실패). 사용자에게는 **"바뀐 조각 이름"만** 실행하라고 안내하고 `supabase/README.md`의 변경 기록 표에 한 줄 추가한다. 새 기능이 크면 `06-…sql`처럼 새 조각을 만든다.
 - **같은 제약·함수를 두 조각에서 만들지 않는다.** (예전에 사진 제약을 칭호 부분과 사진 부분에서 따로 만들어서, 사진을 올린 학생이 있으면 전체본 재실행이 `profiles_avatar_check … violated by some row`로 실패하는 버그가 있었다 → 04 한 곳으로 모음)
 - **실제 DB에 무엇이 적용됐는지 확인하는 법**: 배포된 사이트 JS 묶음에 공개 URL·publishable 키가 들어 있다(`curl` 로 `/login` HTML의 `/_next/static/…js`를 받아 `supabase.co`, `sb_publishable_` 검색). 그 키로 읽기만 하는 요청: 함수 `POST /rest/v1/rpc/<함수>` → 있으면 `42501 permission denied`(로그인 필요), 없으면 `PGRST202`. 테이블 `GET /rest/v1/<테이블>?select=id&limit=1` → 있으면 `42501`, 없으면 `PGRST205`. 쓰기 요청이나 계정 만들기는 하지 않는다.
@@ -79,7 +79,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `word_progress` | 워마 단어별 복습 상자 (user_id, word_id 1~2000, box 1~5·6=외움, due 한국 날짜, seen·wrong). DAY = (word_id-1)/40+1 | 본인 조회만. 쓰기는 `wm_record`·`wm_import`·`wm_reset`로만 |
 | `word_quiz_best` | 워마 DAY×방식(meaning·reverse·blank·relation)별 최고 점수 | 본인 조회만. 쓰기는 `wm_save_quiz`로만 |
 | (`profiles.name_frame`) | 닉네임 테두리 코드. 직접 수정 불가(06 열 권한에 없음) → `set_name_frame()`이 레벨 확인 후 저장. 레벨이 내려가면 보여 줄 때 null | — |
-| `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
+| `user_titles` | 얻은 칭호 (user_id, code, earned_at, seen=알림 띄웠는지, revoked=관리자가 회수 — 줄을 남겨 자동 판정이 다시 안 줌). 영구 보관 | 클라이언트 못 읽고 못 씀 — 함수로만 |
 
 **함수**: `create_profile(닉네임, 학년, 반, 초대코드)`(계열은 가입 직후 앱이 profiles.track을 따로 저장) / `start_session(과목, 과제id?, 세부 항목?, 인강?)` / `end_session(세션id, 이탈횟수, 종료시각?)` / `get_ranking(범위 'school'|'grade'|'class', 과목|null)` / `materialize_routines(날짜)` / `kst_day_start()`, `kst_week_start()` / `create_recovery_code()`, `recovery_code_created_at()` / `delete_my_account()` / `is_admin()`, `admin_list_inquiries()`, `admin_reply_inquiry(id, 답변)`, `admin_issue_recovery_code(닉네임)` / 스터디그룹: `my_groups()`, `create_group(이름)`, `join_group(코드)`(틀리면 null), `leave_group(id)`, `rename_group`, `regenerate_group_code`, `kick_group_member(id, 닉네임)`, `delete_group`, `get_group_ranking(id, 과목|null)`(그룹원만, 이번 주·오늘·공부 중) / 칭호: `check_titles()`(판정 + 아직 알림 안 띄운 새 칭호 반환), `my_titles()`(진행도, 못 얻은 히든은 ???), `set_title(code|null)` / 관리자: `admin_list_photos()`, `admin_remove_avatar(닉네임)`(내린 경로 반환 → 앱이 파일 삭제), `admin_delete_user(닉네임)`(관리자 계정은 불가) / 워마: `wm_record(jsonb [{id, ok}] 200개까지)`(라이트너 계산은 서버, KST 날짜), `wm_import(jsonb)`(기기 저장분 옮기기, 있는 단어는 그대로), `wm_reset(day|null)`, `wm_save_quiz(day, mode, correct, total)`(최고만 남김) / 레벨: `my_level()`(jsonb: level·xp·max_xp·frame·과목별 sec/cap), `set_name_frame(code|null)`('ok'|'locked'|'invalid'), `player_cards(닉네임[] 100명까지)`(순위·그룹 화면의 레벨·테두리), 내부용 `level_xp_of(uuid[])`. `get_ranking`·`get_group_ranking`은 프로필 그림·대표 칭호(이름·등급)도 돌려주고, **`06-subjects.sql`**에 있다(열이 바뀌어 drop 후 create). 모두 `authenticated`만 실행 가능. **예외: `reset_password_with_code(이메일, 코드, 새 비밀번호)`만 anon도 실행**(로그인 전에 쓰므로). 내부용 `issue_recovery_code(uuid)`와 트리거 함수는 아무도 직접 못 부른다.
 
@@ -90,6 +90,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 공부 시간 = 순위와 같은 기준(기타 제외, 한 기록 1초~4시간). 날짜·요일·시각은 KST, 기록은 시작한 날. 연속 출석 = 하루 30분 이상인 날의 최장 연속(gaps-and-islands). 히든 일부(리셋 사냥꾼·새해·작심삼분)는 진행 중 기록도 봄(기타·4시간 넘게 켜 둔 것 제외).
 - 주간 순위 칭호(반/학년/전교 1위) = **끝난 모든 주**(이번 주 제외)를 본다 → 앱을 안 연 주도 나중에 소급. 그 주 5시간 이상 + 그 범위에 그 주 기록 있는 학생 3명 이상, 공동 1위 모두 지급. 반·학년은 지금 프로필 기준.
 - 중복 없음: `user_titles` primary key + `on conflict do nothing`. 알림은 `seen`으로 한 번만.
+- **관리자 칭호 관리 (2026-11-21, `/me/admin/titles`, 09)**: 이름·등급·분류·설명·조건(자동 metric+목표 / `manual`=관리자가 줄 때만)·보이기(active) 고치기, 새 칭호(code `c_`+10자, `custom`), 관리자가 만든 것만 지우기(기본은 숨기기만), 닉네임으로 주기(`seen=false`라 그 학생에게 토스트)·회수(`revoked`, 대표 칭호면 뗌), 가진 학생 목록, 닉네임 자동 완성. 고친 칭호는 `edited=true` → 04를 다시 실행해도 04의 insert가 덮어쓰지 않음(`on conflict … where not edited`). 고를 수 있는 조건 목록은 09 `title_metric_unit()`과 `lib/adminTitles.ts`의 `METRICS`를 같게(새 조건은 06 `title_stats()`에 값 추가 후 둘 다).
 - cron이 없어서 앱이 `check_titles()`를 부른다(`components/TitlesProvider.tsx`): 앱 열기, 공부 기록 변화(study.version), 플래너 과제 완료(`requestTitleCheck()` 이벤트), 내정보·칭호 화면 열기. 새 칭호는 위에 소리 없는 토스트.
 - 등급: 일반(common)·희귀(rare)·영웅(epic)·전설(legendary)·히든(hidden). 색·모양은 `globals.css`의 `--g-*`, `.tb-*`(배지), `.ring-*`(프로필 그림 테두리). 전설은 금빛이 반짝, 히든은 점선+그라데이션, 움직임은 `prefers-reduced-motion`이면 멈춤.
 - 프로필 그림 = 사진 대신 그림 24개 × 과목색 8개(`lib/titles.ts`의 `AVATAR_ICONS/COLORS`, 실명·얼굴 안 받는 원칙). DB는 `그림:색` 모양만 검사. 대표 칭호 등급이 그림 테두리 색이 된다.
@@ -203,7 +204,12 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - `/words/add`(직접 입력), `/words/scan`(사진 스캔) — 화면만
 - 오프라인 기록 임시 저장 없음, 수행평가(반장 등록) 없음, 알림 없음
 
-**확인된 상태 (2026-11-06, 공개 키로 실제 DB 확인)**
+**확인된 상태 (2026-11-21, 공개 키로 실제 DB 확인)**
+- 01~08 모두 적용됨(사용자가 2026-11-21 실행, `my_level`·`word_progress`·`sessions.detail` 42501, `character_skin` 42703). **09-admin-titles와 다시 고친 04는 커밋 "관리자 칭호 관리" 이후 실행 필요** → 확인: `POST /rest/v1/rpc/admin_list_titles`가 `PGRST202`면 아직.
+- 2026-11-21에 Supabase 무료 프로젝트가 일시 정지돼(주소 DNS 없음) 사용자가 Restore함 → 오래 안 쓰면 또 멈춘다.
+- 이 환경의 `npm run build`는 Next.js가 '알려진 보안 취약점(16.4.2)' 업그레이드 안내로 첫 실행을 멈추고, 바로 다시 실행하면 통과한다. 업그레이드는 사용자에게 물어볼 것.
+
+**예전 확인 (2026-11-06)**
 - **08-levels는 커밋 "레벨·닉네임 테두리" 이후 실행 필요**(06 다음에) → 확인: `POST /rest/v1/rpc/my_level`이 `PGRST202`면 아직. 실행 전에는 레벨 "준비 중", 순위에 테두리 없음.
 - **07-words는 커밋 "워마 암기" 이후 실행 필요** → 확인: `GET /rest/v1/word_progress?select=word_id&limit=1`이 `PGRST205`면 아직, `42501`이면 됨. 실행 전에도 워마는 돌아간다(기기 저장 + 화면에 안내).
 - 적용됨: 01~05 전부(`my_titles`·`prints`·`admin_list_photos`가 42501). **06-subjects는 커밋 "세부 항목·계열·인강" 이후 실행 필요** → 확인: `GET /rest/v1/sessions?select=detail&limit=1`이 `42703`(열 없음)이면 아직, `42501`이면 됨. 실행 전에도 앱은 돌아간다(예전 start_session·과목 이름으로 대체, 세부 항목·인강·계열 저장만 안 됨).

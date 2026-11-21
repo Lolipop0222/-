@@ -50,6 +50,10 @@ create table if not exists title_defs (
   sort        int not null default 0,
   active      boolean not null default true
 );
+-- 관리자 화면(09-admin-titles.sql)용: custom = 관리자가 새로 만든 칭호(지울 수 있음), edited = 관리자가 고친 칭호
+-- (고친 칭호는 이 파일을 다시 실행해도 아래 기본 목록으로 덮어쓰지 않는다)
+alter table title_defs add column if not exists custom boolean not null default false;
+alter table title_defs add column if not exists edited boolean not null default false;
 alter table title_defs enable row level security;
 revoke all on title_defs from anon, authenticated;  -- 히든 칭호 이름이 새지 않게 직접 읽기 금지 (my_titles로만)
 
@@ -62,6 +66,8 @@ create table if not exists user_titles (
 );
 alter table user_titles enable row level security;  -- 정책 없음 + 권한 없음 = 학생이 직접 읽기·쓰기 불가. 함수로만
 revoke all on user_titles from anon, authenticated;
+-- 관리자가 회수한 칭호: 줄은 남겨 두어(revoked) 자동 판정이 다시 주지 않게 한다. 다시 주면 false로
+alter table user_titles add column if not exists revoked boolean not null default false;
 
 alter table profiles drop constraint if exists profiles_title_code_fkey;
 alter table profiles add constraint profiles_title_code_fkey foreign key (title_code) references title_defs (code) on delete set null;
@@ -102,7 +108,8 @@ insert into title_defs (code, name, grade, category, description, metric, goal, 
   ('bug_hunter',    '오류를 찾는 자',   'hidden',    '히든',      '오류 신고 문의에 관리자가 답변함',                        'bug_finder',     1,       'flag',  95)
 on conflict (code) do update set
   name = excluded.name, grade = excluded.grade, category = excluded.category, description = excluded.description,
-  metric = excluded.metric, goal = excluded.goal, unit = excluded.unit, sort = excluded.sort;
+  metric = excluded.metric, goal = excluded.goal, unit = excluded.unit, sort = excluded.sort
+where not title_defs.edited;
 
 -- 칭호 판정용 값 title_stats()는 06-subjects.sql에 있다 (과목·인강 규칙을 쓰므로)
 
@@ -127,7 +134,7 @@ begin
   return query
     with fresh as (
       update user_titles u set seen = true
-      where u.user_id = uid and not u.seen
+      where u.user_id = uid and not u.seen and not u.revoked
       returning u.code, u.earned_at
     )
     select t.code, t.name, t.grade from fresh f join title_defs t on t.code = f.code order by t.sort;
@@ -161,7 +168,7 @@ begin
            t.code = eq,
            t.sort
     from title_defs t
-    left join user_titles u on u.code = t.code and u.user_id = uid
+    left join user_titles u on u.code = t.code and u.user_id = uid and not u.revoked
     where t.active
     order by t.sort;
 end $$;
@@ -170,7 +177,7 @@ end $$;
 create or replace function set_title(p_code text) returns void
 language plpgsql volatile security definer set search_path = public as $$
 begin
-  if p_code is not null and not exists (select 1 from user_titles where user_id = auth.uid() and code = p_code) then
+  if p_code is not null and not exists (select 1 from user_titles where user_id = auth.uid() and code = p_code and not revoked) then
     raise exception '아직 얻지 못한 칭호예요';
   end if;
   update profiles set title_code = p_code where id = auth.uid();
