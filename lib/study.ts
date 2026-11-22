@@ -70,6 +70,7 @@ export type RankRow = {
   avatar?: string | null;
   title_name?: string | null;
   title_grade?: string | null;
+  title_code?: string | null;
 };
 
 const MAX_SESSION_SEC = 4 * 3600; // 이보다 긴 세션은 합계에서 빠진다 (서버 규칙과 같게)

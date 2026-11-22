@@ -1421,6 +1421,159 @@ h2 {
   to { --ring-angle: 360deg; }
 }
 
+/* ───────────── 과목 누적 1,000시간 전설 칭호 (2026-11-22) — 금빛 대신 과목마다 다른 디자인. 모든 테마에서 같은 색 ─────────────
+ * components/TitleBadge.tsx SIGNATURE (code sub1k_<과목>) → .tb-sig-<과목>, 프로필 그림 테두리 .ring-sig-<과목> */
+.tb-sig {
+  position: relative;
+  overflow: hidden;
+  border-width: 1px;
+  border-style: solid;
+}
+.tb-sig > .truncate {
+  position: relative;
+}
+/* 국어 「문장가」: 한지에 먹으로 쓰고 낙관을 찍은 것. 먹이 스며들 듯 번짐이 지나간다 */
+.tb-sig-kor {
+  color: #1d1a17;
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+  font-weight: 800;
+  border-color: #1d1a17;
+  background:
+    linear-gradient(100deg, transparent 35%, rgb(29 26 23 / 0.16) 48%, transparent 62%) 0 0 / 260% 100% no-repeat,
+    radial-gradient(circle at 12% 120%, rgb(29 26 23 / 0.14), transparent 45%),
+    #f3ecdc;
+  box-shadow: 2px 2px 0 #b3362c, 0 0 10px rgb(0 0 0 / 0.25);
+  animation: sig-wash 4.5s ease-in-out infinite;
+}
+.tb-sig-kor .tb-icon {
+  color: #b3362c;
+}
+/* 영어 「네이티브」: 옥스퍼드 남색 표지, 상아색 명조 이탤릭, 붉은 안쪽 띠 */
+.tb-sig-eng {
+  color: #f4ecd8;
+  font-family: "Noto Serif KR", Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  border-color: #0b1b33;
+  background:
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.22) 50%, transparent 60%) 0 0 / 260% 100% no-repeat,
+    #13294b;
+  box-shadow: inset 0 0 0 1px #13294b, inset 0 0 0 2px #c8102e, 0 0 10px rgb(19 41 75 / 0.55);
+  animation: sig-wash 4s ease-in-out infinite;
+}
+.tb-sig-eng .tb-icon {
+  color: #ff6b7d;
+}
+/* 수학 「Q.E.D.」: 청사진 모눈 위 흰 점선 테두리, 고정폭 글자. 모눈이 천천히 흐른다 */
+.tb-sig-math {
+  color: #ffffff;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  letter-spacing: 0.02em;
+  border-style: dashed;
+  border-color: rgb(255 255 255 / 0.75);
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.16) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.16) 0 1px, transparent 1px 6px),
+    #1747a6;
+  box-shadow: 0 0 10px rgb(61 123 255 / 0.55);
+  animation: sig-grid 6s linear infinite;
+}
+.tb-sig-math .tb-icon {
+  color: #ffd36b;
+}
+/* 사회 「세계 시민」: 바다 → 땅으로 이어지는 지도 색이 지구가 돌듯 흐르고, 경선이 함께 지나간다 */
+.tb-sig-soc {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.55);
+  border-color: #0b4f66;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.22) 0 1px, transparent 1px 12px),
+    linear-gradient(100deg, #0e6b8a, #1d9a8a 22%, #5f9e48 40%, #c9a45e 55%, #1d9a8a 72%, #0e6b8a);
+  background-size: 120px 100%, 300% 100%;
+  box-shadow: 0 0 10px rgb(29 154 138 / 0.55);
+  animation: sig-globe 7s linear infinite;
+}
+.tb-sig-soc .tb-icon {
+  color: #ffffff;
+}
+/* 과학 「유레카」: 어두운 실험실에 형광 글자, 거품이 아래에서 위로 */
+.tb-sig-sci {
+  color: #8dffd6;
+  text-shadow: 0 0 6px rgb(45 226 176 / 0.9);
+  border-color: #2de2b0;
+  background:
+    radial-gradient(circle, rgb(141 255 214 / 0.55) 0 1.2px, transparent 1.8px) 0 0 / 11px 9px,
+    radial-gradient(circle, rgb(0 179 255 / 0.45) 0 1px, transparent 1.6px) 5px 4px / 13px 11px,
+    #06211f;
+  box-shadow: 0 0 12px rgb(45 226 176 / 0.6), inset 0 0 8px rgb(45 226 176 / 0.25);
+  animation: sig-bubble 3s linear infinite;
+}
+.tb-sig-sci .tb-icon {
+  color: #8dffd6;
+}
+/* 역사 「사관」: 궁궐 기둥의 주칠 바탕에 금빛 명조, 위아래 단청 띠 */
+.tb-sig-his {
+  color: #f6d98a;
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+  font-weight: 800;
+  border-color: #4a120f;
+  background:
+    repeating-linear-gradient(90deg, #2f7d5b 0 6px, #2b5ea8 6px 10px, #e0b13e 10px 12px, #c73a2c 12px 18px) top / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, #c73a2c 0 6px, #e0b13e 6px 8px, #2b5ea8 8px 12px, #2f7d5b 12px 18px) bottom / 100% 2px no-repeat,
+    linear-gradient(180deg, #8c2a22, #6a1c17);
+  box-shadow: 0 0 10px rgb(199 58 44 / 0.5);
+}
+.tb-sig-his .tb-icon {
+  color: #f6d98a;
+}
+@keyframes sig-wash {
+  0% { background-position: 120% 0, 0 0, 0 0; }
+  70%, 100% { background-position: -40% 0, 0 0, 0 0; }
+}
+@keyframes sig-grid {
+  to { background-position: 0 12px, 12px 0, 0 0; }
+}
+@keyframes sig-globe {
+  to { background-position: -120px 0, -300% 0; }
+}
+@keyframes sig-bubble {
+  to { background-position: 0 -18px, 5px -18px, 0 0; }
+}
+/* 프로필 그림 테두리 */
+.ring-sig-kor {
+  background: conic-gradient(from var(--ring-angle, 0deg), #1d1a17 0 290deg, #b3362c 290deg 330deg, #1d1a17 330deg);
+  box-shadow: 0 0 0 1px #f3ecdc, 0 0 10px rgb(0 0 0 / 0.35);
+  animation: ring-spin 9s linear infinite;
+}
+.ring-sig-eng {
+  background: conic-gradient(from var(--ring-angle, 0deg), #13294b 0 40%, #f4ecd8 40% 44%, #c8102e 44% 56%, #f4ecd8 56% 60%, #13294b 60%);
+  box-shadow: 0 0 10px rgb(19 41 75 / 0.6);
+  animation: ring-spin 10s linear infinite;
+}
+.ring-sig-math {
+  background: repeating-conic-gradient(from var(--ring-angle, 0deg), #3d7bff 0 10deg, #dfe9ff 10deg 15deg);
+  box-shadow: 0 0 10px rgb(61 123 255 / 0.55);
+  animation: ring-spin 14s linear infinite;
+}
+.ring-sig-soc {
+  background: conic-gradient(from var(--ring-angle, 0deg), #0e6b8a, #1d9a8a, #5f9e48, #c9a45e, #1d9a8a, #0e6b8a);
+  box-shadow: 0 0 10px rgb(29 154 138 / 0.55);
+  animation: ring-spin 8s linear infinite;
+}
+.ring-sig-sci {
+  background: conic-gradient(from var(--ring-angle, 0deg), #2de2b0, #00b3ff, #8dffd6, #2de2b0);
+  box-shadow: 0 0 14px rgb(45 226 176 / 0.7);
+  animation: ring-spin 4s linear infinite;
+}
+.ring-sig-his {
+  background: repeating-conic-gradient(from var(--ring-angle, 0deg), #c73a2c 0 15deg, #e0b13e 15deg 20deg, #2f7d5b 20deg 35deg, #2b5ea8 35deg 45deg);
+  box-shadow: 0 0 10px rgb(199 58 44 / 0.5);
+  animation: ring-spin 16s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-sig, .ring-sig-kor, .ring-sig-eng, .ring-sig-math, .ring-sig-soc, .ring-sig-sci, .ring-sig-his { animation: none; }
+}
+
 /* 칭호 알림 (components/TitlesProvider.tsx) — 소리 없이 위에서 살짝 */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-12px); }

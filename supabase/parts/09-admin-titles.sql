@@ -21,7 +21,8 @@ language sql immutable set search_path = public as $$
     when p_metric in ('lv_kor', 'lv_eng', 'lv_math', 'lv_soc', 'lv_sci', 'lv_his') then 'level'
     when p_metric in ('tasks_done', 'short_count') then 'count'
     when p_metric in ('manual', 'first_record', 'focus_2h', 'allround', 'week_class_top', 'week_grade_top', 'week_school_top',
-                      'reset_hunter', 'hour_exact', 'xmas', 'newyear', 'bug_finder') then 'flag'
+                      'reset_hunter', 'hour_exact', 'xmas', 'newyear', 'bug_finder',
+                      'wtop_kor', 'wtop_eng', 'wtop_math', 'wtop_soc', 'wtop_sci', 'wtop_his') then 'flag'
   end
 $$;
 revoke execute on function title_metric_unit(text) from public, anon;

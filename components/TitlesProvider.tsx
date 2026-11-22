@@ -118,7 +118,7 @@ function TitleToast({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     >
       <span className="text-[13px] font-semibold text-muted">칭호 획득</span>
       <span className="min-w-0 flex-1">
-        <TitleBadge name={top.name} grade={top.grade} size="md" />
+        <TitleBadge name={top.name} grade={top.grade} code={top.code} size="md" />
       </span>
       {more > 0 && <span className="shrink-0 text-[12px] text-muted">외 {more}개</span>}
     </Link>

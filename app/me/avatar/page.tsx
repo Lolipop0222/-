@@ -7,7 +7,7 @@ import { AvatarIconView, ProfileAvatar, TitleBadge } from "@/components/TitleBad
 import { useMyTitles } from "@/components/TitlesProvider";
 import { ErrorText, InfoText, PrimaryButton, Segmented, SubHeader } from "@/components/ui";
 import { photoPath, removePhotoFile, squarePhoto, uploadPhoto } from "@/lib/photos";
-import { AVATAR_COLORS, AVATAR_ICONS, avatarString, parseAvatar, saveAvatar, type AvatarValue } from "@/lib/titles";
+import { AVATAR_COLORS, AVATAR_ICONS, avatarString, parseAvatar, ringClass, saveAvatar, type AvatarValue } from "@/lib/titles";
 import { koreanError } from "@/lib/supabase";
 
 const TABS = ["사진", "그림"] as const;
@@ -76,15 +76,15 @@ export default function AvatarPage() {
         {/* 미리보기 */}
         <div className="flex flex-col items-center gap-2 py-2">
           {tab === "사진" && photo ? (
-            <span className={`inline-grid size-[104px] place-items-center rounded-full ${equipped ? `ring-${equipped.grade}` : ""}`}>
+            <span className={`inline-grid size-[104px] place-items-center rounded-full ${equipped ? ringClass(equipped.grade, equipped.code) : ""}`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- 올리기 전 미리보기 (blob 주소) */}
               <img src={photo.url} alt="미리보기" className="size-[96px] rounded-full object-cover" />
             </span>
           ) : (
-            <ProfileAvatar avatar={tab === "사진" ? profile.avatar : previewAvatar} nickname={profile.nickname} grade={equipped?.grade} size={104} />
+            <ProfileAvatar avatar={tab === "사진" ? profile.avatar : previewAvatar} nickname={profile.nickname} grade={equipped?.grade} titleCode={equipped?.code} size={104} />
           )}
           <p className="text-[17px] font-bold">{profile.nickname}</p>
-          {equipped ? <TitleBadge name={equipped.name} grade={equipped.grade} /> : <p className="text-[12px] text-faint">대표 칭호를 달면 등급 색 테두리가 생겨요</p>}
+          {equipped ? <TitleBadge name={equipped.name} grade={equipped.grade} code={equipped.code} /> : <p className="text-[12px] text-faint">대표 칭호를 달면 등급 색 테두리가 생겨요</p>}
         </div>
 
         <Segmented items={TABS} value={tab} onChange={(t) => (setTab(t), setError(null), setSaved(null))} />

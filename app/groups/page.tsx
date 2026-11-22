@@ -352,7 +352,7 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
               >
                 <span className={`num w-6 text-[15px] font-bold ${r.rank <= 3 && r.total_sec > 0 ? "text-warn" : "text-muted"}`}>{r.rank}</span>
                 <span className="relative">
-                  <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} size={36} />
+                  <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} titleCode={r.title_code} size={36} />
                   {r.studying && <span className="live-dot absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-surface bg-live" />}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -363,7 +363,7 @@ function GroupView({ group, onBack, onChanged, onGone }: { group: MyGroup; onBac
                   </span>
                   <span className="mt-1 flex min-w-0 items-center gap-1.5">
                     <LevelBadge level={cards.get(r.nickname)?.level} />
-                    {r.title_name && <TitleBadge name={r.title_name} grade={r.title_grade} size="xs" />}
+                    {r.title_name && <TitleBadge name={r.title_name} grade={r.title_grade} code={r.title_code} size="xs" />}
                     <span className="num shrink-0 text-[12px] text-faint">
                       {r.grade}-{r.class_no} · 오늘 {hm(r.today_sec)}
                     </span>

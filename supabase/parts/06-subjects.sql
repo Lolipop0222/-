@@ -163,7 +163,20 @@ begin
     group by 1, 2
   ),
   wp as (select wk.w, wk.t, wk.user_id, p.grade, p.class_no from wk join profiles p on p.id = wk.user_id),
-  mine as (select * from wp where user_id = p_user and t >= 18000)
+  mine as (select * from wp where user_id = p_user and t >= 18000),
+  -- 지난 모든 주의 과목별 전교 1위 (히든 칭호 top_*): 그 주 그 과목 3시간 이상 + 그 과목 기록 학생 3명 이상, 공동 1위 포함
+  wks as (
+    select s.user_id, s.subject, date_trunc('week', s.started_at at time zone 'Asia/Seoul') as w, sum(s.duration) as t
+    from sessions s
+    where s.subject <> '기타' and not s.lecture and s.duration between 1 and 14400 and s.started_at < kst_week_start()
+    group by 1, 2, 3
+  ),
+  topsub as (
+    select distinct m.subject from wks m
+    where m.user_id = p_user and m.t >= 10800
+      and (select count(*) from wks x where x.w = m.w and x.subject = m.subject) >= 3
+      and m.t >= (select max(x.t) from wks x where x.w = m.w and x.subject = m.subject)
+  )
   select jsonb_build_object(
     'first_record',   (exists (select 1 from v where duration >= 60))::int,
     'total_sec',      coalesce((select sum(duration) from v), 0),
@@ -183,6 +196,12 @@ begin
     'lv_soc',         subject_level((select sum(duration) from v where subject = '사회'), '사회'),
     'lv_sci',         subject_level((select sum(duration) from v where subject = '과학'), '과학'),
     'lv_his',         subject_level((select sum(duration) from v where subject = '역사'), '역사'),
+    'wtop_kor',       (exists (select 1 from topsub where subject = '국어'))::int,
+    'wtop_eng',       (exists (select 1 from topsub where subject = '영어'))::int,
+    'wtop_math',      (exists (select 1 from topsub where subject = '수학'))::int,
+    'wtop_soc',       (exists (select 1 from topsub where subject = '사회'))::int,
+    'wtop_sci',       (exists (select 1 from topsub where subject = '과학'))::int,
+    'wtop_his',       (exists (select 1 from topsub where subject = '역사'))::int,
     'allround',       (exists (select 1 from ds where sec >= 1200 group by day having count(*) >= 5))::int,
     'week_class_top', (exists (select 1 from mine m
                         where (select count(*) from wp x where x.w = m.w and x.grade = m.grade and x.class_no = m.class_no) >= 3
@@ -206,11 +225,11 @@ begin
 end $$;
 
 -- 이번 주 순위. p_scope: 'school' | 'grade' | 'class', p_subject: null이면 전체 과목
--- 닉네임·학년·반·합계·공부 중 여부·프로필 그림·대표 칭호만 내보낸다. 진행 중인 세션은 끝나야 합계에 들어간다.
+-- 닉네임·학년·반·합계·공부 중 여부·프로필 그림·대표 칭호(이름·등급·code — code는 과목 전설 칭호 디자인용)만 내보낸다. 진행 중인 세션은 끝나야 합계에 들어간다.
 drop function if exists get_ranking(text, text);  -- 돌려주는 열이 바뀌어서 지우고 다시 만든다
 create function get_ranking(p_scope text default 'school', p_subject text default null)
 returns table (rank bigint, nickname text, grade int, class_no int, total_sec bigint, studying boolean, is_me boolean,
-               avatar text, title_name text, title_grade text)
+               avatar text, title_name text, title_grade text, title_code text)
 language sql stable security definer set search_path = public as $$
   with me as (
     select grade, class_no from profiles where id = auth.uid()
@@ -233,7 +252,7 @@ language sql stable security definer set search_path = public as $$
          coalesce(t.total, 0) as total_sec,
          l.user_id is not null as studying,
          p.id = auth.uid() as is_me,
-         p.avatar, td.name, td.grade
+         p.avatar, td.name, td.grade, td.code
   from profiles p
   cross join me
   left join totals t on t.user_id = p.id
@@ -249,7 +268,7 @@ $$;
 drop function if exists get_group_ranking(uuid, text);
 create function get_group_ranking(p_group uuid, p_subject text default null)
 returns table (rank bigint, nickname text, grade int, class_no int, total_sec bigint, today_sec bigint, studying boolean, is_me boolean, is_owner boolean,
-               avatar text, title_name text, title_grade text)
+               avatar text, title_name text, title_grade text, title_code text)
 language plpgsql stable security definer set search_path = public as $$
 begin
   perform require_group_member(p_group);
@@ -280,7 +299,7 @@ begin
            l.user_id is not null,
            p.id = auth.uid(),
            p.id = (select g.owner_id from study_groups g where g.id = p_group),
-           p.avatar, td.name, td.grade
+           p.avatar, td.name, td.grade, td.code
     from members mb
     join profiles p on p.id = mb.user_id
     left join totals t on t.user_id = p.id

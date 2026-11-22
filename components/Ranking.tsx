@@ -72,7 +72,7 @@ export default function Ranking() {
             <div key={r.nickname} className="rounded-2xl bg-surface p-3 text-center">
               <Crown size={18} className="mx-auto" style={{ color: MEDAL[i] }} fill={MEDAL[i]} />
               <span className="mt-1.5 flex justify-center">
-                <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} size={36} />
+                <ProfileAvatar avatar={r.avatar} nickname={r.nickname} grade={r.title_grade} titleCode={r.title_code} size={36} />
               </span>
               <p className="mt-1 flex min-w-0 justify-center text-[13px] font-semibold">
                 <NameTag name={r.nickname} frame={cards.get(r.nickname)?.frame} className="min-w-0" />
@@ -84,7 +84,7 @@ export default function Ranking() {
               )}
               {r.title_name && (
                 <span className="flex justify-center">
-                  <TitleBadge name={r.title_name} grade={r.title_grade} size="xs" />
+                  <TitleBadge name={r.title_name} grade={r.title_grade} code={r.title_code} size="xs" />
                 </span>
               )}
               <p className="num text-[12px] text-muted">{hm(r.total_sec)}</p>
@@ -139,7 +139,7 @@ function RankItem({ row, card }: { row: RankRow; card?: PlayerCard }) {
     >
       <span className={`num w-8 text-[15px] font-bold ${row.is_me ? "text-accent" : "text-muted"}`}>{row.rank}</span>
       <span className="relative">
-        <ProfileAvatar avatar={row.avatar} nickname={row.nickname} grade={row.title_grade} size={34} />
+        <ProfileAvatar avatar={row.avatar} nickname={row.nickname} grade={row.title_grade} titleCode={row.title_code} size={34} />
         {row.studying && <span className="live-dot absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-surface bg-live" />}
       </span>
       <span className="min-w-0 flex-1">
@@ -149,7 +149,7 @@ function RankItem({ row, card }: { row: RankRow; card?: PlayerCard }) {
         </span>
         <span className="mt-1 flex min-w-0 items-center gap-1.5">
           <LevelBadge level={card?.level} />
-          {row.title_name && <TitleBadge name={row.title_name} grade={row.title_grade} size="xs" />}
+          {row.title_name && <TitleBadge name={row.title_name} grade={row.title_grade} code={row.title_code} size="xs" />}
           <span className="shrink-0 text-[11px] text-faint">
             {row.grade}-{row.class_no}
           </span>

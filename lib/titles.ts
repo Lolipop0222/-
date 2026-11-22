@@ -28,6 +28,21 @@ export type MyTitle = {
 export type NewTitle = { code: string; name: string; grade: TitleGrade };
 
 /**
+ * 과목 누적 1,000시간 전설 칭호 (2026-11-22) — 금빛 대신 과목마다 다른 디자인 (globals.css .tb-sig-*, .ring-sig-*).
+ * code로 고른다 (04-titles.sql의 sub1k_<과목>). 순위 화면은 get_ranking의 title_code로 받는다.
+ */
+export const SIGNATURE_TITLES = { sub1k_kor: "kor", sub1k_eng: "eng", sub1k_math: "math", sub1k_soc: "soc", sub1k_sci: "sci", sub1k_his: "his" } as const;
+export type Signature = (typeof SIGNATURE_TITLES)[keyof typeof SIGNATURE_TITLES];
+export const signatureOf = (code: string | null | undefined): Signature | null =>
+  code && code in SIGNATURE_TITLES ? SIGNATURE_TITLES[code as keyof typeof SIGNATURE_TITLES] : null;
+/** 프로필 그림 테두리 클래스 (과목 전설이면 그 디자인, 아니면 등급 색) */
+export const ringClass = (grade: string | null | undefined, code?: string | null) => {
+  const sig = signatureOf(code);
+  if (sig) return `ring-sig-${sig}`;
+  return isGrade(grade) ? `ring-${grade}` : "";
+};
+
+/**
  * 등급 이름과 화면에 보여 줄 순서 (높은 것부터, 히든은 맨 끝).
  * 2026-11-22 사용자 요청: 전설 밑에 신화(붉은색), 초희귀 추가 → 일반 < 희귀 < 초희귀 < 영웅 < 신화 < 전설
  */

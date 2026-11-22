@@ -23,6 +23,7 @@ export type GroupRankRow = {
   avatar?: string | null;
   title_name?: string | null;
   title_grade?: string | null;
+  title_code?: string | null;
 };
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {

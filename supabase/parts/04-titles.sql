@@ -92,8 +92,11 @@ end $$;
 
 -- 과목 칭호 (2026-11-22 사용자 요청으로 바꿈): 예전 과목 칭호(과목 누적 50시간) 6개를 지우고,
 -- 과목 레벨(08의 레벨 식을 그 과목 만렙 시간에 적용 — 06의 subject_level()) 10·40·70·99에 주는 칭호 24개로.
---   10 「과목 뉴비」 희귀 · 40 「과목 중수」 초희귀 · 70 「과목 고수」 영웅 · 99 과목별 이름 신화
---   (국어 문장가 · 영어 네이티브 · 수학 Q.E.D. · 사회 세계 시민 · 과학 유레카 · 역사 사관)
+--   10 「과목 뉴비」 희귀 · 40 「과목 중수」 초희귀 · 70 「과목 고수」 영웅 · 99 「과목 마스터」 신화
+-- 과목 누적 1,000시간 전설 (과목마다 따로 디자인 — globals.css .tb-sig-*, components/TitleBadge.tsx SIGNATURE):
+--   국어 문장가 · 영어 네이티브 · 수학 Q.E.D. · 사회 세계 시민 · 과학 유레카 · 역사 사관  (code sub1k_<과목>)
+-- 과목 주간 전교 1위 히든 (끝난 주, 그 과목 3시간 이상 + 그 과목 기록 학생 3명 이상, 06 title_stats의 wtop_*):
+--   국어 장원 급제 · 영어 No.1 · 수학 최댓값 · 사회 지지율 1위 · 과학 1번 원소 · 역사 태조  (code top_<과목>)
 -- 예전 것을 얻은 학생의 기록·대표 칭호도 함께 사라진다(user_titles는 on delete cascade, 대표 칭호는 set null).
 delete from title_defs where code in ('subj_kor', 'subj_eng', 'subj_math', 'subj_sci', 'subj_soc', 'subj_his');
 
@@ -129,16 +132,22 @@ insert into title_defs (code, name, grade, category, description, metric, goal, 
   ('slv_soc_70',    '사회 고수',  'epic',      '과목',      '사회 레벨 70',                        'lv_soc',       70,   'level', 65),
   ('slv_sci_70',    '과학 고수',  'epic',      '과목',      '과학 레벨 70',                        'lv_sci',       70,   'level', 66),
   ('slv_his_70',    '역사 고수',  'epic',      '과목',      '역사 레벨 70',                        'lv_his',       70,   'level', 67),
-  ('slv_kor_99',    '문장가',      'mythic',    '과목',      '국어 레벨 99 (만렙 · 국어 500시간)', 'lv_kor',       99,   'level', 68),
-  ('slv_eng_99',    '네이티브',    'mythic',    '과목',      '영어 레벨 99 (만렙 · 영어 500시간)', 'lv_eng',       99,   'level', 69),
-  ('slv_math_99',   'Q.E.D.', 'mythic',    '과목',      '수학 레벨 99 (만렙 · 수학 500시간)', 'lv_math',      99,   'level', 70),
-  ('slv_soc_99',    '세계 시민',  'mythic',    '과목',      '사회 레벨 99 (만렙 · 사회 300시간)', 'lv_soc',       99,   'level', 71),
-  ('slv_sci_99',    '유레카',      'mythic',    '과목',      '과학 레벨 99 (만렙 · 과학 300시간)', 'lv_sci',       99,   'level', 72),
-  ('slv_his_99',    '사관',        'mythic',    '과목',      '역사 레벨 99 (만렙 · 역사 150시간)', 'lv_his',       99,   'level', 73),
-  ('all_rounder',   '올라운더',         'superrare',      '골고루',    '하루에 서로 다른 5과목을 각각 20분 이상',                 'allround',       1,       'flag',  76),
-  ('week_class',    '우리 반 에이스',   'superrare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 77),
-  ('week_grade',    '학년 1짱',         'epic',      '주간 순위', '학년 주간 1위 (그 주 5시간 이상, 학년에 기록 있는 학생 3명 이상)', 'week_grade_top',  1, 'flag', 78),
-  ('week_school',   '대고 일품인',      'legendary', '주간 순위', '전교 주간 1위 (그 주 5시간 이상, 기록 있는 학생 3명 이상)',     'week_school_top', 1, 'flag', 79),
+  ('slv_kor_99',    '국어 마스터', 'mythic',    '과목',      '국어 레벨 99 (만렙 · 국어 500시간)', 'lv_kor',       99,   'level', 68),
+  ('slv_eng_99',    '영어 마스터', 'mythic',    '과목',      '영어 레벨 99 (만렙 · 영어 500시간)', 'lv_eng',       99,   'level', 69),
+  ('slv_math_99',   '수학 마스터', 'mythic',    '과목',      '수학 레벨 99 (만렙 · 수학 500시간)', 'lv_math',      99,   'level', 70),
+  ('slv_soc_99',    '사회 마스터', 'mythic',    '과목',      '사회 레벨 99 (만렙 · 사회 300시간)', 'lv_soc',       99,   'level', 71),
+  ('slv_sci_99',    '과학 마스터', 'mythic',    '과목',      '과학 레벨 99 (만렙 · 과학 300시간)', 'lv_sci',       99,   'level', 72),
+  ('slv_his_99',    '역사 마스터', 'mythic',    '과목',      '역사 레벨 99 (만렙 · 역사 150시간)', 'lv_his',       99,   'level', 73),
+  ('sub1k_kor', '문장가', 'legendary', '과목', '국어 누적 1,000시간', 'sub_kor', 3600000, 'hour', 74),
+  ('sub1k_eng', '네이티브', 'legendary', '과목', '영어 누적 1,000시간', 'sub_eng', 3600000, 'hour', 75),
+  ('sub1k_math', 'Q.E.D.', 'legendary', '과목', '수학 누적 1,000시간', 'sub_math', 3600000, 'hour', 76),
+  ('sub1k_soc', '세계 시민', 'legendary', '과목', '사회 누적 1,000시간', 'sub_soc', 3600000, 'hour', 77),
+  ('sub1k_sci', '유레카', 'legendary', '과목', '과학 누적 1,000시간', 'sub_sci', 3600000, 'hour', 78),
+  ('sub1k_his', '사관', 'legendary', '과목', '역사 누적 1,000시간', 'sub_his', 3600000, 'hour', 79),
+  ('all_rounder',   '올라운더',         'superrare',      '골고루',    '하루에 서로 다른 5과목을 각각 20분 이상',                 'allround',       1,       'flag',  82),
+  ('week_class',    '우리 반 에이스',   'superrare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 83),
+  ('week_grade',    '학년 1짱',         'epic',      '주간 순위', '학년 주간 1위 (그 주 5시간 이상, 학년에 기록 있는 학생 3명 이상)', 'week_grade_top',  1, 'flag', 84),
+  ('week_school',   '대고 일품인',      'legendary', '주간 순위', '전교 주간 1위 (그 주 5시간 이상, 기록 있는 학생 3명 이상)',     'week_school_top', 1, 'flag', 85),
   ('planner_100',   '계획의 달인',      'epic',      '플래너·야자', '플래너 과제 누적 100개 완료',                          'tasks_done',     100,     'count', 80),
   ('yaja_king',     '야자의 왕',        'epic',      '플래너·야자', '평일 18시~22시에 2시간 이상 공부한 날 누적 20일',        'yaja_days',      20,      'day',   81),
   ('reset_hunter',  '리셋 사냥꾼',      'hidden',    '히든',      '순위가 초기화되는 월요일 0시~0시 5분에 공부 시작',          'reset_hunter',   1,       'flag',  90),
@@ -146,7 +155,13 @@ insert into title_defs (code, name, grade, category, description, metric, goal, 
   ('three_minutes', '작심삼분',         'hidden',    '히든',      '1분 이상 3분 미만으로 끝난 기록 10번',                    'short_count',    10,      'count', 92),
   ('christmas',     '메리 스터디마스',  'hidden',    '히든',      '12월 25일에 3시간 이상 공부',                            'xmas',           1,       'flag',  93),
   ('new_year',      '새해 첫 공부',     'hidden',    '히든',      '1월 1일 0시대에 공부 중',                                'newyear',        1,       'flag',  94),
-  ('bug_hunter',    '오류를 찾는 자',   'hidden',    '히든',      '오류 신고 문의에 관리자가 답변함',                        'bug_finder',     1,       'flag',  95)
+  ('bug_hunter',    '오류를 찾는 자',   'hidden',    '히든',      '오류 신고 문의에 관리자가 답변함',                        'bug_finder',     1,       'flag',  95),
+  ('top_kor', '장원 급제', 'hidden', '히든', '국어 주간 전교 1위 (그 주 국어 3시간 이상, 국어 기록 있는 학생 3명 이상)', 'wtop_kor', 1, 'flag', 96),
+  ('top_eng', 'No.1', 'hidden', '히든', '영어 주간 전교 1위 (그 주 영어 3시간 이상, 영어 기록 있는 학생 3명 이상)', 'wtop_eng', 1, 'flag', 97),
+  ('top_math', '최댓값', 'hidden', '히든', '수학 주간 전교 1위 (그 주 수학 3시간 이상, 수학 기록 있는 학생 3명 이상)', 'wtop_math', 1, 'flag', 98),
+  ('top_soc', '지지율 1위', 'hidden', '히든', '사회 주간 전교 1위 (그 주 사회 3시간 이상, 사회 기록 있는 학생 3명 이상)', 'wtop_soc', 1, 'flag', 99),
+  ('top_sci', '1번 원소', 'hidden', '히든', '과학 주간 전교 1위 (그 주 과학 3시간 이상, 과학 기록 있는 학생 3명 이상)', 'wtop_sci', 1, 'flag', 100),
+  ('top_his', '태조', 'hidden', '히든', '역사 주간 전교 1위 (그 주 역사 3시간 이상, 역사 기록 있는 학생 3명 이상)', 'wtop_his', 1, 'flag', 101)
 on conflict (code) do update set
   name = excluded.name, grade = excluded.grade, category = excluded.category, description = excluded.description,
   metric = excluded.metric, goal = excluded.goal, unit = excluded.unit, sort = excluded.sort

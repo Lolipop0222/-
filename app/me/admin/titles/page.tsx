@@ -157,7 +157,7 @@ export default function AdminTitlesPage() {
                   <button type="button" onClick={() => setOpen(t.code)} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-surface-2">
                     <span className="min-w-0 flex-1">
                       <span className={`flex min-w-0 items-center gap-1.5 ${t.active ? "" : "opacity-50"}`}>
-                        <TitleBadge name={t.name} grade={t.grade} size="sm" />
+                        <TitleBadge name={t.name} grade={t.grade} code={t.code} size="sm" />
                         {!t.active && <EyeOff size={13} className="shrink-0 text-faint" aria-label="숨김" />}
                       </span>
                       <span className="mt-1 block truncate text-[12px] text-muted">{t.metric === MANUAL ? "관리자가 직접 주는 칭호" : t.description}</span>

@@ -56,11 +56,11 @@ export default function TitlesPage() {
       <div className="space-y-5 px-5 pt-2">
         {/* 대표 칭호 */}
         <Card className="flex items-center gap-4">
-          <ProfileAvatar avatar={profile.avatar} nickname={profile.nickname} grade={equipped?.grade} size={56} />
+          <ProfileAvatar avatar={profile.avatar} nickname={profile.nickname} grade={equipped?.grade} titleCode={equipped?.code} size={56} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[17px] font-bold">{profile.nickname}</p>
             <div className="mt-1 flex min-h-5 items-center">
-              {equipped ? <TitleBadge name={equipped.name} grade={equipped.grade} size="sm" /> : <span className="text-[12px] text-faint">대표 칭호 없음</span>}
+              {equipped ? <TitleBadge name={equipped.name} grade={equipped.grade} code={equipped.code} size="sm" /> : <span className="text-[12px] text-faint">대표 칭호 없음</span>}
             </div>
           </div>
           <div className="text-right">
@@ -117,7 +117,7 @@ function TitleRow({ t, busy, onEquip }: { t: MyTitle; busy: boolean; onEquip: ()
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {got ? (
-              <TitleBadge name={t.name} grade={t.grade} size="md" />
+              <TitleBadge name={t.name} grade={t.grade} code={t.code} size="md" />
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-line px-2 py-0.5 text-[13px] font-semibold text-faint">
                 <Lock size={12} /> {t.name}

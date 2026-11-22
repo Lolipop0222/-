@@ -51,7 +51,7 @@ export default function MePage() {
         {/* 프로필 */}
         <Card flush className="flex items-center gap-4 p-5">
           <Link href="/me/avatar" aria-label="프로필 사진 바꾸기" className="relative">
-            <ProfileAvatar avatar={profile.avatar} nickname={profile.nickname} grade={equipped?.grade} size={68} />
+            <ProfileAvatar avatar={profile.avatar} nickname={profile.nickname} grade={equipped?.grade} titleCode={equipped?.code} size={68} />
             <span className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full border-2 border-surface bg-surface-2 text-muted">
               <Smile size={13} />
             </span>
@@ -63,7 +63,7 @@ export default function MePage() {
             </Link>
             {equipped && (
               <Link href="/me/titles" className="mt-1 flex">
-                <TitleBadge name={equipped.name} grade={equipped.grade} size="sm" />
+                <TitleBadge name={equipped.name} grade={equipped.grade} code={equipped.code} size="sm" />
               </Link>
             )}
             <p className="mt-1 text-[13px] text-muted">

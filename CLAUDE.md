@@ -72,7 +72,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | `security_attempts` | 초대코드·복구 코드·그룹 코드 틀린 기록 (하루 지나면 지움) | 클라이언트 못 읽음 |
 | `study_groups` | 스터디그룹 (이름 2~20자, 6자리 초대코드, owner_id) | 클라이언트 못 읽음 — 함수로만 |
 | `group_members` | 그룹원 (group_id, user_id, joined_at) | 클라이언트 못 읽음 — 함수로만 |
-| `title_defs` | 칭호 정의 49개 (code·이름·등급·분류·설명·metric·goal·unit·sort·active). `04-titles.sql`의 insert가 원본 | 클라이언트 못 읽음 (히든 이름 보호) — `my_titles()`로만 |
+| `title_defs` | 칭호 정의 61개 (code·이름·등급·분류·설명·metric·goal·unit·sort·active). `04-titles.sql`의 insert가 원본 | 클라이언트 못 읽음 (히든 이름 보호) — `my_titles()`로만 |
 | `prints` | 프린트 아카이브 목록 (제목·분류 수행평가/학습지/시험 대비/기타·과목·학년(null=전 학년)·메모·file_path·file_name·크기) | 가입한(프로필 있는) 학생 조회, 추가·수정·삭제는 관리자만(RLS `is_admin()`) |
 | Storage `avatars` (공개) | 프로필 사진 `<user id>/<16자>.webp|jpg`, 300KB | 내 폴더만 올리기·지우기, 관리자는 모두 지우기 |
 | Storage `prints` (비공개) | 프린트 파일 `<uuid>.<확장자>`, 50MB | 프로필 있는 학생 읽기(서명 주소), 관리자만 올리기·지우기 |
@@ -89,7 +89,9 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 판정은 전부 서버: `title_stats(uid)`(내부용)가 숫자 값들(jsonb)을 계산 → `title_defs`의 `metric` 값이 `goal` 이상이면 지급. **칭호 추가 = `title_defs` insert 한 줄**(있는 metric이면), 새 조건이면 `title_stats()`에 값 하나 추가. 단어 퀴즈 칭호는 점수를 서버에 저장하게 되면 `quiz_…` metric을 더한다.
 - 공부 시간 = 순위와 같은 기준(기타 제외, 한 기록 1초~4시간). 날짜·요일·시각은 KST, 기록은 시작한 날. 연속 출석 = 하루 30분 이상인 날의 최장 연속(gaps-and-islands). 히든 일부(리셋 사냥꾼·새해·작심삼분)는 진행 중 기록도 봄(기타·4시간 넘게 켜 둔 것 제외).
 - 주간 순위 칭호(반/학년/전교 1위) = **끝난 모든 주**(이번 주 제외)를 본다 → 앱을 안 연 주도 나중에 소급. 그 주 5시간 이상 + 그 범위에 그 주 기록 있는 학생 3명 이상, 공동 1위 모두 지급. 반·학년은 지금 프로필 기준.
-- **과목 칭호 (2026-11-22 교체, 사용자 요청)**: 예전 과목 칭호(과목 누적 50시간, `subj_*` 6개)는 04에서 `delete` — 얻은 기록·대표 칭호도 사라짐. 새로 과목 레벨(전체 레벨 식을 그 과목 만렙 시간에 적용) 10「과목 뉴비」 희귀 · 40「과목 중수」 초희귀 · 70「과목 고수」 영웅 · 99 신화(국어 문장가·영어 네이티브·수학 Q.E.D.·사회 세계 시민·과학 유레카·역사 사관), code `slv_<과목>_<레벨>`, metric `lv_kor`… unit `level`(진행도 "Lv.7/10"). 과목 레벨은 06 `subject_level(초, 과목)` = 앱 `subjectLevel()`과 같은 식(경계 1초까지 일치 확인), `level_subject_cap()`은 08에서 06으로 옮김. 이름은 이 세 곳을 같이 고친다: 04 insert, 09 `title_metric_unit`, `lib/adminTitles.ts` `METRICS`.
+- **과목 칭호 (2026-11-22 교체, 사용자 요청)**: 예전 과목 칭호(과목 누적 50시간, `subj_*` 6개)는 04에서 `delete` — 얻은 기록·대표 칭호도 사라짐. 새로 과목 레벨(전체 레벨 식을 그 과목 만렙 시간에 적용) 10「과목 뉴비」 희귀 · 40「과목 중수」 초희귀 · 70「과목 고수」 영웅 · 99「과목 마스터」 신화, code `slv_<과목>_<레벨>`, metric `lv_kor`… unit `level`(진행도 "Lv.7/10"). 과목 레벨은 06 `subject_level(초, 과목)` = 앱 `subjectLevel()`과 같은 식(경계 1초까지 일치 확인), `level_subject_cap()`은 08에서 06으로 옮김. 이름은 이 세 곳을 같이 고친다: 04 insert, 09 `title_metric_unit`, `lib/adminTitles.ts` `METRICS`.
+- **과목 1,000시간 전설 (2026-11-22, 사용자: "평범한 황금빛이 아니라 과목별로 어울리게")**: code `sub1k_<과목>`, metric `sub_*` 3,600,000초 — 국어 문장가(한지·먹·명조, 낙관 그림자) · 영어 네이티브(옥스퍼드 남색·상아색 명조 이탤릭·붉은 안쪽 띠) · 수학 Q.E.D.(청사진 모눈 흐름·흰 점선·고정폭) · 사회 세계 시민(바다→땅 지도색과 경선이 흐름) · 과학 유레카(형광 글자·거품이 올라감) · 역사 사관(주칠 바탕·금빛 명조·위아래 단청 띠). 모든 테마에서 같은 색. **code로 고른다**: `lib/titles.ts` `SIGNATURE_TITLES`·`signatureOf`·`ringClass`, `TitleBadge`의 `code` 속성(아이콘 낙관·따옴표·Σ·지구·플라스크·두루마리), `ProfileAvatar`의 `titleCode`(테두리 `.ring-sig-*`), CSS `.tb-sig-*`. 그래서 `get_ranking`·`get_group_ranking`이 `title_code`도 돌려준다(06). 문장가·네이티브·사관 배지는 `ensureSerifFont()`로 명조를 불러온다.
+- **과목 1위 히든 (2026-11-22)**: code `top_<과목>`, metric `wtop_*`(06 title_stats의 `wks`·`topsub`) = 끝난 주 그 과목 전교 1위(그 주 그 과목 3시간 이상 + 그 과목 기록 학생 3명 이상, 공동 1위 포함) — 국어 장원 급제 · 영어 No.1 · 수학 최댓값 · 사회 지지율 1위 · 과학 1번 원소 · 역사 태조.
 - 중복 없음: `user_titles` primary key + `on conflict do nothing`. 알림은 `seen`으로 한 번만.
 - **관리자 칭호 관리 (2026-11-21, `/me/admin/titles`, 09)**: 이름·등급·분류·설명·조건(자동 metric+목표 / `manual`=관리자가 줄 때만)·보이기(active) 고치기, 새 칭호(code `c_`+10자, `custom`), 관리자가 만든 것만 지우기(기본은 숨기기만), 닉네임으로 주기(`seen=false`라 그 학생에게 토스트)·회수(`revoked`, 대표 칭호면 뗌), 가진 학생 목록, 닉네임 자동 완성. 고친 칭호는 `edited=true` → 04를 다시 실행해도 04의 insert가 덮어쓰지 않음(`on conflict … where not edited`). 고를 수 있는 조건 목록은 09 `title_metric_unit()`과 `lib/adminTitles.ts`의 `METRICS`를 같게(새 조건은 06 `title_stats()`에 값 추가 후 둘 다).
 - cron이 없어서 앱이 `check_titles()`를 부른다(`components/TitlesProvider.tsx`): 앱 열기, 공부 기록 변화(study.version), 플래너 과제 완료(`requestTitleCheck()` 이벤트), 내정보·칭호 화면 열기. 새 칭호는 위에 소리 없는 토스트.
@@ -196,7 +198,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 비밀번호 찾기(`/login/reset`, 복구 코드)·복구 코드 만들기·비밀번호 바꾸기(`/me/security`), 홈에 "복구 코드 만들어 두세요" 안내(코드 없을 때만)
 - 계정 삭제(`/me/delete`)
 - 스터디그룹(`/groups`): 만들기·코드로 참여·공유, 그룹 안 이번 주 순위(과목별, 오늘 시간, 공부 중), 방장 설정(이름·코드 새로 만들기·내보내기·지우기), 나가기. 순위 화면 아래 "스터디그룹 순위 보기" 링크
-- 칭호(`/me/titles`): 49개(과목 레벨 칭호 24개 포함), 등급별 목록·진행도·대표 칭호 달기/떼기, 새 칭호 토스트. 순위·그룹 순위·내정보에 그림과 칭호 표시
+- 칭호(`/me/titles`): 61개(과목 레벨 24·과목 1,000시간 전설 6·과목 1위 히든 6 포함), 등급별 목록·진행도·대표 칭호 달기/떼기, 새 칭호 토스트. 순위·그룹 순위·내정보에 그림과 칭호 표시
 - 프로필 사진(`/me/avatar`): 사진 올리기(320px로 줄임) 또는 그림 24개 × 색 8개, 대표 칭호 등급 테두리. 관리자 사진 검토(내리기·계정 삭제)
 - 프린트 아카이브(`/prints`, 홈 카드·내정보): 관리자 업로드(여러 파일), 학년·분류·과목·검색 필터, 열기·내려받기. 로딩 화면에 Print Archive 로고
 - 테마(`/me/theme`): 8개 + 시스템 설정, 미리보기 카드. APK에서는 Capacitor `SystemBars.setStyle`로 상태바 글자색도 바꾸려 시도(실기기 미확인)

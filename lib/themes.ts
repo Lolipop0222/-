@@ -47,6 +47,15 @@ export const THEME_KEY = "daego-theme";
 export const THEME_SUBJECT_LEVEL = 60;
 /** 명조 제목 글꼴 (jsdelivr — CSP style-src·font-src에 허용됨). 버전은 고정 */
 export const SERIF_FONT_CSS = "https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-kr@5.2.5/700.css";
+/** 명조 제목 글꼴 CSS를 한 번만 불러온다 (명조 테마, 과목 전설 칭호 문장가·네이티브·사관 배지) */
+export function ensureSerifFont() {
+  if (typeof document === "undefined" || document.getElementById("serif-font")) return;
+  const link = document.createElement("link");
+  link.id = "serif-font";
+  link.rel = "stylesheet";
+  link.href = SERIF_FONT_CSS;
+  document.head.appendChild(link);
+}
 
 export function isThemeChoice(v: unknown): v is ThemeChoice {
   return v === "system" || THEMES.some((t) => t.id === v);
