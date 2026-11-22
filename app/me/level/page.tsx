@@ -10,7 +10,7 @@ import { LevelBadge, NameTag } from "@/components/NameTag";
 import { useStudy } from "@/components/StudyProvider";
 import { Card, ErrorText, SubHeader } from "@/components/ui";
 import { hm } from "@/lib/format";
-import { FRAME_LEVEL, LEVEL_REWARDS, MAX_LEVEL, NAME_FRAMES, levelFromXp, setNameFrame, subjectLevel, useMyLevel, xpForLevel } from "@/lib/levels";
+import { LEVEL_REWARDS, MAX_LEVEL, NAME_FRAMES, levelFromXp, setNameFrame, subjectLevel, useMyLevel, xpForLevel } from "@/lib/levels";
 import { THEME_SUBJECT_LEVEL } from "@/lib/themes";
 import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 import { FRAME_TIERS, SUBJECT_FRAMES, SUBJECT_KEY } from "@/lib/subjectRewards";
@@ -167,14 +167,14 @@ export default function LevelPage() {
             {LEVEL_REWARDS.map((r) => {
               const open = r.bySubject ? me.subjects.some((x) => subjectLevel(x.sec, x.cap) >= r.level) : lv >= r.level;
               return (
-                <li key={`${r.level}-${r.kind}`} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 ${r.pending ? "opacity-70" : ""}`}>
+                <li key={r.title} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 ${r.pending ? "opacity-70" : ""}`}>
                   <span className={`num grid size-11 shrink-0 place-items-center rounded-xl text-[13px] font-extrabold ${open ? "bg-accent text-bg" : "bg-surface-2 text-faint"}`}>
                     {r.level}
                   </span>
                   <div className="min-w-0 flex-1">
                     {r.kind === "frame" ? (
                       <div className={`flex min-w-0 text-[14px] font-semibold ${open ? "" : "opacity-50 grayscale"}`}>
-                        <NameTag name={r.title} frame={r.bySubject ? `${topKey}-${FRAME_TIERS.indexOf(r.level as (typeof FRAME_TIERS)[number]) + 1}` : "aurora"} className="min-w-0" />
+                        <NameTag name={r.title} frame={r.frame ?? `${topKey}-${FRAME_TIERS.indexOf(r.level as (typeof FRAME_TIERS)[number]) + 1}`} className="min-w-0" />
                       </div>
                     ) : (
                       <p className="text-[14px] font-semibold">{r.title}</p>
@@ -257,12 +257,11 @@ export default function LevelPage() {
         <section id="frames" className="scroll-mt-16">
           <h2 className="mb-1 text-[15px] font-semibold">닉네임 테두리 (전체 레벨)</h2>
           <p className="mb-2 text-[12px] text-faint">
-            {lv >= FRAME_LEVEL ? "순위·스터디그룹에서 친구들에게도 보여요." : `Lv.${FRAME_LEVEL}에 ${NAME_FRAMES.length}종이 한꺼번에 열려요. 미리 구경해 보세요.`}
+            전체 레벨 10 · 20 · … · 90 · 99에 하나씩 열려요. 단 테두리는 순위·스터디그룹에서 친구들에게도 보여요.
           </p>
-          
           <ul className="grid grid-cols-1 gap-2">
             {NAME_FRAMES.map((f) => {
-              const open = lv >= f.minLevel;
+              const open = admin || lv >= f.minLevel;
               const worn = me.frame === f.code;
               return (
                 <li key={f.code} className={`flex items-center gap-3 rounded-2xl border p-3 ${worn ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
@@ -284,7 +283,10 @@ export default function LevelPage() {
                       {busy === (worn ? "none" : f.code) ? "…" : worn ? "떼기" : "달기"}
                     </button>
                   ) : (
-                    <Lock size={16} className="shrink-0 text-faint" aria-label="잠김" />
+                    <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-faint">
+                      <Lock size={13} aria-label="잠김" />
+                      Lv.{f.minLevel}
+                    </span>
                   )}
                 </li>
               );

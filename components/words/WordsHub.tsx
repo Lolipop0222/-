@@ -173,20 +173,20 @@ export default function WordsHub() {
 
       {/* 내 단어장 (준비 중) */}
       <div className="grid grid-cols-2 gap-3">
-        <Link href="/words/scan" className="flex flex-col rounded-2xl border border-dashed border-line bg-surface p-4 opacity-80 active:bg-surface-2">
+        <div aria-disabled="true" className="flex flex-col rounded-2xl border border-dashed border-line bg-surface p-4 opacity-60">
           <span className="grid size-9 place-items-center rounded-xl bg-accent-soft text-accent">
             <Camera size={18} />
           </span>
           <span className="mt-2 block text-[14px] font-semibold">사진 스캔</span>
           <span className="text-[11px] text-faint">준비 중</span>
-        </Link>
-        <Link href="/words/add" className="flex flex-col rounded-2xl border border-dashed border-line bg-surface p-4 opacity-80 active:bg-surface-2">
+        </div>
+        <div aria-disabled="true" className="flex flex-col rounded-2xl border border-dashed border-line bg-surface p-4 opacity-60">
           <span className="grid size-9 place-items-center rounded-xl bg-warn-soft text-warn">
             <PenLine size={18} />
           </span>
           <span className="mt-2 block text-[14px] font-semibold">직접 입력</span>
           <span className="text-[11px] text-faint">준비 중</span>
-        </Link>
+        </div>
       </div>
     </div>
   );

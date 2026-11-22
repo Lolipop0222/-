@@ -13,7 +13,7 @@
 --   앱(lib/levels.ts)도 같은 식으로 계산한다. 바꾸면 둘 다 고친다.
 -- 보상 (사용자가 정한 표, 2026-11-11 · 캐릭터는 2026-11-12에 뺌): 20·50·90 칭호 · 30 프로필 사진 · 60 테마 · 80 닉네임 테두리
 --   (칭호·프로필 사진·테마는 아직 준비 중)
--- 닉네임 테두리 (디스코드 이름표 같은 것): 80레벨에 10종이 한꺼번에 열린다. name_frame_min_level()과 lib/levels.ts의 NAME_FRAMES를 같게.
+-- 닉네임 테두리 (디스코드 이름표 같은 것): 전체 레벨 10·20·…·90·99에 하나씩 열린다(2026-11-22). name_frame_min_level()과 lib/levels.ts의 NAME_FRAMES를 같게.
 -- 과목 테두리·한정 프로필(과목 레벨 보상)은 아래 '과목 보상' — name_frame_allowed(), profiles_avatar_reward_guard().
 
 -- ───────────────────────── 닉네임 테두리 열 ─────────────────────────
@@ -48,7 +48,10 @@ $$;
 -- 테두리 → 열리는 레벨 (없는 테두리는 null)
 create or replace function name_frame_min_level(p_code text) returns int
 language sql immutable set search_path = public as $$
-  select case when p_code in ('sprout', 'wave', 'blossom', 'bronze', 'silver', 'gold', 'amethyst', 'aurora', 'starlight', 'daepumta') then 80 end
+  select case p_code
+    when 'sprout' then 10 when 'wave' then 20 when 'blossom' then 30 when 'bronze' then 40 when 'silver' then 50
+    when 'gold' then 60 when 'amethyst' then 70 when 'aurora' then 80 when 'starlight' then 90 when 'daepumta' then 99
+  end
 $$;
 
 -- ───────────────────────── 과목 보상 (2026-11-22) ─────────────────────────

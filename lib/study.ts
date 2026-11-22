@@ -181,9 +181,13 @@ export async function loadEtcSessions(sinceDays = 30): Promise<StudySession[]> {
 }
 
 export async function addEtcSession(label: string, startedAt: number, endedAt: number): Promise<void> {
+  // sessions.user_id에는 기본값이 없어서(다른 표와 달리) 내 id를 직접 넣어야 RLS("기타 기록 추가")를 통과한다 — 2026-11-22 공개 전 점검에서 찾음
+  const { data: auth } = await supabase().auth.getSession();
+  const uid = auth.session?.user.id;
+  if (!uid) throw new Error("로그인이 필요해요");
   const { error } = await supabase()
     .from("sessions")
-    .insert({ subject: ETC, label: label.trim() || null, started_at: new Date(startedAt).toISOString(), ended_at: new Date(endedAt).toISOString() });
+    .insert({ user_id: uid, subject: ETC, label: label.trim() || null, started_at: new Date(startedAt).toISOString(), ended_at: new Date(endedAt).toISOString() });
   if (error) throw error;
 }
 

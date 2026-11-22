@@ -6,7 +6,7 @@
  *  - 만렙 시간: 국어·영어·수학 각 500시간, 사회·과학(탐구) 각 300시간, 역사 150시간 → 합계 2,250시간
  *  - 레벨 = 1 + floor(98 × √(경험치 / 2,250시간))
  *  - 보상(LEVEL_REWARDS): 대부분 과목 레벨로 열린다(2026-11-22) — 과목 칭호 10·40·70·99, 과목 테두리 20·60·80, 한정 프로필 30·50·80,
- *    과목 테마 90 (lib/subjectRewards.ts). 전체 레벨 80에는 일반 닉네임 테두리 10종.
+ *    과목 테마 90 (lib/subjectRewards.ts). 전체 레벨 10·20·…·90·99에는 일반 닉네임 테두리가 하나씩.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -41,19 +41,19 @@ export function xpForLevel(level: number): number {
 
 export type NameFrame = { code: string; name: string; minLevel: number; desc: string };
 
-/** 테두리 목록 — 모양은 app/globals.css의 .nf-<code>. 80레벨에 모두 열린다 (08-levels.sql의 name_frame_min_level()과 같게) */
-export const FRAME_LEVEL = 80;
+/** 테두리 목록 — 모양은 app/globals.css의 .nf-<code>. 전체 레벨 10·20·…·90·99에 하나씩 열린다 (2026-11-22, 08-levels.sql의 name_frame_min_level()과 같게) */
+export const FRAME_LEVEL = 10; // 첫 테두리가 열리는 레벨
 export const NAME_FRAMES: readonly NameFrame[] = [
-  { code: "sprout", name: "새싹", minLevel: FRAME_LEVEL, desc: "초록 새싹 테두리" },
-  { code: "wave", name: "물결", minLevel: FRAME_LEVEL, desc: "시원한 파랑 두 줄" },
-  { code: "blossom", name: "벚꽃", minLevel: FRAME_LEVEL, desc: "분홍 꽃잎 점선" },
-  { code: "bronze", name: "청동", minLevel: FRAME_LEVEL, desc: "단단한 청동빛" },
-  { code: "silver", name: "은빛", minLevel: FRAME_LEVEL, desc: "반짝이는 은 그라데이션" },
-  { code: "gold", name: "금빛", minLevel: FRAME_LEVEL, desc: "금빛이 천천히 스쳐 감" },
-  { code: "amethyst", name: "자수정", minLevel: FRAME_LEVEL, desc: "보랏빛으로 은은하게 빛남" },
-  { code: "aurora", name: "오로라", minLevel: FRAME_LEVEL, desc: "색이 흐르는 오로라" },
-  { code: "starlight", name: "별빛", minLevel: FRAME_LEVEL, desc: "밤하늘에 별이 반짝" },
-  { code: "daepumta", name: "대품타", minLevel: FRAME_LEVEL, desc: "대품타 금장 · 왕관" },
+  { code: "sprout", name: "새싹", minLevel: 10, desc: "초록 새싹 테두리" },
+  { code: "wave", name: "물결", minLevel: 20, desc: "시원한 파랑 두 줄" },
+  { code: "blossom", name: "벚꽃", minLevel: 30, desc: "분홍 꽃잎 점선" },
+  { code: "bronze", name: "청동", minLevel: 40, desc: "단단한 청동빛" },
+  { code: "silver", name: "은빛", minLevel: 50, desc: "반짝이는 은 그라데이션" },
+  { code: "gold", name: "금빛", minLevel: 60, desc: "금빛이 천천히 스쳐 감" },
+  { code: "amethyst", name: "자수정", minLevel: 70, desc: "보랏빛으로 은은하게 빛남" },
+  { code: "aurora", name: "오로라", minLevel: 80, desc: "색이 흐르는 오로라" },
+  { code: "starlight", name: "별빛", minLevel: 90, desc: "밤하늘에 별이 반짝" },
+  { code: "daepumta", name: "대품타", minLevel: 99, desc: "대품타 금장 · 왕관" },
 ];
 /** 일반 테두리 또는 과목 테두리(lib/subjectRewards.ts) */
 export const frameByCode = (code: string | null | undefined): NameFrame | null => {
@@ -67,10 +67,10 @@ export const frameByCode = (code: string | null | undefined): NameFrame | null =
 
 export type RewardKind = "title" | "photo" | "theme" | "frame";
 /** bySubject: 전체 레벨이 아니라 과목마다 그 과목 레벨로 열린다. href: 보상을 쓰는 화면 */
-export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean; bySubject?: boolean; href?: string };
+export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean; bySubject?: boolean; href?: string; /** 닉네임 테두리 보상이면 그 테두리 code (미리보기) */ frame?: string };
 
 /** 레벨 보상표 (2026-11-22 사용자가 다시 정함). 과목 보상은 그 과목 레벨, 일반 테두리만 전체 레벨 */
-export const LEVEL_REWARDS: readonly Reward[] = [
+export const LEVEL_REWARDS: readonly Reward[] = ([
   { level: 10, kind: "title", title: "과목 칭호 · 뉴비", desc: "「국어 뉴비」 같은 희귀 칭호", bySubject: true, href: "/me/titles" },
   { level: FRAME_TIERS[0], kind: "frame", title: "과목 테두리 1단계", desc: "먹선 · 책갈피 · 모눈 · 비커 · 경위선 · 창살", bySubject: true, href: "/me/level#subject-frames" },
   { level: AVATAR_TIERS[0], kind: "photo", title: "한정 프로필 1단계", desc: "먹 한 방울 · 펜촉 · π · 플라스크 · 나침반 · 엽전", bySubject: true, href: "/me/avatar" },
@@ -82,8 +82,8 @@ export const LEVEL_REWARDS: readonly Reward[] = [
   { level: AVATAR_TIERS[2], kind: "photo", title: "한정 프로필 3단계", desc: "일원상 · 깃펜과 잉크 · 황금 나선 · 원자 · 대항해 · 일월오봉도 (움직임)", bySubject: true, href: "/me/avatar" },
   { level: 90, kind: "theme", title: "과목 테마", desc: "그 과목 테마 (타이머·플래너까지)", bySubject: true, href: "/me/theme" },
   { level: 99, kind: "title", title: "과목 칭호 · 마스터", desc: "신화 칭호", bySubject: true, href: "/me/titles" },
-  { level: FRAME_LEVEL, kind: "frame", title: "닉네임 테두리 (전체 레벨)", desc: `일반 테두리 ${NAME_FRAMES.length}종 중 고르기`, href: "/me/level#frames" },
-];
+  ...NAME_FRAMES.map((f): Reward => ({ level: f.minLevel, kind: "frame", title: `닉네임 테두리 「${f.name}」`, desc: `전체 레벨 ${f.minLevel} · ${f.desc}`, href: "/me/level#frames", frame: f.code })),
+] as Reward[]).sort((a, b) => a.level - b.level);
 
 // ───────────────────────── 서버 ─────────────────────────
 

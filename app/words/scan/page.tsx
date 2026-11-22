@@ -30,6 +30,7 @@ export default function ScanPage() {
     return (
       <>
         <SubHeader title="사진 스캔" back="/words" />
+      <p className="mx-5 mt-2 rounded-xl bg-warn-soft px-4 py-3 text-[13px] text-warn">아직 준비 중인 기능의 미리보기예요. 여기서 입력한 내용은 저장되지 않아요.</p>
         <div className="px-5 pt-2">
           <div className="grid aspect-[3/4] place-items-center rounded-3xl border-2 border-dashed border-line bg-surface">
             {step === "loading" ? (

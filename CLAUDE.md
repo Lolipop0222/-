@@ -170,12 +170,12 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 - 워마 퀴즈 제한 시간은 **셀프 옵션, 기본 끄기**.
 - **워마 암기 (2026-11-06, "앱의 핵심 기능, 공들여서")**: 복습 상자 5단계(1·3·7·16·35일, 5단계 맞히면 외움). 처음 보는 단어 알면 2단계·모르면 1단계, 날이 된 단어 맞히면 +1·틀리면 1단계, 날 안 된 단어 맞혀도 그대로. 규칙은 SQL `wm_record`와 `lib/wordProgress.ts`의 `nextProgress`(낙관적 갱신)에 **똑같이** 있다 — 바꿀 때 둘 다. 암기 카드·퀴즈·복습 모두 답하면 기록. 07 전 DB에서는 localStorage(`wm:progress:<uid>`)에 저장 → 07 실행 후 처음 열 때 `wm_import`로 옮김. 못 보낸 결과는 `wm:outbox:<uid>`.
 - **레벨 (2026-11-09)**: 1~99. 경험치 = 과목별 공부 시간 합(순위 기준: 기타·인강 제외, 한 기록 1초~4시간)이되 **과목마다 만렙 시간까지만**: 국어·영어·수학 각 500시간, 사회·과학(탐구) 각 300시간, 역사 150시간 = 2,250시간이 99. 레벨 = 1 + floor(98·√(xp/2250h)) (Lv2 약 14분, Lv10 약 19시간, Lv50 약 562시간). 식은 SQL `level_from_xp`와 `lib/levels.ts`에 똑같이. **해석은 사용자에게 확인 필요**했던 부분: 레벨은 하나(과목별 레벨 아님), 탐구 300시간은 사회·과학 각각으로 봄 — 바꾸면 `level_subject_cap`·`SUBJECT_CAP_HOURS`만 고치면 됨.
-  - **보상표 (2026-11-22 다시 정함)**: 대부분 **과목 레벨**로 — 과목 칭호 10·40·70·99(04) · 과목 테두리 20·60·80 · 한정 프로필 30·50·80 · 과목 테마 90, 그리고 전체 레벨 80에 일반 테두리 10종. `LEVEL_REWARDS`(lib/levels.ts, bySubject·href), 숫자는 `lib/subjectRewards.ts`(`FRAME_TIERS`·`AVATAR_TIERS`)와 08(`name_frame_allowed`의 `array[20,60,80]`, `profiles_avatar_reward_guard`의 `array[30,50,80]`)을 같이 고친다.
+  - **보상표 (2026-11-22 다시 정함)**: 대부분 **과목 레벨**로 — 과목 칭호 10·40·70·99(04) · 과목 테두리 20·60·80 · 한정 프로필 30·50·80 · 과목 테마 90, 그리고 **전체 레벨 10·20·30·40·50·60·70·80·90·99에 일반 테두리가 하나씩**(새싹·물결·벚꽃·청동·은빛·금빛·자수정·오로라·별빛·대품타, 2026-11-22 공개 전 — 08 `name_frame_min_level()`과 `NAME_FRAMES.minLevel` 같게, 레벨 업 토스트에 그 테두리 이름이 뜬다). `LEVEL_REWARDS`(lib/levels.ts, bySubject·href), 숫자는 `lib/subjectRewards.ts`(`FRAME_TIERS`·`AVATAR_TIERS`)와 08(`name_frame_allowed`의 `array[20,60,80]`, `profiles_avatar_reward_guard`의 `array[30,50,80]`)을 같이 고친다.
   - **과목 테두리 18개** (`lib/subjectRewards.ts` `SUBJECT_FRAMES`, code `<kor|eng|math|soc|sci|his>-<1|2|3>`, CSS `.nf-<code>` — 모든 테마에서 같은 색, 1단계 정갈 → 2단계 장식 → 3단계 움직임·빛): 국어 먹선·낙관(印 도장)·일필휘지(먹 번짐+도는 붓) / 영어 책갈피·가죽 장정(금실 바느질)·채식 필사본(첫 글자 장식·금박) / 수학 모눈·작도(재단 표시)·무한(도는 빛+∞) / 과학 비커·분자 결합(양끝 원자)·플라스마(맥동·거품) / 사회 경위선·지도 테두리(흑백 축척 띠)·세계 일주(도는 지도색+핀) / 역사 창살·단청·일월(해·달+금빛). 국어·영어·역사는 명조(`NameTag`가 `ensureSerifFont`). `frameByCode`가 일반·과목 테두리를 같이 찾는다. 레벨 화면 "과목 테두리" 구역(`#subject-frames`).
   - **한정 프로필 18개** (avatar `lim:<과목>-<단계>`, `components/LimitedAvatar.tsx` SVG, 색은 globals.css `.la-<과목>`의 `--la-*`, 3단계는 움직임 `.la-enso`·`.la-orbit` 등): 국어 먹 한 방울·붓과 먹·일원상 / 영어 펜촉·펼친 책·깃펜과 잉크 / 수학 π·컴퍼스·황금 나선 / 과학 플라스크·이중 나선·원자 / 사회 나침반·지구본·대항해 / 역사 엽전·연꽃 수막새·일월오봉도. avatar 제약(04)은 `그림:색` 모양이라 `lim:kor-1`이 그대로 통과 → 08의 `profiles_avatar_reward_guard` 트리거가 과목 레벨 검사. `ProfileAvatar`가 `lim:`을 먼저 그린다. 프로필 사진 화면 "한정" 탭.
   - 08 내부 함수: `subject_of_key('kor')`, `subject_level_of(uuid, 과목)`, `name_frame_allowed(uuid, code, 전체 레벨)`(관리자는 모두 true) — `my_level`·`set_name_frame`·`player_cards`가 씀.
   - **캐릭터는 뺐다 (2026-11-12, 사용자: "좀 별로인 거 같아")**: 2026-11-11에 과목 캐릭터 4명(진화 4단계 × 표정 3개, `/me/character`, 홈 카드, `profiles.character_skin`)을 넣었다가 하루 만에 모두 지움(커밋 3802101에 있음). 08은 그 사이 실행한 DB를 위해 `character_skin` 열·`set_character`·`character_allowed`를 `drop … if exists`로 지운다. 다시 넣자고 하면 그 커밋을 참고.
-  - 원래 테두리 10종(새싹·물결·벚꽃·청동·은빛·금빛·자수정·오로라·별빛·대품타)은 10~99에 나눠 뒀다가 표에 맞춰 80으로 모음.
+  - 원래 테두리 10종은 10~99에 나눠 뒀다가 80으로 모았고, 2026-11-22 사용자 요청으로 다시 10~99에 하나씩.
   - 화면: `/me/level`(진행도·과목별 경험치·보상·테두리 달기/떼기·레벨표), 내정보 닉네임에 테두리+Lv, 순위·그룹 순위에 테두리(`NameTag`)+Lv 배지(`LevelBadge`), 레벨 업 토스트(`LevelWatcher`, 기기 localStorage `daego-level-seen:<uid>`와 비교, 처음 쓰는 기기는 알림 없이 기억). 모양은 `globals.css`의 `.nf-*`, `.lv`.
 - 디데이: 학교 시험은 NEIS에서 자동(내 학년만) + 학생이 직접 추가.
 - 플래너: 사용자가 준 **종이 플래너 양식**(YEAR/MONTH/DAY · D-DAY · COMMENT · TOTAL TIME · TASKS · TIMETABLE 6시~5시 10분 칸 · MEMO). TIMETABLE은 공부 기록으로 자동 색칠.
@@ -278,6 +278,14 @@ alter default privileges in schema public grant all on functions to anon, authen
 - Storage 화면 테스트: 가짜 서버가 `/storage/v1/object/<bucket>/<path>`(업로드, supabase-js는 multipart로 보내고 `cacheControl` 칸 다음에 파일 칸이 온다 → filename 있는 칸을 꺼낼 것), `/object/public/…`, `/object/sign/…`, DELETE를 흉내 낸다. Playwright `setInputFiles`에 한글·띄어쓰기 경로를 주면 조용히 실패 → `{ name, mimeType, buffer }`로 넘긴다.
 - **반응형 점검 (2026-11-06)**: 화면 7가지(320·360·390·412 세로, 844×390 가로, 820 태블릿, 1366 PC) × 주요 화면 16개를 Playwright로 열어 `scrollWidth > clientWidth`와 화면 밖으로 나간 요소(가로 스크롤 줄 안은 제외), 글자 넘침을 자동 검사 → 모두 통과. 레이아웃 원칙: 앱은 휴대폰 폭 기준 `max-w-md`(448px) 한 줄을 가운데에 두고, 태블릿·PC에서는 그 줄이 가운데에 놓인다. 로딩 화면은 컨테이너 쿼리(`@container` + `cqw` 단위)로 폭에 비례해 줄어든다. 사라지는 화면(로딩)은 자동 검사에 안 잡히니 응답을 늦춰 따로 잰다. 새 화면을 만들면 320px에서도 확인한다(배지는 `whitespace-nowrap`, 긴 글은 `truncate`/`min-w-0`).
 - Next 16은 떠난 페이지를 숨긴 채 DOM에 남겨 둔다 → Playwright 선택자는 `:visible`이나 열린 dialog 안으로 범위를 좁힌다.
+
+## 7-1. 공개 전 점검 (2026-11-22)
+
+- **DB 권한 자동 검사**(로컬 새 DB): RLS 꺼진 public 테이블 없음 / anon이 실행 가능한 함수는 `kst_day_start`·`kst_week_start`·`reset_password_with_code`뿐 / `search_path` 없는 security definer 없음 / 프로필 없는 계정(초대코드 없이 가입만)은 순위 0줄·기록 0줄·타이머 시작 불가 / 남의 프로필·기록 못 읽음 / 공부 과목 기록 직접 쓰기·고치기 RLS로 막힘 / 그룹 순위는 그룹원만 / 관리자 함수는 관리자만. 기본 권한으로 authenticated에 있던 `TRUNCATE`(RLS를 건너뜀)·TRIGGER·REFERENCES를 09 끝에서 거둠.
+- **찾아서 고친 버그**: `sessions.user_id`에 기본값이 없어(다른 표는 `default auth.uid()`) **기타 기록 직접 추가가 RLS에 막혀 실패**하고 있었다 → `lib/study.ts` `addEtcSession`이 내 id를 넣는다(SQL 다시 실행 필요 없음).
+- 앱: 비밀값 커밋 없음, `dangerouslySetInnerHTML`은 테마 부팅 스크립트 하나, `eval`·`innerHTML` 없음, API 달 파라미터 검사, 오류에 키 안 나감, 배포 사이트 헤더(CSP·HSTS·X-Frame-Options DENY·nosniff·Referrer·Permissions) 확인, `npm audit --omit=dev` 0. CSP `script-src`에 `'unsafe-inline'`이 있다(테마 부팅·Next 인라인 스크립트 — nonce로 바꾸려면 cacheComponents와 같이 손봐야 함).
+- 화면: 7가지 크기(320·360·390·412·가로·태블릿·PC) × 30개 화면(기본 다크) + 10개 테마 × 320·390 × 30개 화면을 Playwright로 열어 가로 넘침·화면 밖 요소·글자 넘침·JS 오류를 자동 검사(스크래치 `full-sweep.cjs`, 검사가 진짜 잡는지 일부러 넓은 상자를 넣어 확인).
+- 아직 미리보기뿐인 워마 "사진 스캔"·"직접 입력"은 허브에서 누를 수 없게 하고, 그 화면에 "저장되지 않아요" 안내를 붙임.
 
 ## 8. 구현하며 알게 된 함정
 

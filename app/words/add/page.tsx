@@ -28,6 +28,7 @@ export default function AddWordPage() {
   return (
     <>
       <SubHeader title="단어 직접 입력" back="/words" />
+      <p className="mx-5 mt-2 rounded-xl bg-warn-soft px-4 py-3 text-[13px] text-warn">아직 준비 중인 기능의 미리보기예요. 여기서 입력한 내용은 저장되지 않아요.</p>
       <div className="space-y-5 px-5 pt-2">
         <div className="grid grid-cols-[1fr_88px] gap-3">
           <Field label="교재">

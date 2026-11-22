@@ -207,3 +207,7 @@ begin
 end $$;
 revoke execute on function admin_find_users(text) from public, anon;
 grant execute on function admin_find_users(text) to authenticated;
+
+-- 공개 전 점검 (2026-11-22): 학생·로그인 전 역할에서 쓰지 않는 테이블 권한을 거둔다.
+-- TRUNCATE는 RLS를 건너뛰므로(REST로는 못 부르지만 혹시 모를 경로를 막는다). 마지막 조각이라 모든 테이블이 만들어진 뒤다.
+revoke truncate, trigger, references on all tables in schema public from anon, authenticated;
