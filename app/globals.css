@@ -2696,3 +2696,8 @@ h2 {
   .la-enso, .la-draw, .la-breathe, .la-glow, .la-glint, .la-twinkle, .la-sway, .la-orbit, .la-spinland, .la-wave { animation: none; }
   .la-enso, .la-draw { stroke-dasharray: 86 100; }
 }
+
+/* 통계 "기록 방식": 직접 입력은 금색 빗금 (모든 테마의 --brand-gold, components/stats/Charts.tsx SOURCE_COLOR와 같게) */
+.src-hatch {
+  background: repeating-linear-gradient(45deg, var(--brand-gold) 0 2px, color-mix(in srgb, var(--brand-gold) 55%, transparent) 2px 4px);
+}

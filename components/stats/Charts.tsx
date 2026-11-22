@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import type { ChartTheme } from "@/lib/chartTheme";
-import { LENGTH_BINS, WEEKDAYS, dayLabel, hShort, hmText, weekdayOf, type BySubject, type DayStat } from "@/lib/stats";
+import { LENGTH_BINS, WEEKDAYS, dayLabel, hShort, hmText, weekdayOf, type BySubject, type DayStat, type SourceDay } from "@/lib/stats";
 import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
 /**
@@ -207,6 +207,86 @@ export function DailyStack({ days, t }: { days: DayStat[]; t: ChartTheme }) {
         </g>
       )}
     </Svg>
+  );
+}
+
+// ───────────────────────── 기록 방식 (타이머 / 직접 입력) ─────────────────────────
+/** 타이머 색과 직접 입력 색 (모든 테마의 토큰) — 직접 입력은 빗금 */
+export const SOURCE_COLOR = { timer: "var(--accent)", manual: "var(--brand-gold)" } as const;
+
+/** 날짜별(기간이 길면 주별) 타이머·직접 입력 누적 막대 */
+export function SourceBars({ days, t }: { days: SourceDay[]; t: ChartTheme }) {
+  const id = useId().replace(/:/g, "");
+  const weekly = days.length > 62;
+  const groups: SourceDay[] = weekly
+    ? days.reduce<SourceDay[]>((acc, d) => {
+        const last = acc[acc.length - 1];
+        if (last && weekdayOf(d.day) !== 0) {
+          last.timer += d.timer;
+          last.manual += d.manual;
+        } else acc.push({ ...d });
+        return acc;
+      }, [])
+    : days;
+  const H = 140;
+  const [left, right, top, bottom] = [30, W - 6, 8, H - 22];
+  const max = niceMax(Math.max(3600, ...groups.map((g) => g.timer + g.manual)));
+  const n = groups.length;
+  const slot = (right - left) / n;
+  const bw = Math.max(1.2, Math.min(22, slot * 0.7));
+  const every = Math.max(1, Math.ceil(n / 7));
+  const h = (v: number) => (v / max) * (bottom - top);
+  return (
+    <Svg h={H} label={weekly ? "주별 기록 방식 막대그래프" : "날짜별 기록 방식 막대그래프"}>
+      <defs>
+        <pattern id={`${id}-hatch`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="4" height="4" fill={SOURCE_COLOR.manual} fillOpacity="0.55" />
+          <path d="M0 0V4" stroke={SOURCE_COLOR.manual} strokeWidth="2" />
+        </pattern>
+      </defs>
+      <YGrid max={max} top={top} bottom={bottom} left={left} right={right} />
+      {groups.map((g, i) => {
+        const x = left + slot * i + (slot - bw) / 2;
+        const ht = h(g.timer);
+        const hm = h(g.manual);
+        const r = Math.min(t.radius, bw / 2);
+        return (
+          <g key={g.day}>
+            {g.timer > 0 && <rect x={f(x)} y={f(bottom - ht)} width={f(bw)} height={f(ht)} rx={g.manual ? 0 : r} fill={SOURCE_COLOR.timer} />}
+            {g.manual > 0 && <rect x={f(x)} y={f(bottom - ht - hm)} width={f(bw)} height={f(hm)} rx={r} fill={`url(#${id}-hatch)`} />}
+            {i % every === 0 && (
+              <text x={f(x + bw / 2)} y={H - 8} textAnchor="middle" fontSize="8" fill="var(--faint)">
+                {weekly ? `${dayLabel(g.day)}주` : n <= 7 ? WEEKDAYS[weekdayOf(g.day)] : dayLabel(g.day)}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </Svg>
+  );
+}
+
+/** 타이머·직접 입력 비율 막대 한 줄 */
+export function SourceRatio({ timer, manual }: { timer: number; manual: number }) {
+  const total = timer + manual;
+  const pt = total ? (timer / total) * 100 : 0;
+  return (
+    <div>
+      <div className="flex h-3 overflow-hidden rounded-full bg-surface-2">
+        <div style={{ width: `${pt}%`, background: SOURCE_COLOR.timer }} />
+        <div className="src-hatch" style={{ width: `${100 - pt}%` }} />
+      </div>
+      <div className="mt-1.5 flex justify-between text-[12px]">
+        <span className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-sm" style={{ background: SOURCE_COLOR.timer }} />
+          타이머 <b className="num">{hmText(timer)}</b> <span className="text-faint">{Math.round(pt)}%</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="src-hatch size-2.5 rounded-sm" />
+          직접 입력 <b className="num">{hmText(manual)}</b> <span className="text-faint">{total ? 100 - Math.round(pt) : 0}%</span>
+        </span>
+      </div>
+    </div>
   );
 }
 

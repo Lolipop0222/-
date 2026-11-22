@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Clock3, PenLine, Trash2 } from "lucide-react";
+import { Check, Clock3, PenLine, Plus, Trash2, X } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { AppLoader } from "@/components/BrandLoader";
 import { useStudy } from "@/components/StudyProvider";
@@ -10,7 +10,8 @@ import SubjectPicker, { type SubjectChoice } from "@/components/SubjectPicker";
 import { Badge, Card, ErrorText, PrimaryButton, Segmented, SubHeader } from "@/components/ui";
 import { hm } from "@/lib/format";
 import { MANUAL_MESSAGE, addEtcSession, addManualSession, deleteManualSession, loadSessionsSince, type StudySession } from "@/lib/study";
-import { ETC, SUBJECT_COLOR, subjectLabel } from "@/lib/subjects";
+import { ETC, SUBJECTS, SUBJECT_COLOR, subjectLabel } from "@/lib/subjects";
+import { MAX_PRESETS, loadPresets, newPresetId, savePresets, sortPresets, type TimePreset } from "@/lib/timePresets";
 import { koreanError } from "@/lib/supabase";
 
 const KST = 9 * 3600_000;
@@ -35,12 +36,15 @@ type DayKey = (typeof DAYS)[number];
  * 공부 시간 직접 입력 (2026-11-22, 사용자: "대전고는 전자기기 금지라 몇 시 몇 분부터 몇 시 몇 분까지 입력하면 반영되게, 타이머는 그대로").
  * 서버 규칙(11-manual.sql): 오늘·어제만, 1분~4시간, 다른 기록과 안 겹치게, 하루 16시간까지. 기타는 기타 기록으로 들어간다(합계 제외).
  * 끝 시각이 시작보다 이르면 다음 날로 본다 (예: 23:00~01:00).
+ * 내 일과(lib/timePresets.ts): 자주 쓰는 시간대를 저장해 두고 한 번에 채운다 — 그날 이미 기록된 일과는 ✓.
+ * 기타는 활동 이름(학원·독서 등)을 적을 수 있다 → 기타 기록 label.
  */
 export default function ManualEntryPage() {
   const auth = useAuth();
   const study = useStudy();
   const track = auth.status === "ready" ? (auth.profile.track ?? null) : null;
   const grade = auth.status === "ready" ? auth.profile.grade : null;
+  const uid = auth.status === "ready" ? auth.user.id : null;
 
   const [now, setNow] = useState<number | null>(null);
   const [day, setDay] = useState<DayKey>("오늘");
@@ -51,11 +55,31 @@ export default function ManualEntryPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [rows, setRows] = useState<StudySession[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [etcLabel, setEtcLabel] = useState("");
+  const [presets, setPresets] = useState<TimePreset[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setNow(Date.now()), 0);
+    const t = setTimeout(() => {
+      setNow(Date.now());
+      if (uid) setPresets(sortPresets(loadPresets(uid)));
+    }, 0);
     return () => clearTimeout(t);
-  }, []);
+  }, [uid]);
+
+  function storePresets(list: TimePreset[]) {
+    const sorted = sortPresets(list);
+    setPresets(sorted);
+    if (uid && !savePresets(uid, sorted)) setMsg({ ok: false, text: "이 브라우저에서는 일과를 저장할 수 없어요." });
+  }
+
+  function applyPreset(p: TimePreset) {
+    setStart(p.start);
+    setEnd(p.end);
+    if (p.subject && (SUBJECTS as readonly string[]).includes(p.subject)) setChoice({ subject: p.subject, detail: p.detail, lecture: false });
+    setMsg(null);
+  }
 
   const today0 = now === null ? null : kstMidnight(now);
   const day0 = today0 === null ? null : day === "오늘" ? today0 : today0 - DAY;
@@ -92,6 +116,25 @@ export default function ManualEntryPage() {
     if (nextDay) e += DAY;
     return { s, e, sec: Math.round((e - s) / 1000), nextDay };
   }, [day0, start, end]);
+
+  /** 그날 이 일과 시간대에 이미 기록이 있으면 ✓ (절반 넘게 겹치면) */
+  const presetDone = useCallback(
+    (p: TimePreset) => {
+      if (day0 === null || !rows) return false;
+      const s0 = day0 + timeMs(p.start);
+      let e0 = day0 + timeMs(p.end);
+      if (e0 <= s0) e0 += DAY;
+      const covered = rows.reduce((acc, r) => {
+        const s = Date.parse(r.started_at);
+        const e = r.ended_at ? Date.parse(r.ended_at) : (now ?? s);
+        return acc + Math.max(0, Math.min(e, e0) - Math.max(s, s0));
+      }, 0);
+      return covered * 2 >= e0 - s0;
+    },
+    [day0, rows, now],
+  );
+
+  const etcLabels = useMemo(() => [...new Set((rows ?? []).filter((r) => r.subject === ETC && r.label).map((r) => r.label as string))].slice(0, 6), [rows]);
 
   const dayRows = useMemo(() => {
     if (!rows || day0 === null) return [];
@@ -132,7 +175,7 @@ export default function ManualEntryPage() {
     setMsg(null);
     try {
       if (choice.subject === ETC) {
-        await addEtcSession("", range.s, range.e);
+        await addEtcSession(etcLabel.trim().slice(0, 20), range.s, range.e);
       } else {
         const r = await addManualSession(choice.subject, range.s, range.e, choice.detail, choice.lecture);
         if (r !== "ok") {
@@ -140,7 +183,8 @@ export default function ManualEntryPage() {
           return;
         }
       }
-      setMsg({ ok: true, text: `${hhmm(range.s)}~${hhmm(range.e)} ${subjectLabel(choice.subject, choice.detail, choice.lecture)} ${hm(range.sec)}을 기록했어요.` });
+      const what = choice.subject === ETC && etcLabel.trim() ? `기타 · ${etcLabel.trim()}` : subjectLabel(choice.subject, choice.detail, choice.lecture);
+      setMsg({ ok: true, text: `${hhmm(range.s)}~${hhmm(range.e)} ${what} ${hm(range.sec)}을 기록했어요.` });
       setStart(end);
       setEnd("");
       await reload();
@@ -196,7 +240,95 @@ export default function ManualEntryPage() {
             <div>
               <Label>과목</Label>
               <SubjectPicker value={choice} onChange={setChoice} track={track} grade={grade} />
-              {choice.subject === ETC && <p className="mt-1.5 text-[11px] text-faint">기타는 순위·공부 합계에 안 들어가고 기타 기록에 들어가요.</p>}
+              {choice.subject === ETC && (
+                <div className="mt-2 space-y-1.5">
+                  <input
+                    value={etcLabel}
+                    onChange={(e) => setEtcLabel(e.target.value.slice(0, 20))}
+                    maxLength={20}
+                    placeholder="무엇을 했나요? (예: 학원, 독서, 운동)"
+                    className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-[14px] outline-none placeholder:text-faint focus:border-accent"
+                  />
+                  {etcLabels.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {etcLabels.map((l) => (
+                        <button key={l} type="button" onClick={() => setEtcLabel(l)} className="rounded-md border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-faint">기타는 순위·공부 합계에 안 들어가고 기타 기록에 들어가요.</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[12px] font-semibold text-muted">내 일과</p>
+                {presets.length > 0 && (
+                  <button type="button" onClick={() => setEditing((v) => !v)} className="text-[11px] font-semibold text-faint">
+                    {editing ? "완료" : "편집"}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {presets.map((p) => {
+                  const done = presetDone(p);
+                  return (
+                    <span key={p.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => (editing ? null : applyPreset(p))}
+                        aria-label={`${p.name} ${p.start}~${p.end}${done ? " (기록됨)" : ""}`}
+                        className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-left ${start === p.start && end === p.end ? "border-accent bg-accent-soft" : "border-line"} ${done ? "opacity-60" : ""}`}
+                      >
+                        {p.subject && <span className="size-2 shrink-0 rounded-full" style={{ background: SUBJECT_COLOR[p.subject] }} />}
+                        <span className="min-w-0">
+                          <span className="block max-w-[9rem] truncate text-[12px] font-semibold">{p.name}</span>
+                          <span className="num block text-[10px] text-muted">
+                            {p.start}~{p.end}
+                          </span>
+                        </span>
+                        {done && <Check size={13} className="shrink-0 text-live" />}
+                      </button>
+                      {editing && (
+                        <button
+                          type="button"
+                          onClick={() => storePresets(presets.filter((x) => x.id !== p.id))}
+                          aria-label={`${p.name} 일과 지우기`}
+                          className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-bg"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+                {!editing && presets.length < MAX_PRESETS && (
+                  <button
+                    type="button"
+                    onClick={() => setAdding((v) => !v)}
+                    className="flex items-center gap-1 rounded-xl border border-dashed border-line px-2.5 py-1.5 text-[12px] font-semibold text-muted"
+                  >
+                    <Plus size={13} /> 일과 추가
+                  </button>
+                )}
+              </div>
+              {presets.length === 0 && !adding && <p className="mt-1.5 text-[11px] text-faint">「야자 1교시 18:50~20:10」처럼 자주 쓰는 시간을 저장해 두면 한 번에 채워져요.</p>}
+              {adding && (
+                <PresetForm
+                  start={start}
+                  end={end}
+                  choice={choice.subject && choice.subject !== ETC ? choice : null}
+                  onCancel={() => setAdding(false)}
+                  onSave={(p) => {
+                    storePresets([...presets, p]);
+                    setAdding(false);
+                    applyPreset(p);
+                  }}
+                />
+              )}
             </div>
 
             <div>
@@ -215,7 +347,7 @@ export default function ManualEntryPage() {
               )}
             </div>
 
-            {problem && (start || end || choice.subject) && <p className="text-[13px] text-warn">{problem}</p>}
+            {problem && range && <p className="text-[13px] text-warn">{problem}</p>}
             {msg && (msg.ok ? <p className="rounded-xl bg-live-soft px-3 py-2 text-[13px] text-live">{msg.text}</p> : <ErrorText>{msg.text}</ErrorText>)}
 
             <PrimaryButton onClick={submit} disabled={busy || !!problem}>
@@ -270,10 +402,75 @@ export default function ManualEntryPage() {
           <Link href="/timer/etc" className="underline underline-offset-2">
             기타 기록
           </Link>
-          에서 고쳐요. 정직하게 적어 주세요 — 관리자가 기록을 확인할 수 있어요.
+          에서 고쳐요. 내 일과는 이 기기에 저장돼요. 정직하게 적어 주세요 — 관리자가 기록을 확인할 수 있어요.
         </p>
       </div>
     </>
+  );
+}
+
+/** 내 일과 만들기: 이름 + 시각 (+ 지금 고른 과목도 같이 저장할지) */
+function PresetForm({
+  start,
+  end,
+  choice,
+  onCancel,
+  onSave,
+}: {
+  start: string;
+  end: string;
+  choice: SubjectChoice | null;
+  onCancel: () => void;
+  onSave: (p: TimePreset) => void;
+}) {
+  const [name, setName] = useState("");
+  const [s, setS] = useState(start);
+  const [e, setE] = useState(end);
+  const [withSubject, setWithSubject] = useState(false);
+  const ok = name.trim().length > 0 && !!s && !!e && s !== e;
+  return (
+    <div className="mt-2.5 space-y-2.5 rounded-2xl border border-line bg-bg p-3">
+      <input
+        value={name}
+        onChange={(ev) => setName(ev.target.value.slice(0, 12))}
+        maxLength={12}
+        placeholder="일과 이름 (예: 야자 1교시)"
+        className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-[14px] outline-none placeholder:text-faint focus:border-accent"
+      />
+      <div className="flex items-center gap-2">
+        <TimeBox label="시작" value={s} onChange={setS} />
+        <span className="text-muted">~</span>
+        <TimeBox label="끝" value={e} onChange={setE} />
+      </div>
+      {choice?.subject && (
+        <label className="flex items-center gap-2 text-[13px] text-muted">
+          <input type="checkbox" checked={withSubject} onChange={(ev) => setWithSubject(ev.target.checked)} className="size-4 accent-[var(--accent)]" />
+          과목({subjectLabel(choice.subject, choice.detail)})도 같이 저장
+        </label>
+      )}
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className="h-10 flex-1 rounded-xl bg-surface-2 text-[13px] font-semibold text-muted">
+          취소
+        </button>
+        <button
+          type="button"
+          disabled={!ok}
+          onClick={() =>
+            onSave({
+              id: newPresetId(),
+              name: name.trim(),
+              start: s,
+              end: e,
+              subject: withSubject && choice?.subject ? choice.subject : null,
+              detail: withSubject && choice ? choice.detail : null,
+            })
+          }
+          className="h-10 flex-[2] rounded-xl bg-accent text-[13px] font-bold text-bg disabled:opacity-40"
+        >
+          일과 저장
+        </button>
+      </div>
+    </div>
   );
 }
 

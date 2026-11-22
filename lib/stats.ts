@@ -62,6 +62,18 @@ export function dailySeries(recs: Rec[], from: number, to: number): DayStat[] {
   return [...map.values()];
 }
 
+/** 기록 방식별 날짜 합계 — 타이머 / 직접 입력 (2026-11-22, 전자기기 금지 야자용 직접 입력이 생겨서) */
+export type SourceDay = { day: number; timer: number; manual: number };
+export function sourceSeries(recs: Rec[], from: number, to: number): SourceDay[] {
+  const map = new Map<number, SourceDay>();
+  for (let d = from; d <= to; d++) map.set(d, { day: d, timer: 0, manual: 0 });
+  for (const r of recs) {
+    const x = map.get(r.day);
+    if (x) x[r.manual ? "manual" : "timer"] += r.sec;
+  }
+  return [...map.values()];
+}
+
 /** 연속 공부(하루 30분 이상) — 최장, 지금(오늘 또는 어제까지 이어진) */
 export function streaks(days: DayStat[], today: number): { best: number; current: number } {
   const ok = new Set(days.filter((d) => d.total >= 1800).map((d) => d.day));
@@ -109,8 +121,9 @@ export type Summary = {
   longest: Rec | null;
   /** 한 번도 앱을 벗어나지 않은 기록 비율 0~1 (타이머 기록만) */
   focusRate: number;
-  /** 그중 직접 입력한 시간 */
+  /** 그중 직접 입력한 시간·개수 */
   manualSec: number;
+  manualCount: number;
   streak: { best: number; current: number };
   lectureSec: number;
 };
@@ -140,6 +153,7 @@ export function summarize(recs: Rec[], prevRecs: Rec[], days: DayStat[], today: 
     longest: recs.length ? recs.reduce((a, b) => (b.sec > a.sec ? b : a)) : null,
     focusRate: timer.length ? timer.filter((r) => r.away === 0).length / timer.length : 0,
     manualSec: sum(recs.filter((r) => r.manual).map((r) => r.sec)),
+    manualCount: recs.length - timer.length,
     streak: streaks(days, today),
     lectureSec: sum(lectures.map((l) => l.sec)),
   };

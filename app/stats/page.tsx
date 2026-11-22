@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLoader } from "@/components/BrandLoader";
 import { useStudy } from "@/components/StudyProvider";
-import { HEATMAP_MIN_DAYS, StatsBody, buildView } from "@/components/stats/StatsView";
+import { HEATMAP_MIN_DAYS, StatsPanel } from "@/components/stats/StatsView";
 import { Card, ErrorText, Segmented, SubHeader } from "@/components/ui";
 import { useChartTheme } from "@/lib/chartTheme";
 import { dayNoStart, kstDayNo } from "@/lib/stats";
@@ -45,7 +45,6 @@ export default function StatsPage() {
     };
   }, [need, data, study.version]);
 
-  const view = useMemo(() => (today === null || !data ? null : buildView(today, data.sessions, PERIOD_DAYS[period])), [today, data, period]);
 
   return (
     <>
@@ -54,20 +53,25 @@ export default function StatsPage() {
         <p className="-mt-1 text-[13px] text-muted">{t.sub}</p>
         <Segmented items={PERIODS} value={period} onChange={setPeriod} />
         {error && <ErrorText>{error}</ErrorText>}
-        {!view ? (
+        {today === null || !data ? (
           !error && <AppLoader label="기록 모으는 중…" />
-        ) : view.sum.sessions === 0 ? (
-          <Card>
-            <p className="py-6 text-center text-[14px] leading-relaxed text-muted">
-              이 기간에는 아직 공부 기록이 없어요.
-              <br />
-              타이머로 공부하면 여기에 그래프가 생겨요.
-            </p>
-          </Card>
         ) : (
-          <StatsBody v={view} />
+          <StatsPanel
+            today={today}
+            sessions={data.sessions}
+            n={PERIOD_DAYS[period]}
+            empty={
+              <Card>
+                <p className="py-6 text-center text-[14px] leading-relaxed text-muted">
+                  이 기간에는 아직 공부 기록이 없어요.
+                  <br />
+                  타이머로 공부하거나 시간을 직접 입력하면 여기에 그래프가 생겨요.
+                </p>
+              </Card>
+            }
+          />
         )}
-        <p className="px-1 text-[11px] leading-relaxed text-faint">순위·레벨과 같은 기준이에요. 기타·인강과 한 번에 4시간 넘게 켜 둔 기록은 빠지고, 하루는 한국 시간 0시 기준, 기록은 시작한 날에 세요.</p>
+        <p className="px-1 text-[11px] leading-relaxed text-faint">순위·레벨과 같은 기준이에요(타이머·직접 입력 모두). 기타·인강과 한 번에 4시간 넘게 켜 둔 기록은 빠지고, 하루는 한국 시간 0시 기준, 기록은 시작한 날에 세요.</p>
       </div>
     </>
   );

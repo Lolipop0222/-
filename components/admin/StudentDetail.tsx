@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight, ImageOff, KeyRound, PencilLine, Trash2, UserX } from "lucide-react";
 import { AppLoader } from "@/components/BrandLoader";
 import { LevelBadge, NameTag } from "@/components/NameTag";
-import { HEATMAP_MIN_DAYS, StatsBody, buildView } from "@/components/stats/StatsView";
+import { HEATMAP_MIN_DAYS, StatsPanel } from "@/components/stats/StatsView";
 import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
 import { Badge, Card, ErrorText, InputRow, PrimaryButton, Segmented, inputCls } from "@/components/ui";
 import { adminDeleteUser, adminIssueRecoveryCode, adminRemoveAvatar, kstDateTime } from "@/lib/account";
@@ -76,7 +76,6 @@ export default function StudentDetail({ nickname, onBack, onRenamed }: { nicknam
     };
   }, [need, data, ready, nickname]);
 
-  const view = useMemo(() => (today === null || !data ? null : buildView(today, data.sessions, PERIOD_DAYS[period])), [today, data, period]);
   const todaySec = useMemo(() => {
     if (today === null || !data) return null;
     return toRecords(data.sessions).recs.filter((r) => r.day === today).reduce((s, r) => s + r.sec, 0);
@@ -239,14 +238,19 @@ export default function StudentDetail({ nickname, onBack, onRenamed }: { nicknam
         {/* 공부 통계 (내 통계 화면과 같은 그래프) */}
         <h2 className="px-1 pt-2 text-[16px] font-bold">공부 통계</h2>
         <Segmented items={PERIODS} value={period} onChange={setPeriod} />
-        {!view ? (
+        {today === null || !data ? (
           <AppLoader size="inline" label="기록 모으는 중…" />
-        ) : view.sum.sessions === 0 ? (
-          <Card>
-            <p className="py-5 text-center text-[13px] text-muted">이 기간에는 공부 기록이 없어요.</p>
-          </Card>
         ) : (
-          <StatsBody v={view} />
+          <StatsPanel
+            today={today}
+            sessions={data.sessions}
+            n={PERIOD_DAYS[period]}
+            empty={
+              <Card>
+                <p className="py-5 text-center text-[13px] text-muted">이 기간에는 공부 기록이 없어요.</p>
+              </Card>
+            }
+          />
         )}
 
         {/* 최근 기록 */}
