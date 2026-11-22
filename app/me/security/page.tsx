@@ -2,7 +2,8 @@
 
 import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
-import { Check, Copy, KeyRound, Lock } from "lucide-react";
+import { Check, Copy, Lock } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useAuth } from "@/components/AuthProvider";
 import { Card, ErrorText, InfoText, InputRow, PrimaryButton, SubHeader, inputCls } from "@/components/ui";
 import {
@@ -78,7 +79,7 @@ function RecoveryCodeCard() {
   return (
     <Card>
       <div className="flex items-center gap-2">
-        <KeyRound size={18} className="text-accent" />
+        <ThemeIcon slot="security" size={18} className="text-accent" />
         <h2 className="text-[16px] font-bold">복구 코드</h2>
       </div>
       <p className="mt-2 text-[13px] leading-relaxed text-muted">

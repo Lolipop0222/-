@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useEffect, useState } from "react";
-import { Gift } from "lucide-react";
+
 import { useAuth } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
 import { LevelBadge } from "@/components/NameTag";
@@ -58,7 +59,7 @@ export default function LevelWatcher() {
         <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
           {toast.rewards.length > 0 && (
             <>
-              <Gift size={13} className="mr-1 inline align-[-2px] text-accent" />
+              <ThemeIcon slot="reward" size={13} className="mr-1 inline align-[-2px] text-accent" />
               {toast.rewards.map((r) => r.title).join(", ")}
             </>
           )}

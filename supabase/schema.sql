@@ -871,7 +871,7 @@ create table if not exists title_defs (
   description text not null,
   metric      text not null,   -- title_stats()가 돌려주는 값 이름
   goal        numeric not null,  -- metric이 이 값 이상이면 지급
-  unit        text not null default 'flag' check (unit in ('flag', 'hour', 'day', 'count')),  -- 진행도 표시용 (hour는 초 단위로 저장)
+  unit        text not null default 'flag' check (unit in ('flag', 'hour', 'day', 'count', 'level')),  -- 진행도 표시용 (hour는 초 단위로 저장, level은 과목 레벨)
   sort        int not null default 0,
   active      boolean not null default true
 );
@@ -883,6 +883,9 @@ alter table title_defs add column if not exists edited boolean not null default 
 alter table title_defs drop constraint if exists title_defs_grade_check;
 alter table title_defs add constraint title_defs_grade_check
   check (grade in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'hidden'));
+-- 진행도 단위 (2026-11-22 과목 레벨 칭호용 'level' 추가)
+alter table title_defs drop constraint if exists title_defs_unit_check;
+alter table title_defs add constraint title_defs_unit_check check (unit in ('flag', 'hour', 'day', 'count', 'level'));
 alter table title_defs enable row level security;
 revoke all on title_defs from anon, authenticated;  -- 히든 칭호 이름이 새지 않게 직접 읽기 금지 (my_titles로만)
 
@@ -912,6 +915,13 @@ begin
   end if;
 end $$;
 
+-- 과목 칭호 (2026-11-22 사용자 요청으로 바꿈): 예전 과목 칭호(과목 누적 50시간) 6개를 지우고,
+-- 과목 레벨(08의 레벨 식을 그 과목 만렙 시간에 적용 — 06의 subject_level()) 10·40·70·99에 주는 칭호 24개로.
+--   10 「과목 뉴비」 희귀 · 40 「과목 중수」 초희귀 · 70 「과목 고수」 영웅 · 99 과목별 이름 신화
+--   (국어 문장가 · 영어 네이티브 · 수학 Q.E.D. · 사회 세계 시민 · 과학 유레카 · 역사 사관)
+-- 예전 것을 얻은 학생의 기록·대표 칭호도 함께 사라진다(user_titles는 on delete cascade, 대표 칭호는 set null).
+delete from title_defs where code in ('subj_kor', 'subj_eng', 'subj_math', 'subj_sci', 'subj_soc', 'subj_his');
+
 insert into title_defs (code, name, grade, category, description, metric, goal, unit, sort) values
   ('first_page',    '첫 페이지',        'rare',    '누적 공부', '첫 공부 기록(1분 이상)을 남기기',                        'first_record',   1,       'flag',  10),
   ('study_10h',     '공부 입문자',      'rare',    '누적 공부', '누적 공부 10시간',                                      'total_sec',      36000,   'hour',  11),
@@ -926,16 +936,34 @@ insert into title_defs (code, name, grade, category, description, metric, goal, 
   ('streak_7',      '일주일 개근',      'superrare',      '연속 출석', '하루 30분 이상 공부한 날 7일 연속',                      'max_streak',     7,       'day',   41),
   ('streak_30',     '한 달의 끈기',     'epic',      '연속 출석', '하루 30분 이상 공부한 날 30일 연속',                     'max_streak',     30,      'day',   42),
   ('streak_100',    '백일의 기적',      'legendary', '연속 출석', '하루 30분 이상 공부한 날 100일 연속',                    'max_streak',     100,     'day',   43),
-  ('subj_kor',      '독해 장인',        'superrare',      '과목',      '국어 누적 50시간',                                      'sub_kor',        180000,  'hour',  50),
-  ('subj_eng',      '99프로 미국인',    'superrare',      '과목',      '영어 누적 50시간',                                      'sub_eng',        180000,  'hour',  51),
-  ('subj_math',     '수학 괴물',        'superrare',      '과목',      '수학 누적 50시간',                                      'sub_math',       180000,  'hour',  52),
-  ('subj_sci',      '실험실 주인',      'superrare',      '과목',      '과학 누적 50시간',                                      'sub_sci',        180000,  'hour',  53),
-  ('subj_soc',      '사회 박사',        'superrare',      '과목',      '사회 누적 50시간',                                      'sub_soc',        180000,  'hour',  54),
-  ('subj_his',      '역사 지킴이',      'superrare',      '과목',      '역사 누적 50시간',                                    'sub_his',        180000,  'hour',  55),
-  ('all_rounder',   '올라운더',         'superrare',      '골고루',    '하루에 서로 다른 5과목을 각각 20분 이상',                 'allround',       1,       'flag',  60),
-  ('week_class',    '우리 반 에이스',   'superrare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 70),
-  ('week_grade',    '학년 1짱',         'epic',      '주간 순위', '학년 주간 1위 (그 주 5시간 이상, 학년에 기록 있는 학생 3명 이상)', 'week_grade_top',  1, 'flag', 71),
-  ('week_school',   '대고 일품인',      'legendary', '주간 순위', '전교 주간 1위 (그 주 5시간 이상, 기록 있는 학생 3명 이상)',     'week_school_top', 1, 'flag', 72),
+  ('slv_kor_10',    '국어 뉴비',  'rare',      '과목',      '국어 레벨 10',                        'lv_kor',       10,   'level', 50),
+  ('slv_eng_10',    '영어 뉴비',  'rare',      '과목',      '영어 레벨 10',                        'lv_eng',       10,   'level', 51),
+  ('slv_math_10',   '수학 뉴비',  'rare',      '과목',      '수학 레벨 10',                        'lv_math',      10,   'level', 52),
+  ('slv_soc_10',    '사회 뉴비',  'rare',      '과목',      '사회 레벨 10',                        'lv_soc',       10,   'level', 53),
+  ('slv_sci_10',    '과학 뉴비',  'rare',      '과목',      '과학 레벨 10',                        'lv_sci',       10,   'level', 54),
+  ('slv_his_10',    '역사 뉴비',  'rare',      '과목',      '역사 레벨 10',                        'lv_his',       10,   'level', 55),
+  ('slv_kor_40',    '국어 중수',  'superrare', '과목',      '국어 레벨 40',                        'lv_kor',       40,   'level', 56),
+  ('slv_eng_40',    '영어 중수',  'superrare', '과목',      '영어 레벨 40',                        'lv_eng',       40,   'level', 57),
+  ('slv_math_40',   '수학 중수',  'superrare', '과목',      '수학 레벨 40',                        'lv_math',      40,   'level', 58),
+  ('slv_soc_40',    '사회 중수',  'superrare', '과목',      '사회 레벨 40',                        'lv_soc',       40,   'level', 59),
+  ('slv_sci_40',    '과학 중수',  'superrare', '과목',      '과학 레벨 40',                        'lv_sci',       40,   'level', 60),
+  ('slv_his_40',    '역사 중수',  'superrare', '과목',      '역사 레벨 40',                        'lv_his',       40,   'level', 61),
+  ('slv_kor_70',    '국어 고수',  'epic',      '과목',      '국어 레벨 70',                        'lv_kor',       70,   'level', 62),
+  ('slv_eng_70',    '영어 고수',  'epic',      '과목',      '영어 레벨 70',                        'lv_eng',       70,   'level', 63),
+  ('slv_math_70',   '수학 고수',  'epic',      '과목',      '수학 레벨 70',                        'lv_math',      70,   'level', 64),
+  ('slv_soc_70',    '사회 고수',  'epic',      '과목',      '사회 레벨 70',                        'lv_soc',       70,   'level', 65),
+  ('slv_sci_70',    '과학 고수',  'epic',      '과목',      '과학 레벨 70',                        'lv_sci',       70,   'level', 66),
+  ('slv_his_70',    '역사 고수',  'epic',      '과목',      '역사 레벨 70',                        'lv_his',       70,   'level', 67),
+  ('slv_kor_99',    '문장가',      'mythic',    '과목',      '국어 레벨 99 (만렙 · 국어 500시간)', 'lv_kor',       99,   'level', 68),
+  ('slv_eng_99',    '네이티브',    'mythic',    '과목',      '영어 레벨 99 (만렙 · 영어 500시간)', 'lv_eng',       99,   'level', 69),
+  ('slv_math_99',   'Q.E.D.', 'mythic',    '과목',      '수학 레벨 99 (만렙 · 수학 500시간)', 'lv_math',      99,   'level', 70),
+  ('slv_soc_99',    '세계 시민',  'mythic',    '과목',      '사회 레벨 99 (만렙 · 사회 300시간)', 'lv_soc',       99,   'level', 71),
+  ('slv_sci_99',    '유레카',      'mythic',    '과목',      '과학 레벨 99 (만렙 · 과학 300시간)', 'lv_sci',       99,   'level', 72),
+  ('slv_his_99',    '사관',        'mythic',    '과목',      '역사 레벨 99 (만렙 · 역사 150시간)', 'lv_his',       99,   'level', 73),
+  ('all_rounder',   '올라운더',         'superrare',      '골고루',    '하루에 서로 다른 5과목을 각각 20분 이상',                 'allround',       1,       'flag',  76),
+  ('week_class',    '우리 반 에이스',   'superrare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 77),
+  ('week_grade',    '학년 1짱',         'epic',      '주간 순위', '학년 주간 1위 (그 주 5시간 이상, 학년에 기록 있는 학생 3명 이상)', 'week_grade_top',  1, 'flag', 78),
+  ('week_school',   '대고 일품인',      'legendary', '주간 순위', '전교 주간 1위 (그 주 5시간 이상, 기록 있는 학생 3명 이상)',     'week_school_top', 1, 'flag', 79),
   ('planner_100',   '계획의 달인',      'epic',      '플래너·야자', '플래너 과제 누적 100개 완료',                          'tasks_done',     100,     'count', 80),
   ('yaja_king',     '야자의 왕',        'epic',      '플래너·야자', '평일 18시~22시에 2시간 이상 공부한 날 누적 20일',        'yaja_days',      20,      'day',   81),
   ('reset_hunter',  '리셋 사냥꾼',      'hidden',    '히든',      '순위가 초기화되는 월요일 0시~0시 5분에 공부 시작',          'reset_hunter',   1,       'flag',  90),
@@ -1259,6 +1287,28 @@ begin
   return r;
 end $$;
 
+-- 과목별 만렙 시간(초). 순위에 들어가는 6과목만 — 레벨(08)과 과목 레벨 칭호가 함께 쓴다 (2026-11-22 08에서 옮겨 옴)
+create or replace function level_subject_cap(p_subject text) returns int
+language sql immutable set search_path = public as $$
+  select case p_subject
+    when '국어' then 500 * 3600 when '영어' then 500 * 3600 when '수학' then 500 * 3600
+    when '사회' then 300 * 3600 when '과학' then 300 * 3600
+    when '역사' then 150 * 3600
+    else 0 end
+$$;
+revoke execute on function level_subject_cap(text) from public, anon;
+grant execute on function level_subject_cap(text) to authenticated;
+
+-- 과목 레벨 1~99 = 1 + floor(98 × √(그 과목 시간 / 그 과목 만렙 시간)). 앱 lib/levels.ts의 subjectLevel()과 같게
+create or replace function subject_level(p_sec numeric, p_subject text) returns int
+language sql immutable set search_path = public as $$
+  select case when level_subject_cap(p_subject) <= 0 then 1
+              else least(99, 1 + floor(98 * sqrt(least(greatest(coalesce(p_sec, 0), 0), level_subject_cap(p_subject)) / level_subject_cap(p_subject)::numeric))::int)
+         end
+$$;
+revoke execute on function subject_level(numeric, text) from public, anon;
+grant execute on function subject_level(numeric, text) to authenticated;
+
 -- 한 학생의 칭호 판정용 값들 (앱에서 직접 못 부름). 값은 모두 숫자, 예/아니오는 1/0
 create or replace function title_stats(p_user uuid) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
@@ -1317,6 +1367,13 @@ begin
     'sub_sci',        coalesce((select sum(duration) from v where subject = '과학'), 0),
     'sub_soc',        coalesce((select sum(duration) from v where subject = '사회'), 0),
     'sub_his',        coalesce((select sum(duration) from v where subject = '역사'), 0),
+    -- 과목 레벨 (과목 칭호용, 2026-11-22)
+    'lv_kor',         subject_level((select sum(duration) from v where subject = '국어'), '국어'),
+    'lv_eng',         subject_level((select sum(duration) from v where subject = '영어'), '영어'),
+    'lv_math',        subject_level((select sum(duration) from v where subject = '수학'), '수학'),
+    'lv_soc',         subject_level((select sum(duration) from v where subject = '사회'), '사회'),
+    'lv_sci',         subject_level((select sum(duration) from v where subject = '과학'), '과학'),
+    'lv_his',         subject_level((select sum(duration) from v where subject = '역사'), '역사'),
     'allround',       (exists (select 1 from ds where sec >= 1200 group by day having count(*) >= 5))::int,
     'week_class_top', (exists (select 1 from mine m
                         where (select count(*) from wp x where x.w = m.w and x.grade = m.grade and x.class_no = m.class_no) >= 3
@@ -1652,7 +1709,7 @@ grant execute on function wm_save_quiz(int, text, int, int) to authenticated;
 
 -- ┌──────────────────────────────────────────────────────────────────────
 -- │ 08-levels.sql — 레벨(1~99)·닉네임 테두리
--- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01, 06 (sessions.lecture·과목 이름 '역사')
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01, 06 (sessions.lecture·과목 이름 '역사', level_subject_cap())
 -- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
 -- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
 -- └──────────────────────────────────────────────────────────────────────
@@ -1682,15 +1739,7 @@ alter table profiles drop column if exists character_skin;
 
 -- ───────────────────────── 계산 ─────────────────────────
 
--- 과목별 만렙 시간(초). 순위에 들어가는 6과목만
-create or replace function level_subject_cap(p_subject text) returns int
-language sql immutable set search_path = public as $$
-  select case p_subject
-    when '국어' then 500 * 3600 when '영어' then 500 * 3600 when '수학' then 500 * 3600
-    when '사회' then 300 * 3600 when '과학' then 300 * 3600
-    when '역사' then 150 * 3600
-    else 0 end
-$$;
+-- 과목별 만렙 시간 level_subject_cap()은 06-subjects.sql에 있다 (과목 레벨 칭호도 쓰므로, 2026-11-22 옮김)
 
 -- 만렙 경험치(초) = 2,250시간
 create or replace function level_max_xp() returns bigint
@@ -1812,7 +1861,6 @@ begin
 end;
 $$;
 
-revoke execute on function level_subject_cap(text) from public, anon;
 revoke execute on function level_max_xp() from public, anon;
 revoke execute on function level_from_xp(bigint) from public, anon;
 revoke execute on function name_frame_min_level(text) from public, anon;
@@ -1820,7 +1868,6 @@ revoke execute on function level_xp_of(uuid[]) from public, anon, authenticated;
 revoke execute on function my_level() from public, anon;
 revoke execute on function set_name_frame(text) from public, anon;
 revoke execute on function player_cards(text[]) from public, anon;
-grant execute on function level_subject_cap(text) to authenticated;
 grant execute on function level_max_xp() to authenticated;
 grant execute on function level_from_xp(bigint) to authenticated;
 grant execute on function name_frame_min_level(text) to authenticated;
@@ -1842,12 +1889,13 @@ grant execute on function player_cards(text[]) to authenticated;
 --   회수 = user_titles.revoked = true (줄을 남겨 두어 자동 판정이 다시 주지 않음). 다시 주면 false + 알림(seen = false).
 --   모든 함수는 관리자가 아니면 거절한다.
 
--- 조건으로 고를 수 있는 값 (06-subjects.sql의 title_stats()가 돌려주는 이름 + manual). 앱의 lib/adminTitles.ts와 같게
+-- 조건으로 고를 수 있는 값 (06-subjects.sql의 title_stats()가 돌려주는 이름 + manual). lv_* = 과목 레벨(1~99) 앱의 lib/adminTitles.ts와 같게
 create or replace function title_metric_unit(p_metric text) returns text
 language sql immutable set search_path = public as $$
   select case
     when p_metric in ('total_sec', 'max_day_sec', 'sub_kor', 'sub_eng', 'sub_math', 'sub_sci', 'sub_soc', 'sub_his') then 'hour'
     when p_metric in ('max_streak', 'yaja_days') then 'day'
+    when p_metric in ('lv_kor', 'lv_eng', 'lv_math', 'lv_soc', 'lv_sci', 'lv_his') then 'level'
     when p_metric in ('tasks_done', 'short_count') then 'count'
     when p_metric in ('manual', 'first_record', 'focus_2h', 'allround', 'week_class_top', 'week_grade_top', 'week_school_top',
                       'reset_hunter', 'hour_exact', 'xmas', 'newyear', 'bug_finder') then 'flag'
@@ -1909,7 +1957,7 @@ begin
   end if;
   if v_unit = 'flag' then
     v_goal := 1;
-  elsif p_goal is null or p_goal <= 0 or p_goal > 100000 then
+  elsif p_goal is null or p_goal <= 0 or p_goal > 100000 or (v_unit = 'level' and p_goal > 99) then
     raise exception '목표 값을 1 이상으로 써 주세요' using errcode = '22023';
   else
     v_goal := case when v_unit = 'hour' then round(p_goal * 3600) else round(p_goal) end;

@@ -39,6 +39,12 @@ export const METRICS: readonly Metric[] = [
   { id: "sub_soc", label: "사회 누적 공부 시간", unit: "hour" },
   { id: "sub_sci", label: "과학 누적 공부 시간", unit: "hour" },
   { id: "sub_his", label: "역사 누적 공부 시간", unit: "hour" },
+  { id: "lv_kor", label: "국어 과목 레벨", unit: "level" },
+  { id: "lv_eng", label: "영어 과목 레벨", unit: "level" },
+  { id: "lv_math", label: "수학 과목 레벨", unit: "level" },
+  { id: "lv_soc", label: "사회 과목 레벨", unit: "level" },
+  { id: "lv_sci", label: "과학 과목 레벨", unit: "level" },
+  { id: "lv_his", label: "역사 과목 레벨", unit: "level" },
   { id: "max_streak", label: "연속 출석 (하루 30분 이상) 최장 일수", unit: "day" },
   { id: "yaja_days", label: "평일 야자(18~22시) 2시간 이상 한 날 수", unit: "day" },
   { id: "tasks_done", label: "플래너 과제 완료 개수", unit: "count" },
@@ -57,7 +63,7 @@ export const METRICS: readonly Metric[] = [
 ];
 
 export const metricById = (id: string) => METRICS.find((m) => m.id === id) ?? null;
-export const UNIT_SUFFIX: Record<TitleUnit, string> = { hour: "시간", day: "일", count: "개", flag: "" };
+export const UNIT_SUFFIX: Record<TitleUnit, string> = { hour: "시간", day: "일", count: "개", level: "레벨", flag: "" };
 
 /** 저장된 목표(시간은 초)를 화면 단위로 */
 export const goalForDisplay = (t: Pick<AdminTitle, "goal" | "unit">) => (t.unit === "hour" ? Math.round((t.goal / 3600) * 10) / 10 : t.goal);

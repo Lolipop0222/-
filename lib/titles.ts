@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
  */
 
 export type TitleGrade = "common" | "rare" | "superrare" | "epic" | "mythic" | "legendary" | "hidden";
-export type TitleUnit = "flag" | "hour" | "day" | "count";
+export type TitleUnit = "flag" | "hour" | "day" | "count" | "level";
 
 export type MyTitle = {
   code: string;
@@ -47,13 +47,14 @@ export function isGrade(v: unknown): v is TitleGrade {
   return typeof v === "string" && v in GRADE_LABEL;
 }
 
-/** 진행도 글자: 37/100시간, 3/7일, 99/100개 */
+/** 진행도 글자: 37/100시간, 3/7일, 99/100개, Lv.7/10 (과목 레벨) */
 export function progressText(t: MyTitle): string | null {
   if (t.goal == null || t.progress == null || t.unit === "flag") return null;
   if (t.unit === "hour") {
     const p = Math.floor(t.progress / 3600);
     return `${p}/${Math.round(t.goal / 3600)}시간`;
   }
+  if (t.unit === "level") return `Lv.${Math.floor(t.progress)}/${t.goal}`;
   return `${Math.floor(t.progress)}/${t.goal}${t.unit === "day" ? "일" : "개"}`;
 }
 

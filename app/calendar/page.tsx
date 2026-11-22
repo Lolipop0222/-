@@ -2,7 +2,8 @@
 
 import { AppLoader } from "@/components/BrandLoader";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Flag, Utensils } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { WEEKDAYS, fromYmd, ymd } from "@/lib/format";
 import { ALLERGENS, MEAL_LABEL, type Meal } from "@/lib/meals";
@@ -100,7 +101,7 @@ export default function CalendarPage() {
           <Card className="space-y-3">
             {selEvents.map((e) => (
               <p key={e.name} className="flex items-center gap-2.5 text-[15px]">
-                <Flag size={16} className={e.holiday ? "text-danger" : "text-accent"} />
+                <ThemeIcon slot="dday" size={16} className={e.holiday ? "text-danger" : "text-accent"} />
                 <span className="flex-1">{e.name}</span>
                 {e.holiday && <Badge tone="danger">쉬는 날</Badge>}
                 {e.grades.length > 0 && e.grades.length < 3 && !e.name.includes("학년") && <Badge>{e.grades.join("·")}학년</Badge>}
@@ -112,7 +113,7 @@ export default function CalendarPage() {
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <p className="flex items-center gap-2 text-[15px] font-semibold">
-              <Utensils size={16} className="text-warn" /> 급식
+              <ThemeIcon slot="meal" size={16} className="text-warn" /> 급식
             </p>
             {monthMeals && monthMeals.source !== "none" && (
               <span className="text-[11px] text-faint">{monthMeals.source === "neis" ? "NEIS" : "학교 식단표 파일"}</span>

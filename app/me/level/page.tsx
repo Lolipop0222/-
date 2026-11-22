@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Gift, Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { AppLoader } from "@/components/BrandLoader";
 import { useProfile } from "@/components/AuthProvider";
 import { LevelBadge, NameTag } from "@/components/NameTag";
@@ -98,7 +99,7 @@ export default function LevelPage() {
         {/* 과목별 */}
         <Card>
           <p className="text-[15px] font-semibold">과목별 경험치</p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-faint">과목마다 만렙에 필요한 시간까지만 경험치가 돼요. 골고루 공부해야 99레벨이에요. 과목 레벨이 60이 되면 그 과목 테마가 열려요.</p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-faint">과목마다 만렙에 필요한 시간까지만 경험치가 돼요. 골고루 공부해야 99레벨이에요. 과목 레벨 10·40·70·99에 과목 칭호, 60에 그 과목 테마가 열려요.</p>
           <ul className="mt-3 space-y-3">
             {me.subjects.map((s) => {
               const full = s.sec >= s.cap;
@@ -144,7 +145,7 @@ export default function LevelPage() {
         {/* 보상 */}
         <section>
           <h2 className="mb-2 flex items-center gap-1.5 text-[15px] font-semibold">
-            <Gift size={17} className="text-accent" /> 레벨 보상
+            <ThemeIcon slot="reward" size={17} className="text-accent" /> 레벨 보상
           </h2>
           <ul className="space-y-2">
             {LEVEL_REWARDS.map((r) => {

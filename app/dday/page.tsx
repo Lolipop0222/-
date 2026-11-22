@@ -2,7 +2,8 @@
 
 import { AppLoader } from "@/components/BrandLoader";
 import { useState } from "react";
-import { CalendarPlus, School, Trash2 } from "lucide-react";
+import { CalendarPlus, Trash2 } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { Card, SubHeader } from "@/components/ui";
 import { daysUntil, ddayLabel, type DdayItem } from "@/lib/dday";
 import { WEEKDAYS, fromYmd } from "@/lib/format";
@@ -111,7 +112,7 @@ function DdayRow({ item, today, onDelete }: { item: DdayItem; today: string; onD
     <li className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3.5">
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-[15px] font-semibold">
-          {item.kind === "exam" && <School size={14} className="shrink-0 text-accent" />}
+          {item.kind === "exam" && <ThemeIcon slot="exam" size={14} className="shrink-0 text-accent" />}
           <span className="truncate">{item.title}</span>
         </p>
         <p className="num mt-0.5 text-[12px] text-muted">

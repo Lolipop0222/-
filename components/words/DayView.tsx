@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, BookOpenCheck, ChevronDown, Layers, Timer } from "lucide-react";
+import { ArrowLeft, ChevronDown, Timer } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { AppLoader } from "@/components/BrandLoader";
 import { useProfile } from "@/components/AuthProvider";
 import { Card, PrimaryButton, Segmented } from "@/components/ui";
@@ -223,7 +224,7 @@ function DayHome({
       {/* 외우기 */}
       <section className="mt-5">
         <h2 className="mb-2 flex items-center gap-1.5 text-[15px] font-semibold">
-          <Layers size={17} className="text-accent" /> 암기 카드
+          <ThemeIcon slot="cards" size={17} className="text-accent" /> 암기 카드
         </h2>
         <div className="grid grid-cols-3 gap-2">
           <PickChip on={pick === "new"} onClick={() => setPick("new")} label="새 단어" n={fresh.length} />
@@ -307,7 +308,7 @@ function QuizSetup({ data, store, onStart }: { data: WmDay; store: WordStore; on
   return (
     <section className="mt-7">
       <h2 className="mb-2 flex items-center gap-1.5 text-[15px] font-semibold">
-        <BookOpenCheck size={17} className="text-live" /> 퀴즈
+        <ThemeIcon slot="quiz" size={17} className="text-live" /> 퀴즈
       </h2>
       <div className="grid grid-cols-2 gap-2">
         {(["meaning", "reverse", "blank", "relation"] as const).map((m) => {

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
-import { ClipboardList, Eye, MonitorPlay, Play, Square } from "lucide-react";
+import { MonitorPlay, Play, Square } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useAuth } from "@/components/AuthProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import TimerScene, { HourMarks, hasTimerScene } from "@/components/TimerScene";
@@ -65,7 +66,7 @@ export default function StudyTimer() {
       <div className="flex items-center justify-between">
         <h1 className="text-[17px] font-semibold text-muted">일품타</h1>
         <Link href="/planner" className="ml-auto mr-2 flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-muted">
-          <ClipboardList size={14} /> 플래너
+          <ThemeIcon slot="planner" size={14} /> 플래너
         </Link>
         {running && (
           <span className="flex items-center gap-1.5 rounded-full bg-live-soft px-2.5 py-1 text-[12px] font-semibold text-live">
@@ -170,7 +171,7 @@ export default function StudyTimer() {
           <p className="num mt-2 text-[64px] font-bold leading-none text-stage-text">{hms(study.elapsed)}</p>
         )}
         <p className="mt-4 flex items-center justify-center gap-1 text-[13px] text-faint">
-          <Eye size={14} /> 이탈 {running ? study.awayCount : 0}회 · 30초 넘게 벗어나면 자동 정지
+          <ThemeIcon slot="away" size={14} /> 이탈 {running ? study.awayCount : 0}회 · 30초 넘게 벗어나면 자동 정지
         </p>
       </div>
 

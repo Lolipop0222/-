@@ -3,7 +3,8 @@
 import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, FileImage, FileText, FileType, Files, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Download, FileImage, FileText, FileType, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useProfile } from "@/components/AuthProvider";
 import PrintArchiveLogo from "@/components/PrintArchiveLogo";
 import { Badge, Card, ErrorText, InfoText, Segmented } from "@/components/ui";
@@ -156,7 +157,7 @@ export default function PrintsPage() {
             {rows === null && <AppLoader />}
             {rows && shown.length === 0 && (
               <Card className="py-10 text-center">
-                <Files size={28} className="mx-auto text-faint" />
+                <ThemeIcon slot="prints" size={28} className="mx-auto text-faint" />
                 <p className="mt-2 text-[14px] text-muted">{rows.list.length === 0 ? "아직 올라온 프린트가 없어요" : "조건에 맞는 프린트가 없어요"}</p>
               </Card>
             )}
@@ -326,7 +327,7 @@ function UploadPanel({ onClose, onDone }: { onClose: () => void; onDone: () => P
         onDrop={(e) => (e.preventDefault(), setDrag(false), add(e.dataTransfer.files))}
         className={`flex h-24 w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed text-muted ${drag ? "border-accent bg-accent-soft" : "border-line bg-bg"}`}
       >
-        <Files size={22} />
+        <ThemeIcon slot="prints" size={22} />
         <span className="text-[14px] font-semibold">파일 고르기 (여러 개 가능)</span>
         <span className="text-[11px] text-faint">PDF·한글·사진·오피스 · 파일당 50MB · 끌어다 놓아도 돼요</span>
       </button>

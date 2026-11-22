@@ -6,6 +6,7 @@ import { LevelBadge, NameTag } from "@/components/NameTag";
 import { usePlayerCards } from "@/lib/levels";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Copy, Crown, LogIn, LogOut, Pencil, Plus, RefreshCw, Share2, Trash2, UserMinus, Users } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useStudy } from "@/components/StudyProvider";
 import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
 import { Badge, Card, ErrorText, InfoText, InputRow, PrimaryButton, inputCls } from "@/components/ui";
@@ -98,7 +99,7 @@ export default function GroupsPage() {
                 {groups.map((g) => (
                   <button key={g.id} type="button" onClick={() => setOpenId(g.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-surface-2">
                     <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
-                      <Users size={20} />
+                      <ThemeIcon slot="groups" size={20} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
@@ -114,7 +115,7 @@ export default function GroupsPage() {
             )}
             {groups?.length === 0 && !error && (
               <Card className="py-8 text-center">
-                <Users size={28} className="mx-auto text-faint" />
+                <ThemeIcon slot="groups" size={28} className="mx-auto text-faint" />
                 <p className="mt-2 text-[14px] text-muted">아직 들어간 그룹이 없어요</p>
               </Card>
             )}

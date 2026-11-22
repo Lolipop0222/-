@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, KeyRound } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { Card } from "@/components/ui";
 import { recoveryCodeCreatedAt } from "@/lib/account";
 
@@ -29,7 +30,7 @@ export default function HomeRecoveryNudge() {
     <Link href="/me/security" className="block">
       <Card className="flex items-center gap-3">
         <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-warn-soft text-warn">
-          <KeyRound size={20} />
+          <ThemeIcon slot="security" size={20} />
         </div>
         <div className="flex-1">
           <p className="text-[15px] font-semibold">복구 코드를 만들어 두세요</p>

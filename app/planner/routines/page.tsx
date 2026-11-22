@@ -2,7 +2,8 @@
 
 import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
-import { Repeat, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { Card, SubHeader } from "@/components/ui";
 import { WEEKDAYS } from "@/lib/format";
 import { addRoutine, deleteRoutine, isPlannerMissing, listRoutines, updateRoutine, type Routine } from "@/lib/planner";
@@ -168,7 +169,7 @@ export default function RoutinesPage() {
           <ul className="space-y-2.5">
             {routines.map((r) => (
               <li key={r.id} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 ${r.active ? "" : "opacity-50"}`}>
-                <Repeat size={16} className="shrink-0 text-accent" />
+                <ThemeIcon slot="routine" size={16} className="shrink-0 text-accent" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold">{r.title}</p>
                   <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-muted">

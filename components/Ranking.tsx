@@ -3,7 +3,8 @@
 import { AppLoader } from "@/components/BrandLoader";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Crown, Users } from "lucide-react";
+import { ChevronRight, Crown } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useStudy } from "@/components/StudyProvider";
 import { LevelBadge, NameTag } from "@/components/NameTag";
 import { ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
@@ -107,7 +108,7 @@ export default function Ranking() {
       )}
       <Link href="/groups" className="mt-4 flex items-center justify-between rounded-2xl border border-line bg-surface px-4 py-3">
         <span className="flex items-center gap-2 text-[14px] font-semibold">
-          <Users size={17} className="text-accent" /> 스터디그룹 순위 보기
+          <ThemeIcon slot="groups" size={17} className="text-accent" /> 스터디그룹 순위 보기
         </span>
         <ChevronRight size={18} className="text-faint" />
       </Link>

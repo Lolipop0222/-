@@ -12,12 +12,13 @@
 --   회수 = user_titles.revoked = true (줄을 남겨 두어 자동 판정이 다시 주지 않음). 다시 주면 false + 알림(seen = false).
 --   모든 함수는 관리자가 아니면 거절한다.
 
--- 조건으로 고를 수 있는 값 (06-subjects.sql의 title_stats()가 돌려주는 이름 + manual). 앱의 lib/adminTitles.ts와 같게
+-- 조건으로 고를 수 있는 값 (06-subjects.sql의 title_stats()가 돌려주는 이름 + manual). lv_* = 과목 레벨(1~99) 앱의 lib/adminTitles.ts와 같게
 create or replace function title_metric_unit(p_metric text) returns text
 language sql immutable set search_path = public as $$
   select case
     when p_metric in ('total_sec', 'max_day_sec', 'sub_kor', 'sub_eng', 'sub_math', 'sub_sci', 'sub_soc', 'sub_his') then 'hour'
     when p_metric in ('max_streak', 'yaja_days') then 'day'
+    when p_metric in ('lv_kor', 'lv_eng', 'lv_math', 'lv_soc', 'lv_sci', 'lv_his') then 'level'
     when p_metric in ('tasks_done', 'short_count') then 'count'
     when p_metric in ('manual', 'first_record', 'focus_2h', 'allround', 'week_class_top', 'week_grade_top', 'week_school_top',
                       'reset_hunter', 'hour_exact', 'xmas', 'newyear', 'bug_finder') then 'flag'
@@ -79,7 +80,7 @@ begin
   end if;
   if v_unit = 'flag' then
     v_goal := 1;
-  elsif p_goal is null or p_goal <= 0 or p_goal > 100000 then
+  elsif p_goal is null or p_goal <= 0 or p_goal > 100000 or (v_unit = 'level' and p_goal > 99) then
     raise exception '목표 값을 1 이상으로 써 주세요' using errcode = '22023';
   else
     v_goal := case when v_unit = 'hour' then round(p_goal * 3600) else round(p_goal) end;

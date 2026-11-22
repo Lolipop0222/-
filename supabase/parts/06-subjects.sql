@@ -96,6 +96,28 @@ begin
   return r;
 end $$;
 
+-- 과목별 만렙 시간(초). 순위에 들어가는 6과목만 — 레벨(08)과 과목 레벨 칭호가 함께 쓴다 (2026-11-22 08에서 옮겨 옴)
+create or replace function level_subject_cap(p_subject text) returns int
+language sql immutable set search_path = public as $$
+  select case p_subject
+    when '국어' then 500 * 3600 when '영어' then 500 * 3600 when '수학' then 500 * 3600
+    when '사회' then 300 * 3600 when '과학' then 300 * 3600
+    when '역사' then 150 * 3600
+    else 0 end
+$$;
+revoke execute on function level_subject_cap(text) from public, anon;
+grant execute on function level_subject_cap(text) to authenticated;
+
+-- 과목 레벨 1~99 = 1 + floor(98 × √(그 과목 시간 / 그 과목 만렙 시간)). 앱 lib/levels.ts의 subjectLevel()과 같게
+create or replace function subject_level(p_sec numeric, p_subject text) returns int
+language sql immutable set search_path = public as $$
+  select case when level_subject_cap(p_subject) <= 0 then 1
+              else least(99, 1 + floor(98 * sqrt(least(greatest(coalesce(p_sec, 0), 0), level_subject_cap(p_subject)) / level_subject_cap(p_subject)::numeric))::int)
+         end
+$$;
+revoke execute on function subject_level(numeric, text) from public, anon;
+grant execute on function subject_level(numeric, text) to authenticated;
+
 -- 한 학생의 칭호 판정용 값들 (앱에서 직접 못 부름). 값은 모두 숫자, 예/아니오는 1/0
 create or replace function title_stats(p_user uuid) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
@@ -154,6 +176,13 @@ begin
     'sub_sci',        coalesce((select sum(duration) from v where subject = '과학'), 0),
     'sub_soc',        coalesce((select sum(duration) from v where subject = '사회'), 0),
     'sub_his',        coalesce((select sum(duration) from v where subject = '역사'), 0),
+    -- 과목 레벨 (과목 칭호용, 2026-11-22)
+    'lv_kor',         subject_level((select sum(duration) from v where subject = '국어'), '국어'),
+    'lv_eng',         subject_level((select sum(duration) from v where subject = '영어'), '영어'),
+    'lv_math',        subject_level((select sum(duration) from v where subject = '수학'), '수학'),
+    'lv_soc',         subject_level((select sum(duration) from v where subject = '사회'), '사회'),
+    'lv_sci',         subject_level((select sum(duration) from v where subject = '과학'), '과학'),
+    'lv_his',         subject_level((select sum(duration) from v where subject = '역사'), '역사'),
     'allround',       (exists (select 1 from ds where sec >= 1200 group by day having count(*) >= 5))::int,
     'week_class_top', (exists (select 1 from mine m
                         where (select count(*) from wp x where x.w = m.w and x.grade = m.grade and x.class_no = m.class_no) >= 3

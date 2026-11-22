@@ -1,6 +1,6 @@
 -- ┌──────────────────────────────────────────────────────────────────────
 -- │ 08-levels.sql — 레벨(1~99)·닉네임 테두리
--- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01, 06 (sessions.lecture·과목 이름 '역사')
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 01, 06 (sessions.lecture·과목 이름 '역사', level_subject_cap())
 -- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
 -- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
 -- └──────────────────────────────────────────────────────────────────────
@@ -30,15 +30,7 @@ alter table profiles drop column if exists character_skin;
 
 -- ───────────────────────── 계산 ─────────────────────────
 
--- 과목별 만렙 시간(초). 순위에 들어가는 6과목만
-create or replace function level_subject_cap(p_subject text) returns int
-language sql immutable set search_path = public as $$
-  select case p_subject
-    when '국어' then 500 * 3600 when '영어' then 500 * 3600 when '수학' then 500 * 3600
-    when '사회' then 300 * 3600 when '과학' then 300 * 3600
-    when '역사' then 150 * 3600
-    else 0 end
-$$;
+-- 과목별 만렙 시간 level_subject_cap()은 06-subjects.sql에 있다 (과목 레벨 칭호도 쓰므로, 2026-11-22 옮김)
 
 -- 만렙 경험치(초) = 2,250시간
 create or replace function level_max_xp() returns bigint
@@ -160,7 +152,6 @@ begin
 end;
 $$;
 
-revoke execute on function level_subject_cap(text) from public, anon;
 revoke execute on function level_max_xp() from public, anon;
 revoke execute on function level_from_xp(bigint) from public, anon;
 revoke execute on function name_frame_min_level(text) from public, anon;
@@ -168,7 +159,6 @@ revoke execute on function level_xp_of(uuid[]) from public, anon, authenticated;
 revoke execute on function my_level() from public, anon;
 revoke execute on function set_name_frame(text) from public, anon;
 revoke execute on function player_cards(text[]) from public, anon;
-grant execute on function level_subject_cap(text) to authenticated;
 grant execute on function level_max_xp() to authenticated;
 grant execute on function level_from_xp(bigint) to authenticated;
 grant execute on function name_frame_min_level(text) to authenticated;

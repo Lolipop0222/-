@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Camera, ChevronRight, Layers, PenLine, Play, Search } from "lucide-react";
+import { Camera, ChevronRight, PenLine, Play, Search } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { AppLoader } from "@/components/BrandLoader";
 import { useProfile } from "@/components/AuthProvider";
 import { Card, SectionTitle } from "@/components/ui";
@@ -54,7 +55,7 @@ export default function WordsHub() {
           </Link>
         ) : (
           <Link href={`/words/day/${day}`} className="mt-5 flex h-13 items-center justify-center gap-2 rounded-2xl bg-accent text-[16px] font-bold text-bg active:scale-[0.98]">
-            <Layers size={18} />
+            <ThemeIcon slot="cards" size={18} />
             DAY {day} 외우기
           </Link>
         )}
@@ -65,7 +66,7 @@ export default function WordsHub() {
         <Link href={`/words/day/${day}`} className="block">
           <Card className="flex items-center gap-3">
             <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
-              <Layers size={20} />
+              <ThemeIcon slot="cards" size={20} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[12px] text-muted">이어서 외우기</p>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Check, ChevronLeft, ChevronRight, MonitorPlay, Play, Repeat, Square, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MonitorPlay, Play, Square, X } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useAuth } from "@/components/AuthProvider";
 import SubjectPicker, { type SubjectChoice } from "@/components/SubjectPicker";
 import { useStudy } from "@/components/StudyProvider";
@@ -59,7 +60,7 @@ export default function PlannerPage() {
 
   return (
     <>
-      <SubHeader title="플래너" back="/" right={<Link href="/planner/routines" className="mr-2 flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-muted"><Repeat size={14} /> 루틴</Link>} />
+      <SubHeader title="플래너" back="/" right={<Link href="/planner/routines" className="mr-2 flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-[13px] font-semibold text-muted"><ThemeIcon slot="routine" size={14} /> 루틴</Link>} />
 
       <div className="px-4 pb-6">
         {/* YEAR / MONTH / DAY · D-DAY */}
@@ -235,7 +236,7 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
                     <span className="text-faint">과목 없음</span>
                   )}
                   {sec >= 60 && <span className="num shrink-0 whitespace-nowrap">· {hm(sec)}</span>}
-                  {t.routine_id && <Repeat size={11} className="text-faint" aria-label="루틴" />}
+                  {t.routine_id && <ThemeIcon slot="routine" size={11} className="text-faint" aria-label="루틴" />}
                 </p>
               </button>
               {isToday && (

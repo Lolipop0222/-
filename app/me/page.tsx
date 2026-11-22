@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Shield, ShieldCheck, Smile, Trash2 } from "lucide-react";
+import { LogOut, ShieldCheck, Smile, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
@@ -79,16 +79,16 @@ export default function MePage() {
         </div>
 
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
-          <ListRow icon={<GraduationCap size={20} />} label="학년·반·계열" value={`${profile.grade}학년 ${profile.class_no}반${profile.grade === 2 ? ` · ${profile.track ?? "계열 고르기"}` : ""}`} href="/me/track" />
+          <ListRow icon={<ThemeIcon slot="track" size={20} />} label="학년·반·계열" value={`${profile.grade}학년 ${profile.class_no}반${profile.grade === 2 ? ` · ${profile.track ?? "계열 고르기"}` : ""}`} href="/me/track" />
           <ListRow icon={<ThemeIcon slot="groups" size={20} />} label="스터디그룹" href="/groups" />
           <ListRow icon={<ThemeIcon slot="theme" size={20} />} label="테마" value={themeLabel} href="/me/theme" />
           <ListRow icon={<ThemeIcon slot="level" size={20} />} label="레벨" value={!levelOn ? "준비 중" : myLevel ? `Lv.${myLevel.level}` : undefined} href="/me/level" />
           <ListRow icon={<ThemeIcon slot="titles" size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
           <ListRow icon={<ThemeIcon slot="avatar" size={20} />} label="프로필 사진" href="/me/avatar" />
           <ListRow icon={<ThemeIcon slot="prints" size={20} />} label="프린트 아카이브" href="/prints" />
-          <ListRow icon={<MessageCircleQuestion size={20} />} label="문의함" href="/me/inquiry" />
-          <ListRow icon={<KeyRound size={20} />} label="비밀번호·복구 코드" href="/me/security" />
-          <ListRow icon={<Shield size={20} />} label="개인정보 처리방침" href="/me/privacy" />
+          <ListRow icon={<ThemeIcon slot="inquiry" size={20} />} label="문의함" href="/me/inquiry" />
+          <ListRow icon={<ThemeIcon slot="security" size={20} />} label="비밀번호·복구 코드" href="/me/security" />
+          <ListRow icon={<ThemeIcon slot="privacy" size={20} />} label="개인정보 처리방침" href="/me/privacy" />
           {admin && <ListRow icon={<ShieldCheck size={20} />} label="관리자" href="/me/admin" />}
         </Card>
 
