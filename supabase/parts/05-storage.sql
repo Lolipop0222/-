@@ -17,6 +17,23 @@ on conflict (id) do update set public = excluded.public, file_size_limit = exclu
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('prints', 'prints', false, 52428800, null)
 on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+-- inquiry (비공개, 2026-11-22): 문의 첨부 사진. 앱이 긴 쪽 1600px로 줄이고 사진 정보를 지운 뒤 올린다. 1장 3MB까지
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('inquiry', 'inquiry', false, 3145728, array['image/webp', 'image/jpeg'])
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+-- inquiry: 내 폴더에만 올리고, 내 것과(관리자는 모두) 보고 지운다
+drop policy if exists "문의 사진 올리기" on storage.objects;
+create policy "문의 사진 올리기" on storage.objects for insert to authenticated
+  with check (bucket_id = 'inquiry' and (storage.foldername(name))[1] = auth.uid()::text
+              and storage.extension(name) in ('webp', 'jpg')
+              and exists (select 1 from public.profiles where id = auth.uid()));
+drop policy if exists "문의 사진 보기" on storage.objects;
+create policy "문의 사진 보기" on storage.objects for select to authenticated
+  using (bucket_id = 'inquiry' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
+drop policy if exists "문의 사진 지우기" on storage.objects;
+create policy "문의 사진 지우기" on storage.objects for delete to authenticated
+  using (bucket_id = 'inquiry' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
 
 -- avatars: 내 폴더에만 올리고 지운다. 관리자는 아무 사진이나 지울 수 있다. (공개 주소로 보기는 정책 없이 된다)
 drop policy if exists "프로필 사진 올리기" on storage.objects;

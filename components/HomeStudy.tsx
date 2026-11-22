@@ -99,11 +99,18 @@ export default function HomeStudy() {
 
       {/* 이번 주 / 내 순위 */}
       <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <p className="text-[13px] text-muted">이번 주 합계</p>
-          <p className="num mt-1 text-[20px] font-bold">{study.ready ? hm(weekSec) : "–"}</p>
-          <WeekBars days={weekDays} />
-        </Card>
+        <Link href="/stats">
+          <Card className="h-full">
+            <p className="flex items-center justify-between text-[13px] text-muted">
+              이번 주 합계
+              <span className="flex items-center gap-0.5 text-[11px] font-semibold text-accent">
+                <ThemeIcon slot="stats" size={12} /> 통계
+              </span>
+            </p>
+            <p className="num mt-1 text-[20px] font-bold">{study.ready ? hm(weekSec) : "–"}</p>
+            <WeekBars days={weekDays} />
+          </Card>
+        </Link>
         <Link href="/timer#ranking">
           <Card className="h-full">
             <p className="flex items-center gap-1 text-[13px] text-muted">

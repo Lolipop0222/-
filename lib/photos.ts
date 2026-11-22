@@ -84,3 +84,73 @@ export async function removeAllMyPhotos(userId: string): Promise<void> {
     // 무시
   }
 }
+
+// ───────────────────────── 문의 첨부 사진 (2026-11-22) ─────────────────────────
+// 비공개 'inquiry' 버킷, 경로 '<내 user id>/<무작위 16자>.webp|jpg'. 나와 관리자만 서명 주소로 본다.
+// 인증 사진(능화반 명단 등)은 글자가 보여야 하므로 정사각형으로 자르지 않고 긴 쪽 1600px까지만 줄인다.
+
+const INQUIRY_BUCKET = "inquiry";
+export const INQUIRY_PHOTO_MAX = 5;
+
+/** 고른 사진 → 긴 쪽 1600px 이하 (webp, 안 되면 jpg). 캔버스로 다시 그려 사진 정보(위치 등)를 지운다 */
+export async function shrinkPhoto(file: File, maxSide = 1600): Promise<Blob> {
+  if (!file.type.startsWith("image/")) throw new Error("사진 파일만 첨부할 수 있어요");
+  if (file.size > 25 * 1024 * 1024) throw new Error("25MB보다 작은 사진을 골라 주세요");
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error("이 사진은 열 수 없어요. 다른 사진을 골라 주세요");
+  }
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("사진을 줄이지 못했어요");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const toBlob = (type: string, q: number) => new Promise<Blob | null>((ok) => canvas.toBlob(ok, type, q));
+  const webp = await toBlob("image/webp", 0.85);
+  if (webp && webp.type === "image/webp") return webp;
+  const jpg = await toBlob("image/jpeg", 0.85);
+  if (!jpg) throw new Error("사진을 줄이지 못했어요");
+  return jpg;
+}
+
+/** 문의 사진 올리기 → 저장 경로 */
+export async function uploadInquiryPhoto(userId: string, blob: Blob): Promise<string> {
+  const ext = blob.type === "image/webp" ? "webp" : "jpg";
+  const path = `${userId}/${randomHex(8)}.${ext}`;
+  const { error } = await supabase().storage.from(INQUIRY_BUCKET).upload(path, blob, { contentType: blob.type, upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+/** 문의 사진 서명 주소 (1시간). 못 만든 것은 빠진다 */
+export async function inquiryPhotoUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!paths.length) return {};
+  const { data, error } = await supabase().storage.from(INQUIRY_BUCKET).createSignedUrls(paths, 3600);
+  if (error || !data) return {};
+  return Object.fromEntries(data.filter((d) => d.signedUrl && d.path).map((d) => [d.path as string, d.signedUrl as string]));
+}
+
+export async function removeInquiryPhotos(paths: string[]): Promise<void> {
+  if (!paths.length) return;
+  try {
+    await supabase().storage.from(INQUIRY_BUCKET).remove(paths);
+  } catch {
+    // 무시
+  }
+}
+
+/** 내 문의 사진을 모두 지운다 (계정 삭제 전) */
+export async function removeAllMyInquiryPhotos(userId: string): Promise<void> {
+  try {
+    const { data } = await supabase().storage.from(INQUIRY_BUCKET).list(userId, { limit: 100 });
+    const paths = (data ?? []).map((f) => `${userId}/${f.name}`);
+    if (paths.length) await supabase().storage.from(INQUIRY_BUCKET).remove(paths);
+  } catch {
+    // 무시
+  }
+}

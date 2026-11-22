@@ -1574,6 +1574,247 @@ h2 {
   .tb-sig, .ring-sig-kor, .ring-sig-eng, .ring-sig-math, .ring-sig-soc, .ring-sig-sci, .ring-sig-his { animation: none; }
 }
 
+/* ───────────── 스페셜 칭호 (2026-11-22) — 칭호마다 디자인이 모두 다르다. 모든 테마에서 같은 색 ─────────────
+ * components/TitleBadge.tsx SPECIAL_TITLES (code) → .tb-sp-<디자인>, 프로필 그림 테두리 .ring-sp-<디자인>.
+ * 관리자가 새로 만든 스페셜은 .tb-special(홀로그램 기본 디자인). */
+.tb-sp {
+  position: relative;
+  overflow: hidden;
+  border-width: 1px;
+  border-style: solid;
+  isolation: isolate;
+}
+.tb-sp > .truncate { position: relative; }
+.tb-special {
+  position: relative;
+  border-color: transparent;
+  background:
+    linear-gradient(#16131f, #16131f) padding-box,
+    conic-gradient(from var(--ring-angle, 0deg), #6ef2ff, #b68bff, #ff8fd2, #ffe27a, #6ef2ff) border-box;
+  box-shadow: 0 0 10px rgb(182 139 255 / 0.45);
+  animation: ring-spin 4s linear infinite;
+}
+.tb-special > .truncate {
+  background: linear-gradient(90deg, #6ef2ff, #b68bff, #ff8fd2, #ffe27a, #6ef2ff) 0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tb-aurora-text 4s linear infinite;
+}
+.tb-special .tb-icon { color: #ffe27a; }
+
+/* 장원 급제 (국어 주간 1위): 과거 급제 증서 홍패 — 붉은 종이에 금빛 명조, 어사화가 흔들림 */
+.tb-sp-kor {
+  color: #ffe9a8;
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+  font-weight: 800;
+  border-color: #7d1c15;
+  background: radial-gradient(circle at 85% 20%, rgb(255 233 168 / 0.18), transparent 45%), linear-gradient(180deg, #d2412f, #a5281f);
+  box-shadow: inset 0 0 0 1.5px #a5281f, inset 0 0 0 2.5px rgb(255 233 168 / 0.7), 0 0 10px rgb(210 65 47 / 0.5);
+}
+.tb-sp-kor .tb-icon { color: #ffc4dc; transform-origin: 50% 90%; animation: sp-sway 2.4s ease-in-out infinite; }
+@keyframes sp-sway { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+
+/* No.1 (영어 주간 1위): 바시티 재킷 — 남색 바탕, 굵은 이탤릭, 빨간 외곽선, 흰 줄무늬, 금 트로피에 빛이 스침 */
+.tb-sp-eng {
+  color: #ffffff;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-shadow: 1px 1px 0 #c8102e, -0.5px -0.5px 0 #c8102e;
+  border-color: #0a1428;
+  background:
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.28) 50%, transparent 60%) 0 0 / 260% 100% no-repeat,
+    linear-gradient(transparent calc(100% - 5px), #ffffff calc(100% - 5px) calc(100% - 4px), transparent calc(100% - 4px) calc(100% - 2px), #c8102e calc(100% - 2px)),
+    #14213d;
+  box-shadow: 0 0 10px rgb(20 33 61 / 0.6);
+  animation: sig-wash 3.2s ease-in-out infinite;
+}
+.tb-sp-eng .tb-icon { color: #ffcc33; }
+
+/* 최댓값 (수학 주간 1위): 그래프가 꼭대기로 올라가고, 꼭짓점이 빛남 */
+.tb-sp-math {
+  color: #eafff1;
+  font-weight: 800;
+  border-color: #7cf3a0;
+  background:
+    radial-gradient(circle at 92% 18%, #ffffff 0 1.5px, rgb(124 243 160 / 0.9) 2px, transparent 5px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpolyline points='0,19 14,15 26,17 40,10 52,13 66,7 78,9 92,3 100,7' fill='none' stroke='%237cf3a0' stroke-opacity='0.55' stroke-width='1.4' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(0deg, rgb(124 243 160 / 0.08) 0 1px, transparent 1px 5px),
+    #0d1424;
+  box-shadow: 0 0 10px rgb(124 243 160 / 0.4);
+  animation: sp-peak 2s ease-in-out infinite;
+}
+.tb-sp-math .tb-icon { color: #7cf3a0; }
+@keyframes sp-peak { 50% { box-shadow: 0 0 16px rgb(124 243 160 / 0.75); } }
+
+/* 지지율 1위 (사회 주간 1위): 선거 포스터 — 파랑·빨강 띠, 득표 막대가 차오름, 투표함 아이콘 */
+.tb-sp-soc {
+  color: #13294b;
+  font-weight: 900;
+  border-color: #13294b;
+  padding-left: 9px;
+  padding-right: 9px;
+  background: linear-gradient(90deg, #1f4fbf 0 4px, transparent 4px calc(100% - 4px), #d7263d calc(100% - 4px)), #fdfdfb;
+}
+.tb-sp-soc::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 0;
+  height: 2px;
+  width: calc(100% - 8px);
+  background: linear-gradient(90deg, #1f4fbf, #d7263d);
+  transform-origin: left;
+  animation: sp-vote 2.6s ease-out infinite;
+}
+.tb-sp-soc .tb-icon { color: #d7263d; }
+@keyframes sp-vote { 0% { transform: scaleX(0); } 70%, 100% { transform: scaleX(1); } }
+
+/* 1번 원소 (과학 주간 1위): 주기율표의 수소 칸 — 모서리에 원자 번호 1, 테두리가 맥동 */
+.tb-sp-sci {
+  color: #0b2545;
+  font-weight: 800;
+  border-color: #1b6fd1;
+  border-radius: 3px;
+  padding-left: 11px;
+  background: linear-gradient(135deg, #ffffff, #dcebff);
+  animation: sp-sci 2.2s ease-in-out infinite;
+}
+.tb-sp-sci::before {
+  content: "1";
+  position: absolute;
+  left: 2px;
+  top: 0;
+  font-size: 7px;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #1b6fd1;
+}
+.tb-sp-sci .tb-icon { color: #1b6fd1; }
+@keyframes sp-sci { 0%, 100% { box-shadow: 0 0 4px rgb(27 111 209 / 0.4); } 50% { box-shadow: 0 0 12px rgb(27 111 209 / 0.8); } }
+
+/* 태조 (역사 주간 1위): 곤룡포 — 진홍 바탕에 금실 용 무늬 원(보), 금빛이 스쳐 감 */
+.tb-sp-his {
+  color: #ffd96b;
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+  font-weight: 900;
+  border-color: #e0b13e;
+  background:
+    linear-gradient(105deg, transparent 40%, rgb(255 243 196 / 0.35) 50%, transparent 60%) 0 0 / 260% 100% no-repeat,
+    radial-gradient(circle, rgb(224 177 62 / 0.35) 0 2px, transparent 2.5px) 0 0 / 9px 9px,
+    linear-gradient(180deg, #a3161c, #6e0d12);
+  box-shadow: inset 0 0 0 1px #6e0d12, inset 0 0 0 2px rgb(224 177 62 / 0.6), 0 0 10px rgb(224 177 62 / 0.45);
+  animation: sig-wash 3.6s ease-in-out infinite;
+}
+.tb-sp-his .tb-icon { color: #ffd96b; filter: drop-shadow(0 0 2px #ffd96b); }
+
+/* 능화반: 학교 특별반 — 남보라 밤하늘, 라일락→흰빛 글자, 홀로그램 테두리가 돌고 「能」이 은은하게 */
+.tb-sp-nh {
+  border-color: transparent;
+  font-weight: 900;
+  padding-right: 18px;
+  background:
+    linear-gradient(#1b1446, #120d33) padding-box,
+    conic-gradient(from var(--ring-angle, 0deg), #a78bfa, #6ef2ff, #f0abfc, #c4b5fd, #a78bfa) border-box;
+  box-shadow: 0 0 12px rgb(167 139 250 / 0.55);
+  animation: ring-spin 5s linear infinite;
+}
+.tb-sp-nh > .truncate {
+  background: linear-gradient(90deg, #e9d5ff, #ffffff, #c4b5fd, #e9d5ff) 0 0 / 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tb-aurora-text 3.5s linear infinite;
+}
+.tb-sp-nh::after {
+  content: "能";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-52%);
+  font-family: "Noto Serif KR", serif;
+  font-weight: 900;
+  font-size: 0.95em;
+  color: #c4b5fd;
+  text-shadow: 0 0 6px #a78bfa;
+}
+.tb-sp-nh .tb-icon { color: #f0abfc; }
+
+/* 대능인: 한 번도 떨어지지 않은 사람 — 백금 바탕에 무지갯빛이 흐르고 별빛이 반짝 */
+.tb-sp-nhk {
+  color: #232842;
+  font-weight: 900;
+  border-color: #9aa6bd;
+  overflow: visible;
+  background:
+    linear-gradient(110deg, transparent 30%, rgb(255 120 200 / 0.35) 40%, rgb(120 220 255 / 0.35) 50%, rgb(255 230 120 / 0.35) 60%, transparent 70%) 0 0 / 260% 100% no-repeat,
+    linear-gradient(135deg, #f5f7fa, #d9dee7 40%, #ffffff 55%, #c9d1de);
+  box-shadow: 0 0 0 1px #ffffff, 0 0 14px rgb(170 200 255 / 0.75);
+  animation: sig-wash 3s ease-in-out infinite;
+}
+.tb-sp-nhk::after {
+  content: "✦";
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  font-size: 9px;
+  line-height: 1;
+  color: #a78bfa;
+  text-shadow: 0 0 6px #6ef2ff;
+  animation: nf-twinkle 1.8s ease-in-out infinite;
+}
+.tb-sp-nhk .tb-icon { color: #7c5cff; }
+
+/* 능화 추락자: 떨어지는 별똥별 — 어두운 바탕이 살짝 기울고, 주황 꼬리가 위에서 아래로 떨어짐 */
+.tb-sp-nhf {
+  color: #ffb08a;
+  font-weight: 800;
+  border-color: #ff6b3d;
+  background: linear-gradient(160deg, #3a3c44, #1f2026);
+  transform: rotate(-2.5deg);
+  box-shadow: 0 0 8px rgb(255 107 61 / 0.4);
+}
+.tb-sp-nhf::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -60%;
+  right: 20%;
+  width: 2px;
+  height: 140%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, transparent, rgb(255 107 61 / 0.15) 30%, #ffd2b8 92%, #ffffff);
+  transform: rotate(-28deg);
+  animation: sp-fall 2.4s ease-in infinite;
+}
+.tb-sp-nhf .tb-icon { color: #ff6b3d; }
+@keyframes sp-fall {
+  0% { transform: translate(18px, -18px) rotate(-28deg); opacity: 0; }
+  20% { opacity: 1; }
+  70%, 100% { transform: translate(-34px, 34px) rotate(-28deg); opacity: 0; }
+}
+
+/* 프로필 그림 테두리 */
+.ring-special {
+  background: conic-gradient(from var(--ring-angle, 0deg), #6ef2ff, #b68bff, #ff8fd2, #ffe27a, #6ef2ff);
+  box-shadow: 0 0 12px rgb(182 139 255 / 0.55);
+  animation: ring-spin 4s linear infinite;
+}
+.ring-sp-kor { background: conic-gradient(from var(--ring-angle, 0deg), #d2412f, #ffe9a8, #a5281f, #ffc4dc, #d2412f); box-shadow: 0 0 10px rgb(210 65 47 / 0.5); animation: ring-spin 7s linear infinite; }
+.ring-sp-eng { background: conic-gradient(from var(--ring-angle, 0deg), #14213d 0 35%, #ffffff 35% 40%, #c8102e 40% 55%, #ffffff 55% 60%, #ffcc33 60% 66%, #14213d 66%); box-shadow: 0 0 10px rgb(20 33 61 / 0.6); animation: ring-spin 9s linear infinite; }
+.ring-sp-math { background: repeating-conic-gradient(from var(--ring-angle, 0deg), #7cf3a0 0 8deg, #0d1424 8deg 12deg); box-shadow: 0 0 10px rgb(124 243 160 / 0.55); animation: ring-spin 10s linear infinite; }
+.ring-sp-soc { background: conic-gradient(from var(--ring-angle, 0deg), #1f4fbf 0 45%, #fdfdfb 45% 55%, #d7263d 55% 100%); box-shadow: 0 0 10px rgb(31 79 191 / 0.45); animation: ring-spin 8s linear infinite; }
+.ring-sp-sci { background: conic-gradient(from var(--ring-angle, 0deg), #1b6fd1, #dcebff, #1b6fd1, #ffffff, #1b6fd1); box-shadow: 0 0 12px rgb(27 111 209 / 0.6); animation: ring-spin 5s linear infinite; }
+.ring-sp-his { background: conic-gradient(from var(--ring-angle, 0deg), #a3161c, #e0b13e, #6e0d12, #ffd96b, #a3161c); box-shadow: 0 0 12px rgb(224 177 62 / 0.5); animation: ring-spin 7s linear infinite; }
+.ring-sp-nh { background: conic-gradient(from var(--ring-angle, 0deg), #a78bfa, #6ef2ff, #f0abfc, #c4b5fd, #a78bfa); box-shadow: 0 0 14px rgb(167 139 250 / 0.65); animation: ring-spin 5s linear infinite; }
+.ring-sp-nhk { background: conic-gradient(from var(--ring-angle, 0deg), #ffffff, #ffb3e6, #b3f0ff, #fff2b3, #d9dee7, #ffffff); box-shadow: 0 0 0 1px #ffffff, 0 0 16px rgb(170 200 255 / 0.85); animation: ring-spin 4s linear infinite; }
+.ring-sp-nhf { background: conic-gradient(from var(--ring-angle, 0deg), #ff6b3d, #ffd2b8 8%, #2b2d33 20%, #2b2d33 100%); box-shadow: 0 0 10px rgb(255 107 61 / 0.5); animation: ring-spin 2.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .tb-special, .tb-special > .truncate, .tb-sp, .tb-sp > .truncate, .tb-sp::before, .tb-sp::after, .tb-sp .tb-icon,
+  .ring-special, .ring-sp-kor, .ring-sp-eng, .ring-sp-math, .ring-sp-soc, .ring-sp-sci, .ring-sp-his, .ring-sp-nh, .ring-sp-nhk, .ring-sp-nhf { animation: none; }
+}
+
 /* 칭호 알림 (components/TitlesProvider.tsx) — 소리 없이 위에서 살짝 */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-12px); }

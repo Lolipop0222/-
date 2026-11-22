@@ -1,6 +1,6 @@
 "use client";
 
-import { photoPath, removeAllMyPhotos, removePhotoFile } from "@/lib/photos";
+import { photoPath, removeAllMyInquiryPhotos, removeAllMyPhotos, removePhotoFile } from "@/lib/photos";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -62,7 +62,10 @@ export async function deleteMyAccount(email: string, password: string): Promise<
   const { error: authError } = await sb.auth.signInWithPassword({ email, password });
   if (authError) throw authError;
   const { data: u } = await sb.auth.getUser();
-  if (u.user) await removeAllMyPhotos(u.user.id); // 저장소의 내 사진 파일도 지운다
+  if (u.user) {
+    await removeAllMyPhotos(u.user.id); // 저장소의 내 사진 파일도 지운다
+    await removeAllMyInquiryPhotos(u.user.id);
+  }
   const { error } = await sb.rpc("delete_my_account");
   if (error) throw error;
   // 서버에서 계정이 없어졌으니 이 기기의 로그인 정보만 지운다
@@ -71,7 +74,7 @@ export async function deleteMyAccount(email: string, password: string): Promise<
 
 // ───────────────────────── 문의함 ─────────────────────────
 
-export const INQUIRY_CATEGORIES = ["질문", "오류 신고", "제안", "기타"] as const;
+export const INQUIRY_CATEGORIES = ["질문", "오류 신고", "제안", "칭호 인증", "기타"] as const;
 export type InquiryCategory = (typeof INQUIRY_CATEGORIES)[number];
 
 export type Inquiry = {
@@ -81,20 +84,23 @@ export type Inquiry = {
   reply: string | null;
   replied_at: string | null;
   created_at: string;
+  /** 첨부 사진 경로 (inquiry 버킷). 02를 다시 실행하기 전 DB에는 없음 */
+  photos?: string[];
 };
 
 export async function loadMyInquiries(): Promise<Inquiry[]> {
-  const { data, error } = await supabase()
-    .from("inquiries")
-    .select("id, category, body, reply, replied_at, created_at")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const q = (cols: string) => supabase().from("inquiries").select(cols).order("created_at", { ascending: false }).limit(50);
+  let { data, error } = await q("id, category, body, reply, replied_at, created_at, photos");
+  if (error?.code === "42703") ({ data, error } = await q("id, category, body, reply, replied_at, created_at")); // 사진 열이 없는 예전 DB
   if (error) throw error;
-  return data as Inquiry[];
+  return (data ?? []) as unknown as Inquiry[];
 }
 
-export async function sendInquiry(category: InquiryCategory, body: string): Promise<void> {
-  const { error } = await supabase().from("inquiries").insert({ category, body: body.trim() });
+/** photos = 이미 올린 사진 경로 (uploadInquiryPhoto) */
+export async function sendInquiry(category: InquiryCategory, body: string, photos: string[] = []): Promise<void> {
+  const row: Record<string, unknown> = { category, body: body.trim() };
+  if (photos.length) row.photos = photos;
+  const { error } = await supabase().from("inquiries").insert(row);
   if (error) throw error;
 }
 

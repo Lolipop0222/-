@@ -73,7 +73,7 @@ begin
   if char_length(p_description) not between 1 and 100 then
     raise exception '설명은 1~100자로 써 주세요' using errcode = '22023';
   end if;
-  if p_grade not in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'hidden') then
+  if p_grade not in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'special', 'hidden') then
     raise exception '등급이 올바르지 않아요' using errcode = '22023';
   end if;
   if v_unit is null then

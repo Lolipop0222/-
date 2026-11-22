@@ -158,6 +158,19 @@ export function sessionSeconds(s: StudySession, now: number): number {
   return sec >= 1 && sec <= max ? sec : 0;
 }
 
+/** since(ms) 이후에 시작한 내 기록 전부 (공부 통계용). 서버가 한 번에 1000줄까지라 나눠 받는다 */
+export async function loadSessionsSince(since: number): Promise<StudySession[]> {
+  const out: StudySession[] = [];
+  for (let from = 0; from < 20000; from += 1000) {
+    const page = await selectSessions((cols) =>
+      supabase().from("sessions").select(cols).gte("started_at", new Date(since).toISOString()).order("started_at").range(from, from + 999),
+    );
+    out.push(...page);
+    if (page.length < 1000) break;
+  }
+  return out;
+}
+
 // ── 기타 기록 (나만 보고 직접 고칠 수 있다. 순위에는 안 들어간다) ──
 
 export async function loadEtcSessions(sinceDays = 30): Promise<StudySession[]> {

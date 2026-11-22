@@ -1,5 +1,6 @@
 "use client";
 
+import { InquiryPhotos } from "@/components/InquiryPhotos";
 import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -200,6 +201,12 @@ function InquiryItem({ q, onSaved }: { q: AdminInquiry; onSaved: () => Promise<v
         <span className="flex-1 text-right text-[12px] text-faint">{kstDateTime(q.created_at)}</span>
       </div>
       <p className="mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed">{q.body}</p>
+      <InquiryPhotos paths={q.photos} />
+      {q.category === "칭호 인증" && (
+        <Link href="/me/admin/titles" className="mt-2 inline-block text-[12px] font-semibold text-accent underline underline-offset-2">
+          확인했으면 칭호 관리에서 「{q.nickname}」에게 칭호 주기 →
+        </Link>
+      )}
       <div className="mt-3 rounded-xl border border-line bg-bg px-3 py-2 focus-within:border-accent">
         <textarea
           value={reply}

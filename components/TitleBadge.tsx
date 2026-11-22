@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bird, Bot, Cat, Cherry, Clover, Coffee, Crown, Diamond, Dog, Earth, Eye, Fish, Flame, FlaskConical, Gamepad2, Gem, Ghost, Leaf, Moon, Music, Origami, Pencil, Quote, Rabbit, Rocket, ScrollText, Shield, Sigma, Snail, Squirrel, Stamp, Star, Sun, Turtle, Zap } from "lucide-react";
+import { Atom, Bird, Bot, Cat, Cherry, Clover, Coffee, Crown, Diamond, Dog, Earth, Eye, Fish, Flame, FlaskConical, Flower2, Gamepad2, Gem, Ghost, Leaf, Moon, Music, Origami, Pencil, Quote, Rabbit, Rocket, ScrollText, Shield, Sigma, Snail, Sparkles, Squirrel, Stamp, Star, Sun, TrendingDown, TrendingUp, Trophy, Turtle, Vote, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { photoPath, photoUrl } from "@/lib/photos";
 import { ensureSerifFont } from "@/lib/themes";
 import { LimitedAvatar } from "@/components/LimitedAvatar";
 import { limitedAvatarByCode } from "@/lib/subjectRewards";
-import { GRADE_LABEL, isGrade, parseAvatar, ringClass, signatureOf, type AvatarIcon, type Signature, type TitleGrade } from "@/lib/titles";
+import { GRADE_LABEL, isGrade, parseAvatar, ringClass, signatureOf, specialOf, type AvatarIcon, type Signature, type SpecialDesign, type TitleGrade } from "@/lib/titles";
 
 /**
  * 칭호 배지와 프로필 그림. 등급마다 색·모양이 다르다 (app/globals.css의 .tb-*, .ring-*):
@@ -15,22 +15,26 @@ import { GRADE_LABEL, isGrade, parseAvatar, ringClass, signatureOf, type AvatarI
  * 히든 = 밤하늘 바탕에 오로라빛 글자·테두리가 흐름 (2026-11-22 바꿈)
  * 과목 누적 1,000시간 전설(code sub1k_*)은 과목마다 따로: 국어 한지·먹·낙관 / 영어 옥스퍼드 남색·명조 이탤릭 / 수학 청사진 모눈
  * / 사회 바다→땅 지도가 흐름 / 과학 형광 거품 / 역사 주칠 바탕·단청 띠 (.tb-sig-*, .ring-sig-*)
+ * 스페셜(2026-11-22)은 칭호마다 디자인이 모두 다르다 (.tb-sp-*, .ring-sp-*, 관리자가 만든 스페셜은 .tb-special 홀로그램)
  */
 
-const GRADE_ICON: Partial<Record<TitleGrade, LucideIcon>> = { rare: Diamond, superrare: Gem, epic: Shield, mythic: Flame, legendary: Crown, hidden: Eye };
+const GRADE_ICON: Partial<Record<TitleGrade, LucideIcon>> = { rare: Diamond, superrare: Gem, epic: Shield, mythic: Flame, legendary: Crown, special: Sparkles, hidden: Eye };
+const SP_ICON: Record<SpecialDesign, LucideIcon> = { kor: Flower2, eng: Trophy, math: TrendingUp, soc: Vote, sci: Atom, his: Crown, nh: Star, nhk: Gem, nhf: TrendingDown };
 const SIG_ICON: Record<Signature, LucideIcon> = { kor: Stamp, eng: Quote, math: Sigma, soc: Earth, sci: FlaskConical, his: ScrollText };
 
 export function TitleBadge({ name, grade, code, size = "sm" }: { name: string; grade: string | null | undefined; code?: string | null; size?: "xs" | "sm" | "md" }) {
   const g: TitleGrade = isGrade(grade) ? grade : "common";
   const sig = signatureOf(code);
-  const Icon = sig ? SIG_ICON[sig] : GRADE_ICON[g];
+  const sp = specialOf(code);
+  const Icon = sig ? SIG_ICON[sig] : sp ? SP_ICON[sp] : GRADE_ICON[g];
   const cls = size === "xs" ? "tb-xs" : size === "md" ? "tb-md" : "";
-  const serif = sig === "kor" || sig === "eng" || sig === "his";
+  const serif = sig === "kor" || sig === "eng" || sig === "his" || sp === "kor" || sp === "his";
+  const design = sig ? `tb-sig tb-sig-${sig}` : sp ? `tb-sp tb-sp-${sp}` : `tb-${g}`;
   useEffect(() => {
     if (serif) ensureSerifFont();
   }, [serif]);
   return (
-    <span className={`tb ${sig ? `tb-sig tb-sig-${sig}` : `tb-${g}`} ${cls}`} title={`${GRADE_LABEL[g]} 칭호`}>
+    <span className={`tb ${design} ${cls}`} title={`${GRADE_LABEL[g]} 칭호`}>
       {Icon && <Icon className="tb-icon" aria-hidden />}
       <span className="truncate">{name}</span>
     </span>

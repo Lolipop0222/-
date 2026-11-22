@@ -9,6 +9,7 @@
 import { createElement } from "react";
 import type { LucideIcon, LucideProps } from "lucide-react";
 import {
+  Activity,
   Apple,
   Atom,
   Award,
@@ -25,7 +26,9 @@ import {
   CalendarDays,
   CalendarSync,
   Castle,
+  ChartColumnBig,
   ChartNoAxesColumnIncreasing,
+  ChartScatter,
   ChartSpline,
   ClipboardList,
   Coffee,
@@ -57,6 +60,8 @@ import {
   Key,
   KeyRound,
   Lamp,
+  LibraryBig,
+  MapPinned,
   Landmark,
   Layers,
   Library,
@@ -146,7 +151,8 @@ export type IconSlot =
   | "reward"
   | "away"
   | "routine"
-  | "exam";
+  | "exam"
+  | "stats";
 
 const DEFAULT: Record<IconSlot, LucideIcon> = {
   home: House,
@@ -174,11 +180,13 @@ const DEFAULT: Record<IconSlot, LucideIcon> = {
   away: Eye,
   routine: Repeat,
   exam: School,
+  stats: ChartColumnBig,
 };
 
 const BY_THEME: Partial<Record<ThemeId, Partial<Record<IconSlot, LucideIcon>>>> = {
   // 국어 「한지와 먹」 — 붓·두루마리·낙관
   "subj-kor": {
+    stats: NotebookPen,
     home: Feather,
     timer: Hourglass,
     words: BookOpenText,
@@ -197,6 +205,7 @@ const BY_THEME: Partial<Record<ThemeId, Partial<Record<IconSlot, LucideIcon>>>> 
   },
   // 영어 「서재의 밤」 — 서재·회중시계·안경·신문
   "subj-eng": {
+    stats: BookMarked,
     home: Library,
     timer: Watch,
     words: BookA,
@@ -217,6 +226,7 @@ const BY_THEME: Partial<Record<ThemeId, Partial<Record<IconSlot, LucideIcon>>>> 
   },
   // 수학 「청사진」 — 도형·작도·모눈
   "subj-math": {
+    stats: ChartScatter,
     home: Shapes,
     words: Sigma,
     calendar: Grid3x3,
@@ -234,6 +244,7 @@ const BY_THEME: Partial<Record<ThemeId, Partial<Record<IconSlot, LucideIcon>>>> 
   },
   // 과학 「실험실」 — 원자·플라스크·현미경
   "subj-sci": {
+    stats: Activity,
     home: Atom,
     timer: FlaskConical,
     words: Dna,
@@ -253,6 +264,7 @@ const BY_THEME: Partial<Record<ThemeId, Partial<Record<IconSlot, LucideIcon>>>> 
   },
   // 사회 「지도첩」 — 지구·나침반·지도
   "subj-soc": {
+    stats: MapPinned,
     home: Earth,
     timer: Compass,
     words: Newspaper,
@@ -273,6 +285,7 @@ const BY_THEME: Partial<Record<ThemeId, Partial<Record<IconSlot, LucideIcon>>>> 
   },
   // 역사 「궁궐의 밤」 — 궁궐·모래시계·두루마리·왕관
   "subj-his": {
+    stats: LibraryBig,
     home: Castle,
     timer: Hourglass,
     words: ScrollText,

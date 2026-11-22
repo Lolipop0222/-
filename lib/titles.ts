@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
  * 앱은 결과만 받아 그린다 — 히든 칭호는 얻기 전까지 서버가 이름을 '???'로 보내 준다.
  */
 
-export type TitleGrade = "common" | "rare" | "superrare" | "epic" | "mythic" | "legendary" | "hidden";
+export type TitleGrade = "common" | "rare" | "superrare" | "epic" | "mythic" | "legendary" | "special" | "hidden";
 export type TitleUnit = "flag" | "hour" | "day" | "count" | "level";
 
 export type MyTitle = {
@@ -35,18 +35,41 @@ export const SIGNATURE_TITLES = { sub1k_kor: "kor", sub1k_eng: "eng", sub1k_math
 export type Signature = (typeof SIGNATURE_TITLES)[keyof typeof SIGNATURE_TITLES];
 export const signatureOf = (code: string | null | undefined): Signature | null =>
   code && code in SIGNATURE_TITLES ? SIGNATURE_TITLES[code as keyof typeof SIGNATURE_TITLES] : null;
-/** 프로필 그림 테두리 클래스 (과목 전설이면 그 디자인, 아니면 등급 색) */
+/**
+ * 스페셜 칭호 (2026-11-22) — 칭호마다 디자인이 모두 다르다 (globals.css .tb-sp-*, .ring-sp-*).
+ * 관리자가 새로 만든 스페셜은 기본 스페셜 디자인(.tb-special, 홀로그램)을 쓴다.
+ */
+export const SPECIAL_TITLES = {
+  top_kor: "kor", // 장원 급제 — 홍패
+  top_eng: "eng", // No.1 — 바시티 재킷
+  top_math: "math", // 최댓값 — 그래프 꼭대기
+  top_soc: "soc", // 지지율 1위 — 선거 포스터
+  top_sci: "sci", // 1번 원소 — 주기율표 칸
+  top_his: "his", // 태조 — 곤룡포
+  nh_class: "nh", // 능화반 — 남보라 홀로그램
+  nh_keep: "nhk", // 대능인 — 백금·무지갯빛
+  nh_fall: "nhf", // 능화 추락자 — 떨어지는 별똥별
+} as const;
+export type SpecialDesign = (typeof SPECIAL_TITLES)[keyof typeof SPECIAL_TITLES];
+export const specialOf = (code: string | null | undefined): SpecialDesign | null =>
+  code && code in SPECIAL_TITLES ? SPECIAL_TITLES[code as keyof typeof SPECIAL_TITLES] : null;
+
+/** 프로필 그림 테두리 클래스 (과목 전설·스페셜이면 그 디자인, 아니면 등급 색) */
 export const ringClass = (grade: string | null | undefined, code?: string | null) => {
   const sig = signatureOf(code);
   if (sig) return `ring-sig-${sig}`;
+  const sp = specialOf(code);
+  if (sp) return `ring-sp-${sp}`;
   return isGrade(grade) ? `ring-${grade}` : "";
 };
 
 /**
- * 등급 이름과 화면에 보여 줄 순서 (높은 것부터, 히든은 맨 끝).
+ * 등급 이름과 화면에 보여 줄 순서 (스페셜 맨 앞, 높은 것부터, 히든은 맨 끝).
+ * 스페셜(2026-11-22) = 특별한 칭호. 칭호마다 디자인이 다르다(DESIGNED_TITLES). 히든 = 얻기 전까지 숨겨진 칭호.
  * 2026-11-22 사용자 요청: 전설 밑에 신화(붉은색), 초희귀 추가 → 일반 < 희귀 < 초희귀 < 영웅 < 신화 < 전설
  */
 export const GRADES: { id: TitleGrade; label: string }[] = [
+  { id: "special", label: "스페셜" },
   { id: "legendary", label: "전설" },
   { id: "mythic", label: "신화" },
   { id: "epic", label: "영웅" },
@@ -56,7 +79,7 @@ export const GRADES: { id: TitleGrade; label: string }[] = [
   { id: "hidden", label: "히든" },
 ];
 export const GRADE_LABEL: Record<TitleGrade, string> = Object.fromEntries(GRADES.map((g) => [g.id, g.label])) as Record<TitleGrade, string>;
-export const GRADE_RANK: Record<TitleGrade, number> = { common: 1, rare: 2, superrare: 3, epic: 4, mythic: 5, legendary: 6, hidden: 5 };
+export const GRADE_RANK: Record<TitleGrade, number> = { common: 1, rare: 2, superrare: 3, epic: 4, mythic: 5, legendary: 6, special: 7, hidden: 5 };
 
 export function isGrade(v: unknown): v is TitleGrade {
   return typeof v === "string" && v in GRADE_LABEL;

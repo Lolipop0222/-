@@ -100,6 +100,13 @@ create table if not exists inquiries (
   replied_at timestamptz,
   created_at timestamptz not null default now()
 );
+-- 분류에 '칭호 인증' 추가 (2026-11-22, 능화반 같은 스페셜 칭호를 관리자에게 인증)
+alter table inquiries drop constraint if exists inquiries_category_check;
+alter table inquiries add constraint inquiries_category_check check (category in ('질문', '오류 신고', '제안', '칭호 인증', '기타'));
+-- 첨부 사진 (2026-11-22, 5장까지). 경로 = 'inquiry' 버킷의 '<내 user id>/<무작위 16자>.webp|jpg' (05-storage.sql)
+alter table inquiries add column if not exists photos text[] not null default '{}';
+alter table inquiries drop constraint if exists inquiries_photos_check;
+alter table inquiries add constraint inquiries_photos_check check (coalesce(array_length(photos, 1), 0) <= 5);
 create index if not exists inquiries_user_idx on inquiries (user_id, created_at);
 create index if not exists inquiries_created_idx on inquiries (created_at);
 alter table inquiries enable row level security;
@@ -121,20 +128,26 @@ begin
   if (select count(*) from inquiries where user_id = new.user_id and created_at > now() - interval '1 day') >= 5 then
     raise exception '문의는 하루 5개까지 보낼 수 있어요';
   end if;
+  -- 첨부 사진은 내 폴더의 파일만
+  if exists (select 1 from unnest(new.photos) as ph(path)
+             where ph.path !~ ('^' || new.user_id::text || '/[0-9a-f]{16}\.(webp|jpg)$')) then
+    raise exception '첨부 사진이 올바르지 않아요' using errcode = '22023';
+  end if;
   return new;
 end $$;
 drop trigger if exists inquiries_guard on inquiries;
 create trigger inquiries_guard before insert on inquiries for each row execute function inquiries_guard();
 
-create or replace function admin_list_inquiries()
-returns table (id uuid, nickname text, grade int, class_no int, category text, body text, reply text, replied_at timestamptz, created_at timestamptz)
+drop function if exists admin_list_inquiries();  -- 돌려주는 열(photos)이 늘어서 지우고 다시 만든다
+create function admin_list_inquiries()
+returns table (id uuid, nickname text, grade int, class_no int, category text, body text, reply text, replied_at timestamptz, created_at timestamptz, photos text[])
 language plpgsql stable security definer set search_path = public as $$
 begin
   if not is_admin() then
     raise exception '관리자만 볼 수 있어요';
   end if;
   return query
-    select i.id, p.nickname, p.grade, p.class_no, i.category, i.body, i.reply, i.replied_at, i.created_at
+    select i.id, p.nickname, p.grade, p.class_no, i.category, i.body, i.reply, i.replied_at, i.created_at, i.photos
     from inquiries i join profiles p on p.id = i.user_id
     order by (i.reply is null) desc, i.created_at desc
     limit 300;

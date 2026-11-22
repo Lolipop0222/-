@@ -407,6 +407,13 @@ create table if not exists inquiries (
   replied_at timestamptz,
   created_at timestamptz not null default now()
 );
+-- 분류에 '칭호 인증' 추가 (2026-11-22, 능화반 같은 스페셜 칭호를 관리자에게 인증)
+alter table inquiries drop constraint if exists inquiries_category_check;
+alter table inquiries add constraint inquiries_category_check check (category in ('질문', '오류 신고', '제안', '칭호 인증', '기타'));
+-- 첨부 사진 (2026-11-22, 5장까지). 경로 = 'inquiry' 버킷의 '<내 user id>/<무작위 16자>.webp|jpg' (05-storage.sql)
+alter table inquiries add column if not exists photos text[] not null default '{}';
+alter table inquiries drop constraint if exists inquiries_photos_check;
+alter table inquiries add constraint inquiries_photos_check check (coalesce(array_length(photos, 1), 0) <= 5);
 create index if not exists inquiries_user_idx on inquiries (user_id, created_at);
 create index if not exists inquiries_created_idx on inquiries (created_at);
 alter table inquiries enable row level security;
@@ -428,20 +435,26 @@ begin
   if (select count(*) from inquiries where user_id = new.user_id and created_at > now() - interval '1 day') >= 5 then
     raise exception '문의는 하루 5개까지 보낼 수 있어요';
   end if;
+  -- 첨부 사진은 내 폴더의 파일만
+  if exists (select 1 from unnest(new.photos) as ph(path)
+             where ph.path !~ ('^' || new.user_id::text || '/[0-9a-f]{16}\.(webp|jpg)$')) then
+    raise exception '첨부 사진이 올바르지 않아요' using errcode = '22023';
+  end if;
   return new;
 end $$;
 drop trigger if exists inquiries_guard on inquiries;
 create trigger inquiries_guard before insert on inquiries for each row execute function inquiries_guard();
 
-create or replace function admin_list_inquiries()
-returns table (id uuid, nickname text, grade int, class_no int, category text, body text, reply text, replied_at timestamptz, created_at timestamptz)
+drop function if exists admin_list_inquiries();  -- 돌려주는 열(photos)이 늘어서 지우고 다시 만든다
+create function admin_list_inquiries()
+returns table (id uuid, nickname text, grade int, class_no int, category text, body text, reply text, replied_at timestamptz, created_at timestamptz, photos text[])
 language plpgsql stable security definer set search_path = public as $$
 begin
   if not is_admin() then
     raise exception '관리자만 볼 수 있어요';
   end if;
   return query
-    select i.id, p.nickname, p.grade, p.class_no, i.category, i.body, i.reply, i.replied_at, i.created_at
+    select i.id, p.nickname, p.grade, p.class_no, i.category, i.body, i.reply, i.replied_at, i.created_at, i.photos
     from inquiries i join profiles p on p.id = i.user_id
     order by (i.reply is null) desc, i.created_at desc
     limit 300;
@@ -879,10 +892,10 @@ create table if not exists title_defs (
 -- (고친 칭호는 이 파일을 다시 실행해도 아래 기본 목록으로 덮어쓰지 않는다)
 alter table title_defs add column if not exists custom boolean not null default false;
 alter table title_defs add column if not exists edited boolean not null default false;
--- 등급 (2026-11-22 사용자 요청: 초희귀·신화 추가): 일반 < 희귀 < 초희귀 < 영웅 < 신화 < 전설, 그리고 히든
+-- 등급 (2026-11-22 사용자 요청: 초희귀·신화 추가): 일반 < 희귀 < 초희귀 < 영웅 < 신화 < 전설, 그리고 스페셜(특별한 칭호 — 칭호마다 디자인이 다름)·히든(숨겨진 칭호)
 alter table title_defs drop constraint if exists title_defs_grade_check;
 alter table title_defs add constraint title_defs_grade_check
-  check (grade in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'hidden'));
+  check (grade in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'special', 'hidden'));
 -- 진행도 단위 (2026-11-22 과목 레벨 칭호용 'level' 추가)
 alter table title_defs drop constraint if exists title_defs_unit_check;
 alter table title_defs add constraint title_defs_unit_check check (unit in ('flag', 'hour', 'day', 'count', 'level'));
@@ -920,8 +933,9 @@ end $$;
 --   10 「과목 뉴비」 희귀 · 40 「과목 중수」 초희귀 · 70 「과목 고수」 영웅 · 99 「과목 마스터」 신화
 -- 과목 누적 1,000시간 전설 (과목마다 따로 디자인 — globals.css .tb-sig-*, components/TitleBadge.tsx SIGNATURE):
 --   국어 문장가 · 영어 네이티브 · 수학 Q.E.D. · 사회 세계 시민 · 과학 유레카 · 역사 사관  (code sub1k_<과목>)
--- 과목 주간 전교 1위 히든 (끝난 주, 그 과목 3시간 이상 + 그 과목 기록 학생 3명 이상, 06 title_stats의 wtop_*):
+-- 과목 주간 전교 1위 스페셜 (2026-11-22 히든에서 옮김, 끝난 주, 그 과목 3시간 이상 + 그 과목 기록 학생 3명 이상, 06 title_stats의 wtop_*):
 --   국어 장원 급제 · 영어 No.1 · 수학 최댓값 · 사회 지지율 1위 · 과학 1번 원소 · 역사 태조  (code top_<과목>)
+-- 능화반 스페셜 (2026-11-22): 능화반(학교 특별반) · 대능인(한 번도 안 떨어짐) · 능화 추락자 — 조건 'manual', 관리자가 인증받고 직접 준다.
 -- 예전 것을 얻은 학생의 기록·대표 칭호도 함께 사라진다(user_titles는 on delete cascade, 대표 칭호는 set null).
 delete from title_defs where code in ('subj_kor', 'subj_eng', 'subj_math', 'subj_sci', 'subj_soc', 'subj_his');
 
@@ -973,6 +987,9 @@ insert into title_defs (code, name, grade, category, description, metric, goal, 
   ('week_class',    '우리 반 에이스',   'superrare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 83),
   ('week_grade',    '학년 1짱',         'epic',      '주간 순위', '학년 주간 1위 (그 주 5시간 이상, 학년에 기록 있는 학생 3명 이상)', 'week_grade_top',  1, 'flag', 84),
   ('week_school',   '대고 일품인',      'legendary', '주간 순위', '전교 주간 1위 (그 주 5시간 이상, 기록 있는 학생 3명 이상)',     'week_school_top', 1, 'flag', 85),
+  ('nh_class',      '능화반',           'special',   '스페셜',    '능화반 학생 — 관리자에게 능화반을 인증하면 받아요 (문의함 → 칭호 인증)', 'manual', 1, 'flag', 86),
+  ('nh_keep',       '대능인',           'special',   '스페셜',    '한 번도 능화반에서 떨어지지 않은 사람 — 관리자에게 인증하면 받아요',     'manual', 1, 'flag', 87),
+  ('nh_fall',       '능화 추락자',      'special',   '스페셜',    '능화반에서 떨어져 본 사람 — 관리자에게 인증하면 받아요',                 'manual', 1, 'flag', 88),
   ('planner_100',   '계획의 달인',      'epic',      '플래너·야자', '플래너 과제 누적 100개 완료',                          'tasks_done',     100,     'count', 80),
   ('yaja_king',     '야자의 왕',        'epic',      '플래너·야자', '평일 18시~22시에 2시간 이상 공부한 날 누적 20일',        'yaja_days',      20,      'day',   81),
   ('reset_hunter',  '리셋 사냥꾼',      'hidden',    '히든',      '순위가 초기화되는 월요일 0시~0시 5분에 공부 시작',          'reset_hunter',   1,       'flag',  90),
@@ -981,12 +998,12 @@ insert into title_defs (code, name, grade, category, description, metric, goal, 
   ('christmas',     '메리 스터디마스',  'hidden',    '히든',      '12월 25일에 3시간 이상 공부',                            'xmas',           1,       'flag',  93),
   ('new_year',      '새해 첫 공부',     'hidden',    '히든',      '1월 1일 0시대에 공부 중',                                'newyear',        1,       'flag',  94),
   ('bug_hunter',    '오류를 찾는 자',   'hidden',    '히든',      '오류 신고 문의에 관리자가 답변함',                        'bug_finder',     1,       'flag',  95),
-  ('top_kor', '장원 급제', 'hidden', '히든', '국어 주간 전교 1위 (그 주 국어 3시간 이상, 국어 기록 있는 학생 3명 이상)', 'wtop_kor', 1, 'flag', 96),
-  ('top_eng', 'No.1', 'hidden', '히든', '영어 주간 전교 1위 (그 주 영어 3시간 이상, 영어 기록 있는 학생 3명 이상)', 'wtop_eng', 1, 'flag', 97),
-  ('top_math', '최댓값', 'hidden', '히든', '수학 주간 전교 1위 (그 주 수학 3시간 이상, 수학 기록 있는 학생 3명 이상)', 'wtop_math', 1, 'flag', 98),
-  ('top_soc', '지지율 1위', 'hidden', '히든', '사회 주간 전교 1위 (그 주 사회 3시간 이상, 사회 기록 있는 학생 3명 이상)', 'wtop_soc', 1, 'flag', 99),
-  ('top_sci', '1번 원소', 'hidden', '히든', '과학 주간 전교 1위 (그 주 과학 3시간 이상, 과학 기록 있는 학생 3명 이상)', 'wtop_sci', 1, 'flag', 100),
-  ('top_his', '태조', 'hidden', '히든', '역사 주간 전교 1위 (그 주 역사 3시간 이상, 역사 기록 있는 학생 3명 이상)', 'wtop_his', 1, 'flag', 101)
+  ('top_kor', '장원 급제', 'special', '스페셜', '국어 주간 전교 1위 (그 주 국어 3시간 이상, 국어 기록 있는 학생 3명 이상)', 'wtop_kor', 1, 'flag', 96),
+  ('top_eng', 'No.1', 'special', '스페셜', '영어 주간 전교 1위 (그 주 영어 3시간 이상, 영어 기록 있는 학생 3명 이상)', 'wtop_eng', 1, 'flag', 97),
+  ('top_math', '최댓값', 'special', '스페셜', '수학 주간 전교 1위 (그 주 수학 3시간 이상, 수학 기록 있는 학생 3명 이상)', 'wtop_math', 1, 'flag', 98),
+  ('top_soc', '지지율 1위', 'special', '스페셜', '사회 주간 전교 1위 (그 주 사회 3시간 이상, 사회 기록 있는 학생 3명 이상)', 'wtop_soc', 1, 'flag', 99),
+  ('top_sci', '1번 원소', 'special', '스페셜', '과학 주간 전교 1위 (그 주 과학 3시간 이상, 과학 기록 있는 학생 3명 이상)', 'wtop_sci', 1, 'flag', 100),
+  ('top_his', '태조', 'special', '스페셜', '역사 주간 전교 1위 (그 주 역사 3시간 이상, 역사 기록 있는 학생 3명 이상)', 'wtop_his', 1, 'flag', 101)
 on conflict (code) do update set
   name = excluded.name, grade = excluded.grade, category = excluded.category, description = excluded.description,
   metric = excluded.metric, goal = excluded.goal, unit = excluded.unit, sort = excluded.sort
@@ -1093,6 +1110,23 @@ on conflict (id) do update set public = excluded.public, file_size_limit = exclu
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('prints', 'prints', false, 52428800, null)
 on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+-- inquiry (비공개, 2026-11-22): 문의 첨부 사진. 앱이 긴 쪽 1600px로 줄이고 사진 정보를 지운 뒤 올린다. 1장 3MB까지
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('inquiry', 'inquiry', false, 3145728, array['image/webp', 'image/jpeg'])
+on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+-- inquiry: 내 폴더에만 올리고, 내 것과(관리자는 모두) 보고 지운다
+drop policy if exists "문의 사진 올리기" on storage.objects;
+create policy "문의 사진 올리기" on storage.objects for insert to authenticated
+  with check (bucket_id = 'inquiry' and (storage.foldername(name))[1] = auth.uid()::text
+              and storage.extension(name) in ('webp', 'jpg')
+              and exists (select 1 from public.profiles where id = auth.uid()));
+drop policy if exists "문의 사진 보기" on storage.objects;
+create policy "문의 사진 보기" on storage.objects for select to authenticated
+  using (bucket_id = 'inquiry' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
+drop policy if exists "문의 사진 지우기" on storage.objects;
+create policy "문의 사진 지우기" on storage.objects for delete to authenticated
+  using (bucket_id = 'inquiry' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
 
 -- avatars: 내 폴더에만 올리고 지운다. 관리자는 아무 사진이나 지울 수 있다. (공개 주소로 보기는 정책 없이 된다)
 drop policy if exists "프로필 사진 올리기" on storage.objects;
@@ -2048,7 +2082,7 @@ begin
   if char_length(p_description) not between 1 and 100 then
     raise exception '설명은 1~100자로 써 주세요' using errcode = '22023';
   end if;
-  if p_grade not in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'hidden') then
+  if p_grade not in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'special', 'hidden') then
     raise exception '등급이 올바르지 않아요' using errcode = '22023';
   end if;
   if v_unit is null then
