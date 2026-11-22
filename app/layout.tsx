@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   title: "대품타",
   description: "야간자습 시간을 기록하고, 겨루고, 그 사이에 단어를 외우는 앱",
   appleWebApp: { capable: true, title: "대품타", statusBarStyle: "black-translucent" },
+  // Next는 표준 mobile-web-app-capable만 넣는다 → 예전 iOS도 홈 화면에서 주소창 없이 열리게 애플 이름도 같이 (아이폰 설치 = /install)
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
