@@ -8,11 +8,11 @@ import { GRADE_LABEL, isGrade, parseAvatar, type AvatarIcon, type TitleGrade } f
 
 /**
  * 칭호 배지와 프로필 그림. 등급마다 색·모양이 다르다 (app/globals.css의 .tb-*, .ring-*):
- * 일반 = 테두리만 / 희귀 = 파랑 / 초희귀 = 청록 + 빛 / 영웅 = 보라 + 은은한 빛 / 신화 = 붉은 불꽃 그라데이션이 일렁임 / 전설 = 금색 그라데이션이 반짝임
+ * 일반 = 테두리만 / 희귀 = 초록 / 초희귀 = 파랑 + 빛 / 영웅 = 보라 + 은은한 빛 / 신화 = 붉은 불꽃 그라데이션이 일렁임 / 전설 = 금색 그라데이션이 반짝임
  * 히든 = 밤하늘 바탕에 오로라빛 글자·테두리가 흐름 (2026-11-22 바꿈)
  */
 
-const GRADE_ICON: Partial<Record<TitleGrade, LucideIcon>> = { rare: Gem, superrare: Diamond, epic: Shield, mythic: Flame, legendary: Crown, hidden: Eye };
+const GRADE_ICON: Partial<Record<TitleGrade, LucideIcon>> = { rare: Diamond, superrare: Gem, epic: Shield, mythic: Flame, legendary: Crown, hidden: Eye };
 
 export function TitleBadge({ name, grade, size = "sm" }: { name: string; grade: string | null | undefined; size?: "xs" | "sm" | "md" }) {
   const g: TitleGrade = isGrade(grade) ? grade : "common";

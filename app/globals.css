@@ -478,14 +478,14 @@ body {
 }
 
 /* ───────────── 칭호 등급 (components/TitleBadge.tsx) ─────────────
- * 일반 = 테두리만 / 희귀 = 파랑 / 초희귀 = 청록 + 은은한 빛 / 영웅 = 보라 + 빛 / 신화 = 붉은 불꽃 그라데이션이 일렁 / 전설 = 금빛이 천천히 반짝
+ * 일반 = 테두리만 / 희귀 = 초록 / 초희귀 = 파랑 + 은은한 빛 / 영웅 = 보라 + 빛 / 신화 = 붉은 불꽃 그라데이션이 일렁 / 전설 = 금빛이 천천히 반짝
  * 히든 = 밤하늘(짙은 남보라) 바탕에 오로라빛(청록→보라→분홍) 글자와 테두리가 흐름 — 모든 테마에서 같은 밤하늘 (2026-11-22)
  * 어두운 테마 기준 색을 모든 테마에 깔고, 밝은 테마(라이트·종이·솔라라이즈드)는 진한 색으로 바꾼다. */
 :root,
 [data-theme] {
   --g-common: var(--muted);
-  --g-rare: #4ea8ff;
-  --g-superrare: #2fd6c3;
+  --g-rare: #4cd47a;
+  --g-superrare: #4ea8ff;
   --g-epic: #b98cff;
   --g-mythic: #e8263f;
   --g-mythic-2: #ff8a3d;
@@ -503,8 +503,8 @@ body {
 [data-theme="light"],
 [data-theme="paper"],
 [data-theme="solarized"] {
-  --g-rare: #1d6fd6;
-  --g-superrare: #0b8f80;
+  --g-rare: #1a8f45;
+  --g-superrare: #1d6fd6;
   --g-epic: #8a3fd6;
   --g-mythic: #c8102e;
   --g-mythic-2: #f0612a;
