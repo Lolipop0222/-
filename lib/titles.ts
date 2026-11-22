@@ -37,7 +37,7 @@ export const signatureOf = (code: string | null | undefined): Signature | null =
   code && code in SIGNATURE_TITLES ? SIGNATURE_TITLES[code as keyof typeof SIGNATURE_TITLES] : null;
 /**
  * 스페셜 칭호 (2026-11-22) — 칭호마다 디자인이 모두 다르다 (globals.css .tb-sp-*, .ring-sp-*).
- * 관리자가 새로 만든 스페셜은 기본 스페셜 디자인(.tb-special, 홀로그램)을 쓴다.
+ * 관리자가 새로 만든 스페셜은 기본 스페셜 디자인(.tb-special — 노을빛 입장권, 히든의 밤하늘·오로라와 겹치지 않게)을 쓴다.
  */
 export const SPECIAL_TITLES = {
   top_kor: "kor", // 장원 급제 — 홍패
