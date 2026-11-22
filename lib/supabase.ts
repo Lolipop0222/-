@@ -53,6 +53,7 @@ export function koreanError(e: unknown): string {
   const msg = err?.message ?? String(e);
   if (err?.code === "23505" || msg.includes("profiles_nickname_key")) return "이미 쓰는 닉네임이에요";
   if (msg.includes("profiles_nickname_check")) return "닉네임은 2~12글자로 해 주세요";
+  if (msg.includes("profiles_class_no_check")) return "반은 1~12반 중에서 골라 주세요";
   if (msg.includes("subject_check")) return "이 과목은 아직 쓸 수 없어요 (데이터베이스 업데이트가 필요해요)";
   if (msg.includes("detail_check")) return "세부 항목 이름이 너무 길어요";
   if (msg.includes("lecture_check")) return "기타에는 인강을 붙일 수 없어요";

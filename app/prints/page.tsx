@@ -3,7 +3,7 @@
 import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, FileImage, FileText, FileType, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Check, Download, FileImage, FileText, FileType, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { ThemeIcon } from "@/lib/themeIcons";
 import { useProfile } from "@/components/AuthProvider";
 import PrintArchiveLogo from "@/components/PrintArchiveLogo";
@@ -14,6 +14,7 @@ import {
   PRINT_CATEGORIES,
   PRINT_SUBJECTS,
   deletePrint,
+  updatePrint,
   fileKind,
   loadPrints,
   openPrint,
@@ -39,6 +40,7 @@ export default function PrintsPage() {
   const [ready, setReady] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [scope, setScope] = useState<(typeof GRADE_SCOPES)[number]>("내 학년");
   const [category, setCategory] = useState<PrintCategory | null>(null);
@@ -164,7 +166,11 @@ export default function PrintsPage() {
 
             <div className="space-y-2 pb-4">
               {shown.map((p) => (
-                <PrintItem key={p.id} p={p} isNew={rows ? rows.at - Date.parse(p.created_at) < NEW_MS : false} admin={admin} onOpen={open} onRemove={remove} />
+                editing === p.id ? (
+                  <PrintEdit key={p.id} p={p} onCancel={() => setEditing(null)} onSaved={async () => (setEditing(null), await reload())} />
+                ) : (
+                  <PrintItem key={p.id} p={p} isNew={rows ? rows.at - Date.parse(p.created_at) < NEW_MS : false} admin={admin} onOpen={open} onRemove={remove} onEdit={() => setEditing(p.id)} />
+                )
               ))}
             </div>
           </>
@@ -192,12 +198,14 @@ function PrintItem({
   admin,
   onOpen,
   onRemove,
+  onEdit,
 }: {
   p: Print;
   isNew: boolean;
   admin: boolean;
   onOpen: (p: Print, download?: boolean) => void;
   onRemove: (p: Print) => void;
+  onEdit: () => void;
 }) {
   const d = new Date(Date.parse(p.created_at) + 9 * 3600_000);
   return (
@@ -225,10 +233,102 @@ function PrintItem({
           <Download size={18} />
         </button>
         {admin && (
+          <button type="button" onClick={onEdit} aria-label="제목·정보 고치기" className="grid size-10 place-items-center rounded-full text-muted active:bg-surface-2">
+            <Pencil size={16} />
+          </button>
+        )}
+        {admin && (
           <button type="button" onClick={() => onRemove(p)} aria-label="지우기" className="grid size-10 place-items-center rounded-full text-danger active:bg-surface-2">
             <Trash2 size={17} />
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** 관리자: 올린 프린트의 제목(과 메모·분류·과목·학년) 고치기 — 그 자리에서 바로 (2026-11-22, 사용자: "제목을 쉽게 바꿀 수 있게") */
+function PrintEdit({ p, onCancel, onSaved }: { p: Print; onCancel: () => void; onSaved: () => Promise<void> }) {
+  const [title, setTitle] = useState(p.title);
+  const [memo, setMemo] = useState(p.memo ?? "");
+  const [category, setCategory] = useState<PrintCategory>(p.category);
+  const [subject, setSubject] = useState<PrintSubject | "">(p.subject ?? "");
+  const [grade, setGrade] = useState(p.grade ? String(p.grade) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const t = title.trim();
+  const changed = t !== p.title || memo.trim() !== (p.memo ?? "") || category !== p.category || (subject || null) !== p.subject || (grade ? Number(grade) : null) !== p.grade;
+
+  async function save() {
+    if (busy || !t || !changed) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updatePrint(p.id, { title: t.slice(0, 80), memo: memo.trim() ? memo.trim().slice(0, 300) : null, category, subject: subject || null, grade: grade ? Number(grade) : null });
+      await onSaved();
+    } catch (e) {
+      setError(koreanError(e));
+      setBusy(false);
+    }
+  }
+
+  const sel = "h-10 min-w-0 flex-1 rounded-xl border border-line bg-bg px-2 text-[13px] text-text outline-none focus:border-accent";
+  return (
+    <div className="space-y-2 rounded-2xl border border-accent bg-surface p-3">
+      <p className="text-[12px] font-semibold text-muted">제목 고치기</p>
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.preventDefault(), save());
+          if (e.key === "Escape") onCancel();
+        }}
+        maxLength={80}
+        autoFocus
+        aria-label="제목"
+        className="h-11 w-full rounded-xl border border-line bg-bg px-3 text-[15px] font-semibold outline-none focus:border-accent"
+      />
+      <input
+        value={memo}
+        onChange={(e) => setMemo(e.target.value.slice(0, 300))}
+        maxLength={300}
+        placeholder="메모 (선택)"
+        aria-label="메모"
+        className="h-10 w-full rounded-xl border border-line bg-bg px-3 text-[13px] outline-none placeholder:text-faint focus:border-accent"
+      />
+      <div className="flex gap-1.5">
+        <select value={category} onChange={(e) => setCategory(e.target.value as PrintCategory)} aria-label="분류" className={sel}>
+          {PRINT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+        <select value={subject} onChange={(e) => setSubject(e.target.value as PrintSubject | "")} aria-label="과목" className={sel}>
+          <option value="">과목 공통</option>
+          {PRINT_SUBJECTS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select value={grade} onChange={(e) => setGrade(e.target.value)} aria-label="학년" className={sel}>
+          <option value="">전 학년</option>
+          {[1, 2, 3].map((g) => (
+            <option key={g} value={g}>
+              {g}학년
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="text-[12px] text-danger">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={onCancel} className="flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-surface-2 text-[13px] font-semibold text-muted">
+          <X size={15} /> 취소
+        </button>
+        <button type="button" onClick={save} disabled={busy || !t || !changed} className="flex h-10 flex-[2] items-center justify-center gap-1 rounded-xl bg-accent text-[13px] font-bold text-bg disabled:opacity-40">
+          <Check size={15} /> {busy ? "저장 중…" : "저장"}
+        </button>
       </div>
     </div>
   );

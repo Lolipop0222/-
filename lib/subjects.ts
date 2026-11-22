@@ -28,6 +28,9 @@ export const SUBJECT_COLOR: Record<Subject, string> = {
 
 // ───────────────────────── 계열과 세부 항목 ─────────────────────────
 
+/** 대전고 반 수 (2026-11-22 사용자: "반은 12반까지만") — DB 제약은 10-admin-students.sql에서 1~12 */
+export const MAX_CLASS = 12;
+
 export const TRACKS = ["문과", "이과"] as const;
 export type Track = (typeof TRACKS)[number];
 export const isTrack = (v: unknown): v is Track => v === "문과" || v === "이과";

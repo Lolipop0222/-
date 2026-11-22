@@ -20,7 +20,7 @@ import {
 import { hms } from "@/lib/format";
 import { dayNoStart, hmText, kstDayNo, toRecords } from "@/lib/stats";
 import type { StudySession } from "@/lib/study";
-import { SUBJECT_COLOR, TRACKS, normalizeSubject, subjectLabel } from "@/lib/subjects";
+import { MAX_CLASS, SUBJECT_COLOR, TRACKS, normalizeSubject, subjectLabel } from "@/lib/subjects";
 import { koreanError } from "@/lib/supabase";
 
 const PERIODS = ["1주", "1달", "3달", "1년"] as const;
@@ -417,7 +417,7 @@ function EditProfile({ d, onSaved }: { d: AdminStudentDetail; onSaved: (nickname
             aria-label="반"
             className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 text-[13px] text-text outline-none focus:border-accent"
           >
-            {Array.from({ length: 20 }, (_, i) => i + 1).map((c) => (
+            {Array.from({ length: Math.max(MAX_CLASS, p.class_no) }, (_, i) => i + 1).map((c) => (
               <option key={c} value={c}>
                 {c}반
               </option>

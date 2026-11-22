@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Hash } from "lucide-react";
 import { useAuth, useProfile } from "@/components/AuthProvider";
-import { Card, ErrorText, InfoText, InputRow, PrimaryButton, Segmented, SubHeader, inputCls } from "@/components/ui";
-import { SUBJECTS, TRACKS, detailsFor, needsTrack, type Track } from "@/lib/subjects";
+import { Card, ErrorText, InfoText, PrimaryButton, Segmented, SubHeader } from "@/components/ui";
+import { MAX_CLASS, SUBJECTS, TRACKS, detailsFor, needsTrack, type Track } from "@/lib/subjects";
+import ClassPicker from "@/components/ClassPicker";
 import { koreanError, saveTrack, supabase } from "@/lib/supabase";
 
 const GRADES = ["1학년", "2학년", "3학년"] as const;
@@ -25,7 +25,7 @@ export default function TrackPage() {
 
   const g = GRADES.indexOf(grade) + 1;
   const changed = g !== profile.grade || Number(classNo) !== profile.class_no || (track ?? null) !== (profile.track ?? null);
-  const valid = Number(classNo) >= 1 && Number(classNo) <= 20 && (!needsTrack(g) || track !== null);
+  const valid = Number(classNo) >= 1 && Number(classNo) <= MAX_CLASS && (!needsTrack(g) || track !== null);
 
   async function save() {
     if (busy || !valid) return;
@@ -64,16 +64,7 @@ export default function TrackPage() {
 
         <div className="space-y-3">
           <Segmented items={GRADES} value={grade} onChange={setGrade} />
-          <InputRow icon={<Hash size={18} />}>
-            <input
-              inputMode="numeric"
-              value={classNo}
-              onChange={(e) => setClassNo(e.target.value.replace(/\D/g, "").slice(0, 2))}
-              placeholder="반 (숫자만)"
-              aria-label="반"
-              className={inputCls}
-            />
-          </InputRow>
+          <ClassPicker value={Number(classNo) || null} onChange={(c) => setClassNo(String(c))} />
           {needsTrack(g) ? (
             <div>
               <p className="mb-1.5 px-1 text-[12px] text-muted">계열 (2학년)</p>

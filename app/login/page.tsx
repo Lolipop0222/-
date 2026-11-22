@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Hash, KeyRound, Lock, Mail, UserRound } from "lucide-react";
+import { KeyRound, Lock, Mail, UserRound } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { ErrorText, InputRow, PrimaryButton, Segmented, inputCls } from "@/components/ui";
 import { MIN_PASSWORD } from "@/lib/account";
 import { Emblem } from "@/components/BrandLoader";
 import InstallHint from "@/components/InstallHint";
+import ClassPicker from "@/components/ClassPicker";
 import { TIME_QUOTES } from "@/lib/quotes";
-import { TRACKS, needsTrack, type Track } from "@/lib/subjects";
+import { MAX_CLASS, TRACKS, needsTrack, type Track } from "@/lib/subjects";
 import { koreanError, saveTrack, supabase } from "@/lib/supabase";
 
 const MODES = ["로그인", "가입"] as const;
@@ -38,7 +39,7 @@ export default function LoginPage() {
 
   // 계열은 2학년만 고른다 (1·3학년은 문이과 구분 없이 같은 세부 과목)
   const gradeNo = GRADES.indexOf(grade) + 1;
-  const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && code.trim().length > 0 && (!needsTrack(gradeNo) || track !== null);
+  const profileValid = nickname.trim().length >= 2 && Number(classNo) >= 1 && Number(classNo) <= MAX_CLASS && code.trim().length > 0 && (!needsTrack(gradeNo) || track !== null);
   // 시간 명언: 첫 화면은 첫 번째로 그리고, 브라우저에서 하나를 골라 바꾼다 (서버·브라우저 화면이 어긋나지 않게)
   const [quoteIdx, setQuoteIdx] = useState(0);
   useEffect(() => {
@@ -159,15 +160,7 @@ export default function LoginPage() {
               </div>
             </div>
             )}
-            <InputRow icon={<Hash size={18} />}>
-              <input
-                inputMode="numeric"
-                value={classNo}
-                onChange={(e) => setClassNo(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                placeholder="반 (숫자만)"
-                className={inputCls}
-              />
-            </InputRow>
+            <ClassPicker value={Number(classNo) || null} onChange={(c) => setClassNo(String(c))} />
             <InputRow icon={<KeyRound size={18} />}>
               <input value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" placeholder="가입 초대코드" className={inputCls} />
             </InputRow>

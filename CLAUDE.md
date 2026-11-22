@@ -62,7 +62,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 테이블 | 내용 | 접근 |
 |---|---|---|
 | `app_settings` | `invite_code` 가입 초대코드 | 클라이언트 못 읽음 |
-| `profiles` | 닉네임(2~12자, 고유)·학년(1~3)·반·avatar(프로필 그림 `그림:색`/사진)·title_code(대표 칭호)·track(문과/이과). **실명·학번 안 받음** | 본인만 조회. 직접 수정은 **열 권한으로** nickname·grade·class_no·avatar·track만 (title_code는 `set_title()`로만, 열 권한은 06에서) |
+| `profiles` | 닉네임(2~12자, 고유)·학년(1~3)·반(**1~12**, 2026-11-22 20→12 — 01 표 정의 + 예전 DB는 10의 do 블록이 바꿈, 13반 이상 학생이 있으면 안 바꾸고 notice. 앱은 `MAX_CLASS`(lib/subjects.ts)·`ClassPicker` 6×2 칸)·avatar(프로필 그림 `그림:색`/사진)·title_code(대표 칭호)·track(문과/이과). **실명·학번 안 받음** | 본인만 조회. 직접 수정은 **열 권한으로** nickname·grade·class_no·avatar·track만 (title_code는 `set_title()`로만, 열 권한은 06에서) |
 | `sessions` | 공부 기록: subject, started_at, ended_at, away_count, duration(계산 열), task_id(플래너 과제), label(기타 이름), detail(세부 항목), lecture(인강) | 본인만 조회. 쓰기는 함수로만 (기타만 직접 쓰기) |
 | `ddays` | 직접 만든 디데이 (1인 30개) | 본인만 |
 | `tasks` | 플래너 과제 (날짜·제목·과목·detail·lecture·완료·skipped·routine_id, 하루 30개) | 본인만 |
@@ -105,7 +105,7 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 **사진 프로필·프린트 아카이브 규칙** (`supabase/parts/05-storage.sql`, Supabase Storage. 사진 avatar 제약·`profiles_avatar_guard` 트리거는 `04-titles.sql`)
 - 사진 프로필: 사용자가 "무조건 넣어"라고 해서 넣음. 부적절한 사진은 관리자가 `/me/admin`에서 내리거나 계정 삭제(사용자 방침). 앱(`lib/photos.ts`)이 가운데를 정사각형으로 잘라 320px webp(안 되면 jpg)로 다시 그려 올린다 → 용량 작고 EXIF(위치 등) 제거. avatar = `photo:<user id>/<16자>.webp`, `profiles_avatar_guard` 트리거가 **내 폴더 사진만** 허용하고 `avatar_at`을 기록. 사진을 바꾸거나 지우면 예전 파일도 지움, 계정 삭제 전에 내 폴더 파일 삭제(`removeAllMyPhotos`).
 - 공개 버킷이라 주소를 아는 사람은 볼 수 있음(경로에 무작위 16자). CSP `img-src`에 `https://*.supabase.co` 추가함.
-- 프린트 아카이브(`/prints`): 관리자는 오른쪽 위 "올리기" → 파일 여러 개(끌어다 놓기 가능) + 분류·과목·학년·메모 한 번에 → 학생들에게 바로 보임. 파일은 비공개 버킷, 열 때 10분짜리 서명 주소(`openPrint`, 아이폰 팝업 차단 때문에 빈 창을 먼저 연다). PDF·사진은 바로 보기, 한글·오피스는 내려받기. 학생 화면 기본은 "내 학년"(+전 학년) 필터.
+- 프린트 아카이브(`/prints`): 관리자는 항목마다 연필 버튼으로 **그 자리에서 제목(+메모·분류·과목·학년) 고치기**(`PrintEdit`, Enter 저장·Esc 취소, `updatePrint`, 2026-11-22 사용자: "내가 올린 문서 제목을 쉽게 바꾸게"). 관리자는 오른쪽 위 "올리기" → 파일 여러 개(끌어다 놓기 가능) + 분류·과목·학년·메모 한 번에 → 학생들에게 바로 보임. 파일은 비공개 버킷, 열 때 10분짜리 서명 주소(`openPrint`, 아이폰 팝업 차단 때문에 빈 창을 먼저 연다). PDF·사진은 바로 보기, 한글·오피스는 내려받기. 학생 화면 기본은 "내 학년"(+전 학년) 필터.
 - 로고: 사용자가 준 Print Archive 로고(검은 바탕 PNG)를 파란 부분·회색 글자 두 장의 투명 마스크(`public/print-archive/logo-blue.png`, `logo-gray.png`)로 나눠 CSS mask로 칠한다(`components/PrintArchiveLogo.tsx`, 색 `--pa-blue`/`--pa-ink`) → 모든 테마에서 보임. 쓰는 곳: 프린트 아카이브 머리, 홈 카드, 관리자 화면. (로딩 화면은 2026-11-06부터 대품타 로고로 바뀜 — 아래)
 
 **로그인 화면**: 대품타 엠블럼 + 시간 명언(`lib/quotes.ts`, 열 때마다 하나, 출처 분명한 것만 — 주희·도연명·프랭클린·윌리엄 펜·노자·속담). 타이머 탭 이름 "일품타"는 그대로.

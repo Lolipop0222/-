@@ -30,7 +30,7 @@ create table if not exists profiles (
   id         uuid primary key references auth.users (id) on delete cascade,
   nickname   text not null unique check (char_length(nickname) between 2 and 12),
   grade      int  not null check (grade between 1 and 3),
-  class_no   int  not null check (class_no between 1 and 20),
+  class_no   int  not null check (class_no between 1 and 12),  -- 2026-11-22 20 → 12 (예전 DB는 10-admin-students.sql이 바꾼다)
   created_at timestamptz not null default now()
 );
 

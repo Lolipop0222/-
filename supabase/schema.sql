@@ -35,7 +35,7 @@ create table if not exists profiles (
   id         uuid primary key references auth.users (id) on delete cascade,
   nickname   text not null unique check (char_length(nickname) between 2 and 12),
   grade      int  not null check (grade between 1 and 3),
-  class_no   int  not null check (class_no between 1 and 20),
+  class_no   int  not null check (class_no between 1 and 12),  -- 2026-11-22 20 → 12 (예전 DB는 10-admin-students.sql이 바꾼다)
   created_at timestamptz not null default now()
 );
 
@@ -2239,6 +2239,19 @@ revoke truncate, trigger, references on all tables in schema public from anon, a
 --   모든 함수는 관리자가 아니면 거절한다(42501). 이메일·비밀번호(해시)는 돌려주지 않는다.
 --   공부 시간은 순위와 같은 기준: 기타·인강 제외, 한 기록 1초~4시간, 기록은 시작한 날(한국 시간).
 
+-- 반은 1~12반 (2026-11-22, 사용자: "반 설정할 때 12반까지만"). 01의 표 정의(새 DB)도 1~12.
+-- 예전 DB는 1~20 제약이라 바꾼다. 이미 13반 이상인 학생이 있으면 그 학생 프로필 저장이 막히지 않게 바꾸지 않고 알린다
+-- (관리자 → 학생 관리에서 반을 고친 뒤 이 파일을 다시 실행하면 바뀐다).
+do $$
+begin
+  if exists (select 1 from profiles where class_no > 12) then
+    raise notice '13반 이상인 학생이 있어 반 제약(1~12)을 아직 바꾸지 않았어요';
+  else
+    alter table profiles drop constraint if exists profiles_class_no_check;
+    alter table profiles add constraint profiles_class_no_check check (class_no between 1 and 12);
+  end if;
+end $$;
+
 -- 가입한 학생 전체 (프로필이 있는 계정). 정렬·검색은 앱이 한다
 create or replace function admin_list_students()
 returns table (nickname text, grade int, class_no int, track text, avatar text,
@@ -2379,7 +2392,7 @@ revoke execute on function admin_student_sessions(text, timestamptz) from public
 grant execute on function admin_student_sessions(text, timestamptz) to authenticated;
 
 -- 학생 프로필 고치기 (부적절한 닉네임, 학년·반·계열이 틀렸을 때).
--- 돌려주는 값: 'ok' | 'not_found' | 'taken'(그 닉네임을 다른 학생이 씀) | 'invalid'(닉네임 2~12자, 학년 1~3, 반 1~20, 계열 문과/이과/null)
+-- 돌려주는 값: 'ok' | 'not_found' | 'taken'(그 닉네임을 다른 학생이 씀) | 'invalid'(닉네임 2~12자, 학년 1~3, 반 1~12, 계열 문과/이과/null)
 create or replace function admin_update_student(p_nickname text, p_new_nickname text, p_grade int, p_class_no int, p_track text)
 returns text
 language plpgsql volatile security definer set search_path = public as $$
@@ -2394,7 +2407,7 @@ begin
   if v_uid is null then
     return 'not_found';
   end if;
-  if v_new is null or char_length(v_new) not between 2 and 12 or p_grade not between 1 and 3 or p_class_no not between 1 and 20
+  if v_new is null or char_length(v_new) not between 2 and 12 or p_grade not between 1 and 3 or p_class_no not between 1 and 12
      or (p_track is not null and p_track not in ('문과', '이과')) then
     return 'invalid';
   end if;
