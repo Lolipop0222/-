@@ -1585,23 +1585,39 @@ h2 {
   isolation: isolate;
 }
 .tb-sp > .truncate { position: relative; }
-/* 기본 스페셜 (관리자가 만든 스페셜 · 등급 이름표): 「VIP 블랙카드」 — 검은 카드에 은빛 글자·이중 테두리, 은빛 광택이 스침.
-   히든(밤하늘·오로라)·다른 등급 색과 겹치지 않게 검정·은색만 쓴다 (2026-11-22 사용자가 후보 7개 중 고름) */
+/* 기본 스페셜 (관리자가 만든 스페셜 · 등급 이름표): 「VIP 블랙카드 × 네온」 — 검은 카드·은빛 글자·이중 테두리는 그대로,
+   글자와 테두리가 은백색 네온관처럼 빛나고 가끔 지직 깜빡이며, 은빛 광택이 스침.
+   히든(밤하늘·오로라)·다른 등급 색과 겹치지 않게 검정·은색만 쓴다 (2026-11-22 사용자가 후보 중 블랙카드 → "네온이랑 섞어 줘, 색은 유지") */
 .tb-special {
-  color: #ececf1;
+  color: #f6f6fa;
   letter-spacing: 0.08em;
-  border-color: #70707a;
+  border-color: #d6d8e0;
+  text-shadow: 0 0 2px rgb(255 255 255 / 0.95), 0 0 7px rgb(210 214 230 / 0.85), 0 0 14px rgb(190 196 215 / 0.5);
   background:
-    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.22) 50%, transparent 60%) 0 0 / 260% 100% no-repeat,
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.2) 50%, transparent 60%) 0 0 / 260% 100% no-repeat,
     linear-gradient(135deg, #26262c, #0a0a0c 55%, #1e1e24);
-  box-shadow: inset 0 0 0 1.5px #0a0a0c, inset 0 0 0 2.5px rgb(200 200 210 / 0.35), 0 3px 8px rgb(0 0 0 / 0.45);
-  animation: sp-card 3.6s ease-in-out infinite;
+  box-shadow:
+    inset 0 0 0 1.5px #0a0a0c,
+    inset 0 0 0 2.5px rgb(225 228 238 / 0.55),
+    inset 0 0 8px rgb(220 224 238 / 0.22),
+    0 0 5px rgb(225 228 240 / 0.7),
+    0 0 14px rgb(200 205 222 / 0.4),
+    0 3px 8px rgb(0 0 0 / 0.45);
+  animation: sp-card 3.6s ease-in-out infinite, sp-neon 5.5s steps(1) infinite;
 }
 .tb-special.tb-md { padding-left: 10px; padding-right: 10px; }
-.tb-special .tb-icon { color: #c9c9d2; }
+.tb-special .tb-icon { color: #eef0f6; filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 5px rgb(200 205 222 / 0.8)); }
 @keyframes sp-card {
   0% { background-position: 120% 0, 0 0; }
   60%, 100% { background-position: -40% 0, 0 0; }
+}
+/* 네온관 깜빡임: 대부분은 켜져 있고, 잠깐 두 번 지직 */
+@keyframes sp-neon {
+  0%, 100% { filter: brightness(1); }
+  88% { filter: brightness(0.55); }
+  89% { filter: brightness(1.15); }
+  91% { filter: brightness(0.7); }
+  92% { filter: brightness(1); }
 }
 
 /* 장원 급제 (국어 주간 1위): 과거 급제 증서 홍패 — 붉은 종이에 금빛 명조, 어사화가 흔들림 */
@@ -1798,9 +1814,9 @@ h2 {
 
 /* 프로필 그림 테두리 */
 .ring-special {
-  background: conic-gradient(from var(--ring-angle, 0deg), #0a0a0c, #8a8a94, #0a0a0c, #d0d0d8, #0a0a0c);
-  box-shadow: 0 0 0 1px #70707a, 0 2px 6px rgb(0 0 0 / 0.5);
-  animation: ring-spin 7s linear infinite;
+  background: conic-gradient(from var(--ring-angle, 0deg), #0a0a0c, #8a8a94, #0a0a0c, #f2f3f8, #0a0a0c);
+  box-shadow: 0 0 0 1px #d6d8e0, 0 0 6px rgb(225 228 240 / 0.75), 0 0 16px rgb(200 205 222 / 0.45);
+  animation: ring-spin 7s linear infinite, sp-neon 5.5s steps(1) infinite;
 }
 .ring-sp-kor { background: conic-gradient(from var(--ring-angle, 0deg), #d2412f, #ffe9a8, #a5281f, #ffc4dc, #d2412f); box-shadow: 0 0 10px rgb(210 65 47 / 0.5); animation: ring-spin 7s linear infinite; }
 .ring-sp-eng { background: conic-gradient(from var(--ring-angle, 0deg), #14213d 0 35%, #ffffff 35% 40%, #c8102e 40% 55%, #ffffff 55% 60%, #ffcc33 60% 66%, #14213d 66%); box-shadow: 0 0 10px rgb(20 33 61 / 0.6); animation: ring-spin 9s linear infinite; }
