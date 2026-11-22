@@ -1,5 +1,5 @@
 -- 대고 일품타 · Supabase 스키마 전체본 (자동 생성 — 직접 고치지 말 것)
--- 원본: supabase/parts/01-core.sql, 02-security.sql, 03-groups.sql, 04-titles.sql, 05-storage.sql, 06-subjects.sql, 07-words.sql, 08-levels.sql, 09-admin-titles.sql, 10-admin-students.sql
+-- 원본: supabase/parts/01-core.sql, 02-security.sql, 03-groups.sql, 04-titles.sql, 05-storage.sql, 06-subjects.sql, 07-words.sql, 08-levels.sql, 09-admin-titles.sql, 10-admin-students.sql, 11-manual.sql
 -- 고칠 때는 parts의 파일을 고치고 `npm run schema`. 평소에는 바뀐 parts 파일만 SQL Editor에서 실행하면 된다.
 -- 새 프로젝트에 처음 넣을 때만 이 파일을 통째로 실행한다 (여러 번 실행해도 안전).
 
@@ -1277,6 +1277,9 @@ alter table sessions drop constraint if exists sessions_lecture_check;
 alter table sessions add constraint sessions_lecture_check check (not (lecture and subject = '기타'));
 alter table tasks drop constraint if exists tasks_lecture_check;
 alter table tasks add constraint tasks_lecture_check check (not (lecture and subject = '기타'));
+-- 직접 입력한 기록 (2026-11-22, 대전고는 전자기기 금지라 공부한 시간을 나중에 "몇 시 몇 분~몇 시 몇 분"으로 넣는다 — 11-manual.sql).
+-- 순위·레벨·칭호 합계에는 들어가지만, 앱을 켜 둬야 의미가 있는 칭호(집중·정각·리셋·작심삼분·새해)와 통계의 집중도에서는 뺀다
+alter table sessions add column if not exists manual boolean not null default false;
 
 -- ───────────────────────── 과목 목록 (예전 기록도 새 목록으로) ─────────────────────────
 alter table sessions drop constraint if exists sessions_subject_check;
@@ -1367,7 +1370,7 @@ begin
   with
   -- 순위와 같은 기준의 공부 기록 (기타·인강 제외, 1초~4시간). ls/le = 한국 시각
   v as (
-    select s.subject, s.duration, s.away_count,
+    select s.subject, s.duration, s.away_count, s.manual,
            s.started_at at time zone 'Asia/Seoul' as ls,
            s.ended_at at time zone 'Asia/Seoul' as le
     from sessions s
@@ -1375,7 +1378,7 @@ begin
   ),
   -- 히든 조건용: 진행 중인 기록도 포함 (기타·인강 제외, 4시간 넘게 켜 둔 것은 제외)
   a as (
-    select s.duration,
+    select s.duration, s.manual,
            s.started_at at time zone 'Asia/Seoul' as ls,
            coalesce(s.ended_at, now()) at time zone 'Asia/Seoul' as le
     from sessions s
@@ -1421,7 +1424,7 @@ begin
     'first_record',   (exists (select 1 from v where duration >= 60))::int,
     'total_sec',      coalesce((select sum(duration) from v), 0),
     'max_day_sec',    coalesce((select max(sec) from d), 0),
-    'focus_2h',       (exists (select 1 from v where duration >= 7200 and away_count = 0))::int,
+    'focus_2h',       (exists (select 1 from v where duration >= 7200 and away_count = 0 and not manual))::int,
     'max_streak',     coalesce((select max(c) from (select count(*) as c from st group by grp) x), 0),
     'sub_kor',        coalesce((select sum(duration) from v where subject = '국어'), 0),
     'sub_eng',        coalesce((select sum(duration) from v where subject = '영어'), 0),
@@ -1454,11 +1457,11 @@ begin
                           and m.t >= (select max(x.t) from wp x where x.w = m.w)))::int,
     'tasks_done',     (select count(*) from tasks where user_id = p_user and done and not skipped),
     'yaja_days',      (select count(*) from yj where sec >= 7200),
-    'reset_hunter',   (exists (select 1 from a where extract(isodow from ls) = 1 and ls::time < time '00:06'))::int,
-    'hour_exact',     (exists (select 1 from v where duration between 3600 and 3604))::int,
-    'short_count',    (select count(*) from a where duration >= 60 and duration < 180),
+    'reset_hunter',   (exists (select 1 from a where not manual and extract(isodow from ls) = 1 and ls::time < time '00:06'))::int,
+    'hour_exact',     (exists (select 1 from v where not manual and duration between 3600 and 3604))::int,
+    'short_count',    (select count(*) from a where not manual and duration >= 60 and duration < 180),
     'xmas',           (exists (select 1 from d where extract(month from day) = 12 and extract(day from day) = 25 and sec >= 10800))::int,
-    'newyear',        (exists (select 1 from a where le > date_trunc('year', le) and ls < date_trunc('year', le) + interval '1 hour'))::int,
+    'newyear',        (exists (select 1 from a where not manual and le > date_trunc('year', le) and ls < date_trunc('year', le) + interval '1 hour'))::int,
     'bug_finder',     (exists (select 1 from inquiries where user_id = p_user and category = '오류 신고' and reply is not null))::int
   ) into r;
   return r;
@@ -2227,7 +2230,7 @@ revoke truncate, trigger, references on all tables in schema public from anon, a
 -- ┌──────────────────────────────────────────────────────────────────────
 -- │ 10-admin-students.sql — 관리자 학생 관리: 가입한 학생 목록·학생별 공부 기록·프로필 고치기·기록 지우기
 -- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 02 (is_admin), 04 (칭호), 06 (track·lecture·detail),
--- │           07 (word_progress), 08 (level_xp_of·level_from_xp·name_frame)
+-- │           06 (sessions.manual — 직접 입력 표시), 07 (word_progress), 08 (level_xp_of·level_from_xp·name_frame)
 -- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
 -- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
 -- └──────────────────────────────────────────────────────────────────────
@@ -2320,6 +2323,8 @@ begin
     'etc_sec', (select coalesce(sum(s.duration), 0)::bigint from sessions s where s.user_id = v_uid and s.subject = '기타' and s.duration between 1 and 14400),
     'lecture_sec', (select coalesce(sum(s.duration), 0)::bigint from sessions s
                     where s.user_id = v_uid and s.subject <> '기타' and s.lecture and s.duration between 1 and 14400),
+    'manual_sec', (select coalesce(sum(s.duration), 0)::bigint from sessions s
+                   where s.user_id = v_uid and s.manual and s.subject <> '기타' and not s.lecture and s.duration between 1 and 14400),
     'session_count', (select count(*) from sessions s where s.user_id = v_uid),
     'first_at', (select min(s.started_at) from sessions s where s.user_id = v_uid),
     'last_at', (select max(s.started_at) from sessions s where s.user_id = v_uid),
@@ -2350,9 +2355,11 @@ revoke execute on function admin_student_detail(text) from public, anon;
 grant execute on function admin_student_detail(text) to authenticated;
 
 -- 한 학생의 공부 기록 (p_since 이후 시작한 것, 오래된 순, 최대 5000개) — 앱이 통계 그래프(lib/stats.ts)를 그대로 그린다
-create or replace function admin_student_sessions(p_nickname text, p_since timestamptz)
+-- manual = 직접 입력한 기록 (06의 열). 돌려주는 열이 바뀌어서(manual 추가) 지우고 다시 만든다
+drop function if exists admin_student_sessions(text, timestamptz);
+create function admin_student_sessions(p_nickname text, p_since timestamptz)
 returns table (id uuid, subject text, started_at timestamptz, ended_at timestamptz, away_count int, duration int,
-               task_id uuid, label text, detail text, lecture boolean)
+               task_id uuid, label text, detail text, lecture boolean, manual boolean)
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_uid uuid;
@@ -2362,7 +2369,7 @@ begin
   end if;
   select p.id into v_uid from profiles p where p.nickname = p_nickname;
   return query
-    select s.id, s.subject, s.started_at, s.ended_at, s.away_count, s.duration::int, s.task_id, s.label, s.detail, s.lecture
+    select s.id, s.subject, s.started_at, s.ended_at, s.away_count, s.duration::int, s.task_id, s.label, s.detail, s.lecture, s.manual
     from sessions s
     where s.user_id = v_uid and s.started_at >= coalesce(p_since, '-infinity'::timestamptz)
     order by s.started_at
@@ -2413,3 +2420,102 @@ begin
 end $$;
 revoke execute on function admin_delete_session(uuid) from public, anon;
 grant execute on function admin_delete_session(uuid) to authenticated;
+
+-- ┌──────────────────────────────────────────────────────────────────────
+-- │ 11-manual.sql — 공부 시간 직접 입력 ("몇 시 몇 분부터 몇 시 몇 분까지")
+-- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 06 (sessions.manual·detail·lecture 열)
+-- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
+-- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
+-- └──────────────────────────────────────────────────────────────────────
+
+-- 직접 입력 (2026-11-22, 사용자: "대전고는 전자기기가 금지라 공부 시간을 몇 시 몇 분부터 몇 시 몇 분까지 입력하면 반영되게, 타이머는 그대로")
+--   타이머와 같이 순위·레벨·칭호·통계에 들어간다(manual = true로 표시). 거짓 입력을 줄이려고 서버가 검사한다:
+--   · 오늘·어제(한국 날짜, 시작 기준)만, 미래 시각은 안 됨
+--   · 한 기록 1분~4시간 (4시간이 넘는 기록은 원래 합계에서 빠진다)
+--   · 내 다른 기록(타이머·직접 입력·기타)과 시간이 겹치면 안 됨 (4시간 넘게 켜 둬서 이미 빠진 기록은 무시)
+--   · 그날 공부 합계(기타·인강 제외) 16시간까지 — 타이머의 하루 상한과 같다
+--   · 직접 입력은 하루 20개까지
+--   지우기는 내가 직접 입력한 것만, 오늘·어제 것만. 고치려면 지우고 다시 넣는다.
+--   틀린 값은 오류 대신 결과 글자를 돌려준다(앱이 한국어로 보여 줌).
+
+create or replace function add_manual_session(
+  p_subject text, p_start timestamptz, p_end timestamptz, p_detail text default null, p_lecture boolean default false
+) returns text
+language plpgsql volatile security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+  v_sec int;
+  v_lecture boolean := coalesce(p_lecture, false);
+  v_day date;
+  v_day_start timestamptz;
+  v_day_sec bigint;
+begin
+  if v_uid is null or not exists (select 1 from profiles where id = v_uid) then
+    raise exception '로그인이 필요합니다' using errcode = '42501';
+  end if;
+  if p_subject is null or p_subject not in ('국어', '영어', '수학', '사회', '과학', '역사') or p_start is null or p_end is null
+     or (p_detail is not null and char_length(trim(p_detail)) > 20) then
+    return 'invalid';
+  end if;
+  if p_end > now() + interval '1 minute' then
+    return 'future';
+  end if;
+  if p_start < kst_day_start() - interval '1 day' then
+    return 'range';
+  end if;
+  v_sec := extract(epoch from (p_end - p_start))::int;
+  if v_sec < 60 then
+    return 'too_short';
+  end if;
+  if v_sec > 14400 then
+    return 'too_long';
+  end if;
+
+  -- 같은 학생이 동시에 두 번 넣어도 겹치지 않게 차례로 처리
+  perform pg_advisory_xact_lock(hashtext('manual:' || v_uid::text));
+
+  if exists (
+    select 1 from sessions s
+    where s.user_id = v_uid
+      and s.started_at < p_end and coalesce(s.ended_at, now()) > p_start
+      and (s.ended_at is null or s.duration <= 14400)
+  ) then
+    return 'overlap';
+  end if;
+
+  v_day := (p_start at time zone 'Asia/Seoul')::date;
+  v_day_start := v_day::timestamp at time zone 'Asia/Seoul';
+  if (select count(*) from sessions s where s.user_id = v_uid and s.manual
+        and s.started_at >= v_day_start and s.started_at < v_day_start + interval '1 day') >= 20 then
+    return 'limit';
+  end if;
+  if not v_lecture then
+    select coalesce(sum(s.duration), 0) into v_day_sec
+    from sessions s
+    where s.user_id = v_uid and s.started_at >= v_day_start and s.started_at < v_day_start + interval '1 day'
+      and s.duration between 1 and 14400 and s.subject <> '기타' and not s.lecture;
+    if v_day_sec + v_sec > 16 * 3600 then
+      return 'daily_cap';
+    end if;
+  end if;
+
+  insert into sessions (user_id, subject, started_at, ended_at, detail, lecture, manual)
+  values (v_uid, p_subject, p_start, p_end, nullif(trim(p_detail), ''), v_lecture, true);
+  return 'ok';
+end $$;
+revoke execute on function add_manual_session(text, timestamptz, timestamptz, text, boolean) from public, anon;
+grant execute on function add_manual_session(text, timestamptz, timestamptz, text, boolean) to authenticated;
+
+-- 내가 직접 입력한 기록 지우기 (오늘·어제 것만). 지웠으면 true
+create or replace function delete_manual_session(p_id uuid) returns boolean
+language plpgsql volatile security definer set search_path = public as $$
+begin
+  if auth.uid() is null then
+    raise exception '로그인이 필요합니다' using errcode = '42501';
+  end if;
+  delete from sessions
+  where id = p_id and user_id = auth.uid() and manual and started_at >= kst_day_start() - interval '1 day';
+  return found;
+end $$;
+revoke execute on function delete_manual_session(uuid) from public, anon;
+grant execute on function delete_manual_session(uuid) to authenticated;

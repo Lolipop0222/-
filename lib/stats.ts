@@ -23,7 +23,8 @@ export const dayLabel = (d: number) => {
 };
 export const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
-export type Rec = { subject: RankedSubject; start: number; sec: number; day: number; away: number };
+/** manual = 직접 입력 (집중도 계산에서 뺀다 — 앱을 켜 두지 않았으니) */
+export type Rec = { subject: RankedSubject; start: number; sec: number; day: number; away: number; manual: boolean };
 export type LectureRec = { sec: number; day: number };
 
 /** 통계에 쓰는 기록만 남긴다 (끝난 것, 순위 기준). 인강은 따로 (보조 표시용) */
@@ -37,7 +38,7 @@ export function toRecords(sessions: StudySession[]): { recs: Rec[]; lectures: Le
     const start = Date.parse(s.started_at);
     if (s.lecture && s.subject !== "기타") lectures.push({ sec, day: kstDayNo(start) });
     if (!isCounted(s)) continue;
-    recs.push({ subject: s.subject as RankedSubject, start, sec, day: kstDayNo(start), away: s.away_count ?? 0 });
+    recs.push({ subject: s.subject as RankedSubject, start, sec, day: kstDayNo(start), away: s.away_count ?? 0, manual: !!s.manual });
   }
   return { recs, lectures };
 }
@@ -106,14 +107,17 @@ export type Summary = {
   sessions: number;
   avgSession: number;
   longest: Rec | null;
-  /** 한 번도 앱을 벗어나지 않은 기록 비율 0~1 */
+  /** 한 번도 앱을 벗어나지 않은 기록 비율 0~1 (타이머 기록만) */
   focusRate: number;
+  /** 그중 직접 입력한 시간 */
+  manualSec: number;
   streak: { best: number; current: number };
   lectureSec: number;
 };
 
 export function summarize(recs: Rec[], prevRecs: Rec[], days: DayStat[], today: number, lectures: LectureRec[]): Summary {
   const total = sum(recs.map((r) => r.sec));
+  const timer = recs.filter((r) => !r.manual);
   const prevTotal = sum(prevRecs.map((r) => r.sec));
   const active = days.filter((d) => d.total > 0);
   const activeSecs = active.map((d) => d.total);
@@ -134,7 +138,8 @@ export function summarize(recs: Rec[], prevRecs: Rec[], days: DayStat[], today: 
     sessions: recs.length,
     avgSession: recs.length ? total / recs.length : 0,
     longest: recs.length ? recs.reduce((a, b) => (b.sec > a.sec ? b : a)) : null,
-    focusRate: recs.length ? recs.filter((r) => r.away === 0).length / recs.length : 0,
+    focusRate: timer.length ? timer.filter((r) => r.away === 0).length / timer.length : 0,
+    manualSec: sum(recs.filter((r) => r.manual).map((r) => r.sec)),
     streak: streaks(days, today),
     lectureSec: sum(lectures.map((l) => l.sec)),
   };

@@ -37,6 +37,9 @@ alter table sessions drop constraint if exists sessions_lecture_check;
 alter table sessions add constraint sessions_lecture_check check (not (lecture and subject = '기타'));
 alter table tasks drop constraint if exists tasks_lecture_check;
 alter table tasks add constraint tasks_lecture_check check (not (lecture and subject = '기타'));
+-- 직접 입력한 기록 (2026-11-22, 대전고는 전자기기 금지라 공부한 시간을 나중에 "몇 시 몇 분~몇 시 몇 분"으로 넣는다 — 11-manual.sql).
+-- 순위·레벨·칭호 합계에는 들어가지만, 앱을 켜 둬야 의미가 있는 칭호(집중·정각·리셋·작심삼분·새해)와 통계의 집중도에서는 뺀다
+alter table sessions add column if not exists manual boolean not null default false;
 
 -- ───────────────────────── 과목 목록 (예전 기록도 새 목록으로) ─────────────────────────
 alter table sessions drop constraint if exists sessions_subject_check;
@@ -127,7 +130,7 @@ begin
   with
   -- 순위와 같은 기준의 공부 기록 (기타·인강 제외, 1초~4시간). ls/le = 한국 시각
   v as (
-    select s.subject, s.duration, s.away_count,
+    select s.subject, s.duration, s.away_count, s.manual,
            s.started_at at time zone 'Asia/Seoul' as ls,
            s.ended_at at time zone 'Asia/Seoul' as le
     from sessions s
@@ -135,7 +138,7 @@ begin
   ),
   -- 히든 조건용: 진행 중인 기록도 포함 (기타·인강 제외, 4시간 넘게 켜 둔 것은 제외)
   a as (
-    select s.duration,
+    select s.duration, s.manual,
            s.started_at at time zone 'Asia/Seoul' as ls,
            coalesce(s.ended_at, now()) at time zone 'Asia/Seoul' as le
     from sessions s
@@ -181,7 +184,7 @@ begin
     'first_record',   (exists (select 1 from v where duration >= 60))::int,
     'total_sec',      coalesce((select sum(duration) from v), 0),
     'max_day_sec',    coalesce((select max(sec) from d), 0),
-    'focus_2h',       (exists (select 1 from v where duration >= 7200 and away_count = 0))::int,
+    'focus_2h',       (exists (select 1 from v where duration >= 7200 and away_count = 0 and not manual))::int,
     'max_streak',     coalesce((select max(c) from (select count(*) as c from st group by grp) x), 0),
     'sub_kor',        coalesce((select sum(duration) from v where subject = '국어'), 0),
     'sub_eng',        coalesce((select sum(duration) from v where subject = '영어'), 0),
@@ -214,11 +217,11 @@ begin
                           and m.t >= (select max(x.t) from wp x where x.w = m.w)))::int,
     'tasks_done',     (select count(*) from tasks where user_id = p_user and done and not skipped),
     'yaja_days',      (select count(*) from yj where sec >= 7200),
-    'reset_hunter',   (exists (select 1 from a where extract(isodow from ls) = 1 and ls::time < time '00:06'))::int,
-    'hour_exact',     (exists (select 1 from v where duration between 3600 and 3604))::int,
-    'short_count',    (select count(*) from a where duration >= 60 and duration < 180),
+    'reset_hunter',   (exists (select 1 from a where not manual and extract(isodow from ls) = 1 and ls::time < time '00:06'))::int,
+    'hour_exact',     (exists (select 1 from v where not manual and duration between 3600 and 3604))::int,
+    'short_count',    (select count(*) from a where not manual and duration >= 60 and duration < 180),
     'xmas',           (exists (select 1 from d where extract(month from day) = 12 and extract(day from day) = 25 and sec >= 10800))::int,
-    'newyear',        (exists (select 1 from a where le > date_trunc('year', le) and ls < date_trunc('year', le) + interval '1 hour'))::int,
+    'newyear',        (exists (select 1 from a where not manual and le > date_trunc('year', le) and ls < date_trunc('year', le) + interval '1 hour'))::int,
     'bug_finder',     (exists (select 1 from inquiries where user_id = p_user and category = '오류 신고' and reply is not null))::int
   ) into r;
   return r;

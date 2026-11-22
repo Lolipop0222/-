@@ -49,6 +49,8 @@ export type AdminStudentDetail = {
   subjects: { subject: RankedSubject; sec: number; week_sec: number; level: number }[];
   etc_sec: number;
   lecture_sec: number;
+  /** 공부 합계 중 직접 입력한 시간 (06·11 전 DB면 없음) */
+  manual_sec?: number;
   session_count: number;
   first_at: string | null;
   last_at: string | null;
@@ -91,7 +93,7 @@ export async function adminStudentDetail(nickname: string): Promise<AdminStudent
 export async function adminStudentSessions(nickname: string, since: number): Promise<StudySession[]> {
   const { data, error } = await supabase().rpc("admin_student_sessions", { p_nickname: nickname, p_since: new Date(since).toISOString() });
   if (error) throw error;
-  return ((data ?? []) as StudySession[]).map((s) => ({ ...s, subject: normalizeSubject(s.subject) ?? ETC, lecture: !!s.lecture }));
+  return ((data ?? []) as StudySession[]).map((s) => ({ ...s, subject: normalizeSubject(s.subject) ?? ETC, lecture: !!s.lecture, manual: !!s.manual }));
 }
 
 export type UpdateResult = "ok" | "not_found" | "taken" | "invalid";

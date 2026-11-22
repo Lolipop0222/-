@@ -19,6 +19,8 @@ export type StudySession = {
   detail: string | null;
   /** 인강 — TIMETABLE에는 보이지만 공부 합계·순위에서 빠진다 */
   lecture: boolean;
+  /** 직접 입력한 기록 (11-manual.sql, 06 전 DB에는 열이 없어 false) */
+  manual?: boolean;
 };
 
 /** 공부 합계·순위에 들어가는 기록인지 (기타·인강 제외 — 서버 규칙과 같게) */
@@ -26,6 +28,7 @@ export const isCounted = (s: Pick<StudySession, "subject" | "lecture">) => s.sub
 
 // supabase/schema.sql을 다시 실행하기 전 DB에는 뒤쪽 열이 없을 수 있다 → 앞에서부터 차례로 시도한다
 const COLUMN_SETS = [
+  "id, subject, started_at, ended_at, away_count, duration, task_id, label, detail, lecture, manual",
   "id, subject, started_at, ended_at, away_count, duration, task_id, label, detail, lecture",
   "id, subject, started_at, ended_at, away_count, duration, task_id, label",
   "id, subject, started_at, ended_at, away_count, duration, task_id",
@@ -54,6 +57,7 @@ function normalizeSession(s: StudySession): StudySession {
     label: s.label ?? (raw === "인강" ? "인강" : null),
     detail: s.detail ?? (raw === "한국사" ? "한국사" : null),
     lecture: !!s.lecture,
+    manual: !!s.manual,
   };
 }
 
@@ -270,4 +274,38 @@ export function summarize(sessions: StudySession[], now: number): StudySummary {
     if (today) out.todaySec += sec;
   }
   return out;
+}
+
+// ── 직접 입력 (11-manual.sql, 2026-11-22) — 전자기기 금지인 야자 시간에 공부한 걸 끝나고 "몇 시 몇 분~몇 시 몇 분"으로 넣는다 ──
+
+export type ManualResult = "ok" | "invalid" | "future" | "range" | "too_short" | "too_long" | "overlap" | "daily_cap" | "limit";
+
+export const MANUAL_MESSAGE: Record<Exclude<ManualResult, "ok">, string> = {
+  invalid: "과목과 시간을 다시 확인해 주세요.",
+  future: "아직 오지 않은 시간은 넣을 수 없어요.",
+  range: "오늘과 어제 공부한 것만 넣을 수 있어요.",
+  too_short: "1분 이상이어야 해요. 끝 시각이 시작보다 늦은지 확인해 주세요.",
+  too_long: "한 번에 4시간까지 넣을 수 있어요. 나눠서 넣어 주세요.",
+  overlap: "이미 기록된 시간과 겹쳐요. 아래 목록을 확인해 주세요.",
+  daily_cap: "그날 공부 시간이 16시간을 넘게 돼요.",
+  limit: "직접 입력은 하루 20개까지예요.",
+};
+
+/** 순위·레벨·칭호에 들어가는 6과목 (인강 표시 가능). 시작·끝은 ms */
+export async function addManualSession(subject: string, startedAt: number, endedAt: number, detail: string | null, lecture: boolean): Promise<ManualResult> {
+  const { data, error } = await supabase().rpc("add_manual_session", {
+    p_subject: subject,
+    p_start: new Date(startedAt).toISOString(),
+    p_end: new Date(endedAt).toISOString(),
+    p_detail: detail,
+    p_lecture: lecture,
+  });
+  if (error) throw error;
+  return data as ManualResult;
+}
+
+export async function deleteManualSession(id: string): Promise<boolean> {
+  const { data, error } = await supabase().rpc("delete_manual_session", { p_id: id });
+  if (error) throw error;
+  return data === true;
 }

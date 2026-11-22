@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
-import { MonitorPlay, Play, Square } from "lucide-react";
+import { MonitorPlay, PenLine, Play, Square } from "lucide-react";
 import { ThemeIcon } from "@/lib/themeIcons";
 import { useAuth } from "@/components/AuthProvider";
 import { useTheme } from "@/components/ThemeProvider";
@@ -208,8 +208,15 @@ export default function StudyTimer() {
         )}
       </div>
 
+      {/* 전자기기 금지인 야자 시간 — 끝나고 시간을 직접 적는다 (2026-11-22) */}
+      {!running && (
+        <Link href="/timer/manual" className="mx-auto mt-6 flex w-fit items-center gap-1.5 rounded-full border border-line bg-surface px-4 py-2 text-[13px] font-semibold text-muted active:bg-surface-2">
+          <PenLine size={15} className="text-accent" /> 휴대폰 없이 공부했나요? 시간 직접 입력
+        </Link>
+      )}
+
       {/* 오늘 / 이번 주 */}
-      <div className="mt-10 grid grid-cols-2 divide-x divide-line rounded-2xl bg-surface">
+      <div className="mt-8 grid grid-cols-2 divide-x divide-line rounded-2xl bg-surface">
         <div className="p-4 text-center">
           <p className="text-[12px] text-muted">오늘 총 공부</p>
           <p className="num mt-1 text-[18px] font-bold">{hm(study.summary.todaySec)}</p>

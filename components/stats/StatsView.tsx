@@ -73,13 +73,14 @@ export function StatsBody({ v }: { v: StatsViewData }) {
         <Kpi label="공부한 날" value={`${s.activeDays}일`} hint={`${s.periodDays}일 중 ${Math.round((s.activeDays / s.periodDays) * 100)}%`} bar={s.activeDays / s.periodDays} />
         <Kpi label="꾸준함 점수" value={`${s.consistency}점`} hint="공부한 날 비율 + 하루 시간의 고른 정도" bar={s.consistency / 100} />
         <Kpi label="연속 공부" value={`${s.streak.current}일째`} hint={`이 기간 최장 ${s.streak.best}일 (하루 30분 이상)`} />
-        <Kpi label="집중도" value={`${Math.round(s.focusRate * 100)}%`} hint="앱을 한 번도 안 벗어난 기록 비율" bar={s.focusRate} />
+        <Kpi label="집중도" value={s.manualSec >= s.total ? "-" : `${Math.round(s.focusRate * 100)}%`} hint="타이머 기록 중 앱을 한 번도 안 벗어난 비율" bar={s.focusRate} />
         <Kpi label="한 번 평균" value={hmText(s.avgSession)} hint={`기록 ${s.sessions}번`} />
         <Kpi label="최장 기록" value={s.longest ? hmText(s.longest.sec) : "-"} hint={s.longest ? `${dayLabel(s.longest.day)} · ${s.longest.subject}` : ""} />
         <Kpi label="최고의 날" value={s.best ? hmText(s.best.total) : "-"} hint={s.best ? `${dayLabel(s.best.day)} (${WEEKDAYS[weekdayOf(s.best.day)]})` : ""} />
         <Kpi label="평균 시작 시각" value={fs === null ? "-" : `${Math.floor(fs / 60)}:${String(Math.round(fs % 60)).padStart(2, "0")}`} hint={v.chrono} />
       </div>
       {s.lectureSec > 0 && <p className="px-1 text-[12px] text-faint">참고: 이 기간 인강 {hmText(s.lectureSec)} (위 통계에는 빠져 있어요)</p>}
+      {s.manualSec > 0 && <p className="px-1 text-[12px] text-faint">이 기간 공부 중 직접 입력한 시간 {hmText(s.manualSec)} (총 공부에 들어 있어요)</p>}
 
       <ChartCard title={v.n > 62 ? "주별 공부 시간" : "날짜별 공부 시간"} note="막대는 과목별로 쌓았어요 · 점선은 평균">
         <DailyStack days={v.days} t={t} />

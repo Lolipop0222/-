@@ -164,7 +164,7 @@ export default function StudentDetail({ nickname, onBack, onRenamed }: { nicknam
           <Mini label="누적" value={compact(total)} />
           <Mini label="이번 주" value={compact(week)} />
           <Mini label="오늘" value={todaySec === null ? "…" : hmText(todaySec)} />
-          <Mini label="경험치" value={`${Math.floor(d.xp / 3600)}시간`} />
+          <Mini label="직접 입력" value={compact(d.manual_sec ?? 0)} />
           <Mini label="인강" value={compact(d.lecture_sec)} />
           <Mini label="기타" value={compact(d.etc_sec)} />
         </div>
@@ -330,6 +330,7 @@ function RecentSessions({ sessions, onDeleted }: { sessions: StudySession[]; onD
                   </p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted">
                     <span>{kstDateTime(s.started_at)}</span>
+                    {s.manual && <span className="font-semibold text-accent">직접 입력</span>}
                     {s.away_count > 0 && <span>이탈 {s.away_count}번</span>}
                     {!counted && <span className="text-faint">합계 제외</span>}
                     {long && <span className="text-warn">4시간 넘음 · 제외</span>}

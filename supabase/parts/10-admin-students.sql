@@ -1,7 +1,7 @@
 -- ┌──────────────────────────────────────────────────────────────────────
 -- │ 10-admin-students.sql — 관리자 학생 관리: 가입한 학생 목록·학생별 공부 기록·프로필 고치기·기록 지우기
 -- │ 실행 순서: supabase/parts의 번호 순. 이 파일 앞에 필요한 것: 02 (is_admin), 04 (칭호), 06 (track·lecture·detail),
--- │           07 (word_progress), 08 (level_xp_of·level_from_xp·name_frame)
+-- │           06 (sessions.manual — 직접 입력 표시), 07 (word_progress), 08 (level_xp_of·level_from_xp·name_frame)
 -- │ 여러 번 실행해도 안전하다(idempotent). 바뀐 파일만 SQL Editor에 붙여넣고 Run.
 -- │ 고치면 `npm run schema`로 supabase/schema.sql(전체본)을 다시 만든다.
 -- └──────────────────────────────────────────────────────────────────────
@@ -94,6 +94,8 @@ begin
     'etc_sec', (select coalesce(sum(s.duration), 0)::bigint from sessions s where s.user_id = v_uid and s.subject = '기타' and s.duration between 1 and 14400),
     'lecture_sec', (select coalesce(sum(s.duration), 0)::bigint from sessions s
                     where s.user_id = v_uid and s.subject <> '기타' and s.lecture and s.duration between 1 and 14400),
+    'manual_sec', (select coalesce(sum(s.duration), 0)::bigint from sessions s
+                   where s.user_id = v_uid and s.manual and s.subject <> '기타' and not s.lecture and s.duration between 1 and 14400),
     'session_count', (select count(*) from sessions s where s.user_id = v_uid),
     'first_at', (select min(s.started_at) from sessions s where s.user_id = v_uid),
     'last_at', (select max(s.started_at) from sessions s where s.user_id = v_uid),
@@ -124,9 +126,11 @@ revoke execute on function admin_student_detail(text) from public, anon;
 grant execute on function admin_student_detail(text) to authenticated;
 
 -- 한 학생의 공부 기록 (p_since 이후 시작한 것, 오래된 순, 최대 5000개) — 앱이 통계 그래프(lib/stats.ts)를 그대로 그린다
-create or replace function admin_student_sessions(p_nickname text, p_since timestamptz)
+-- manual = 직접 입력한 기록 (06의 열). 돌려주는 열이 바뀌어서(manual 추가) 지우고 다시 만든다
+drop function if exists admin_student_sessions(text, timestamptz);
+create function admin_student_sessions(p_nickname text, p_since timestamptz)
 returns table (id uuid, subject text, started_at timestamptz, ended_at timestamptz, away_count int, duration int,
-               task_id uuid, label text, detail text, lecture boolean)
+               task_id uuid, label text, detail text, lecture boolean, manual boolean)
 language plpgsql stable security definer set search_path = public as $$
 declare
   v_uid uuid;
@@ -136,7 +140,7 @@ begin
   end if;
   select p.id into v_uid from profiles p where p.nickname = p_nickname;
   return query
-    select s.id, s.subject, s.started_at, s.ended_at, s.away_count, s.duration::int, s.task_id, s.label, s.detail, s.lecture
+    select s.id, s.subject, s.started_at, s.ended_at, s.away_count, s.duration::int, s.task_id, s.label, s.detail, s.lecture, s.manual
     from sessions s
     where s.user_id = v_uid and s.started_at >= coalesce(p_since, '-infinity'::timestamptz)
     order by s.started_at

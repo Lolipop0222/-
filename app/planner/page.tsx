@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Check, ChevronLeft, ChevronRight, MonitorPlay, Play, Square, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, MonitorPlay, PenLine, Play, Square, X } from "lucide-react";
 import { ThemeIcon } from "@/lib/themeIcons";
 import { useAuth } from "@/components/AuthProvider";
 import SubjectPicker, { type SubjectChoice } from "@/components/SubjectPicker";
@@ -124,6 +124,9 @@ export default function PlannerPage() {
           <div>
             <Label>TIMETABLE</Label>
             <Timetable cells={cells} />
+            <Link href="/timer/manual" className="mt-2 flex items-center justify-center gap-1 rounded-lg border border-dashed border-line py-1.5 text-[11px] font-semibold text-muted active:bg-surface-2">
+              <PenLine size={12} /> 시간 직접 입력
+            </Link>
           </div>
         </div>
       </div>
