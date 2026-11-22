@@ -15,7 +15,7 @@ import { GRADE_LABEL, isGrade, parseAvatar, ringClass, signatureOf, specialOf, t
  * 히든 = 밤하늘 바탕에 오로라빛 글자·테두리가 흐름 (2026-11-22 바꿈)
  * 과목 누적 1,000시간 전설(code sub1k_*)은 과목마다 따로: 국어 한지·먹·낙관 / 영어 옥스퍼드 남색·명조 이탤릭 / 수학 청사진 모눈
  * / 사회 바다→땅 지도가 흐름 / 과학 형광 거품 / 역사 주칠 바탕·단청 띠 (.tb-sig-*, .ring-sig-*)
- * 스페셜(2026-11-22)은 칭호마다 디자인이 모두 다르다 (.tb-sp-*, .ring-sp-*, 관리자가 만든 스페셜은 .tb-special 노을빛 입장권)
+ * 스페셜(2026-11-22)은 칭호마다 디자인이 모두 다르다 (.tb-sp-*, .ring-sp-*, 관리자가 만든 스페셜은 .tb-special VIP 블랙카드)
  */
 
 const GRADE_ICON: Partial<Record<TitleGrade, LucideIcon>> = { rare: Diamond, superrare: Gem, epic: Shield, mythic: Flame, legendary: Crown, special: Sparkles, hidden: Eye };

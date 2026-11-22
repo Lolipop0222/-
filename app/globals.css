@@ -1585,42 +1585,23 @@ h2 {
   isolation: isolate;
 }
 .tb-sp > .truncate { position: relative; }
-/* 기본 스페셜 (관리자가 만든 스페셜 · 등급 이름표): 히든(밤하늘·오로라)과 겹치지 않게 「입장권」 — 노을빛 산호→귤→분홍,
-   왼쪽 그루터기(아이콘)와 절취선, 양옆 반원 홈, 색종이가 흩날리고 광택이 스쳐 감 (2026-11-22) */
+/* 기본 스페셜 (관리자가 만든 스페셜 · 등급 이름표): 「VIP 블랙카드」 — 검은 카드에 은빛 글자·이중 테두리, 은빛 광택이 스침.
+   히든(밤하늘·오로라)·다른 등급 색과 겹치지 않게 검정·은색만 쓴다 (2026-11-22 사용자가 후보 7개 중 고름) */
 .tb-special {
-  position: relative;
-  overflow: hidden;
-  color: #ffffff;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  text-shadow: 0 1px 1px rgb(120 30 40 / 0.45);
-  border: 0;
-  padding-left: 7px;
-  padding-right: 8px;
+  color: #ececf1;
+  letter-spacing: 0.08em;
+  border-color: #70707a;
   background:
-    linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.45) 48%, transparent 58%) 0 0 / 260% 100% no-repeat,
-    radial-gradient(circle, rgb(255 255 255 / 0.9) 0 0.7px, transparent 1.2px) 0 0 / 9px 7px,
-    radial-gradient(circle, rgb(255 236 140 / 0.95) 0 0.8px, transparent 1.3px) 4px 3px / 11px 9px,
-    linear-gradient(100deg, #ff5a6e 0%, #ff8a4c 45%, #ffb347 70%, #ff6fa5 100%);
-  -webkit-mask: radial-gradient(circle 3.5px at 0 50%, transparent 97%, #000) left / 51% 100% no-repeat,
-    radial-gradient(circle 3.5px at 100% 50%, transparent 97%, #000) right / 51% 100% no-repeat;
-  mask: radial-gradient(circle 3.5px at 0 50%, transparent 97%, #000) left / 51% 100% no-repeat,
-    radial-gradient(circle 3.5px at 100% 50%, transparent 97%, #000) right / 51% 100% no-repeat;
-  filter: drop-shadow(0 0 6px rgb(255 120 90 / 0.55));
-  animation: sp-ticket 4s linear infinite;
+    linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.22) 50%, transparent 60%) 0 0 / 260% 100% no-repeat,
+    linear-gradient(135deg, #26262c, #0a0a0c 55%, #1e1e24);
+  box-shadow: inset 0 0 0 1.5px #0a0a0c, inset 0 0 0 2.5px rgb(200 200 210 / 0.35), 0 3px 8px rgb(0 0 0 / 0.45);
+  animation: sp-card 3.6s ease-in-out infinite;
 }
-.tb-special .tb-icon {
-  box-sizing: content-box;
-  color: #fff6c9;
-  padding-right: 4px;
-  margin-right: 1px;
-  border-right: 1.5px dashed rgb(255 255 255 / 0.75);
-}
-/* 광택은 앞 60%에 한 번 스치고, 색종이는 4초 동안 타일 두 칸만큼 흘러 끊김 없이 이어진다 */
-@keyframes sp-ticket {
-  0% { background-position: 120% 0, 0 0, 4px 3px, 0 0; }
-  60% { background-position: -40% 0, 0 8.4px, 17.2px 8.4px, 0 0; }
-  100% { background-position: -40% 0, 0 14px, 26px 21px, 0 0; }
+.tb-special.tb-md { padding-left: 10px; padding-right: 10px; }
+.tb-special .tb-icon { color: #c9c9d2; }
+@keyframes sp-card {
+  0% { background-position: 120% 0, 0 0; }
+  60%, 100% { background-position: -40% 0, 0 0; }
 }
 
 /* 장원 급제 (국어 주간 1위): 과거 급제 증서 홍패 — 붉은 종이에 금빛 명조, 어사화가 흔들림 */
@@ -1817,9 +1798,9 @@ h2 {
 
 /* 프로필 그림 테두리 */
 .ring-special {
-  background: repeating-conic-gradient(from var(--ring-angle, 0deg), #ff5a6e 0 22deg, #ffffff 22deg 26deg, #ffb347 26deg 48deg, #ffffff 48deg 52deg, #ff6fa5 52deg 74deg, #ffffff 74deg 78deg);
-  box-shadow: 0 0 12px rgb(255 120 90 / 0.6);
-  animation: ring-spin 6s linear infinite;
+  background: conic-gradient(from var(--ring-angle, 0deg), #0a0a0c, #8a8a94, #0a0a0c, #d0d0d8, #0a0a0c);
+  box-shadow: 0 0 0 1px #70707a, 0 2px 6px rgb(0 0 0 / 0.5);
+  animation: ring-spin 7s linear infinite;
 }
 .ring-sp-kor { background: conic-gradient(from var(--ring-angle, 0deg), #d2412f, #ffe9a8, #a5281f, #ffc4dc, #d2412f); box-shadow: 0 0 10px rgb(210 65 47 / 0.5); animation: ring-spin 7s linear infinite; }
 .ring-sp-eng { background: conic-gradient(from var(--ring-angle, 0deg), #14213d 0 35%, #ffffff 35% 40%, #c8102e 40% 55%, #ffffff 55% 60%, #ffcc33 60% 66%, #14213d 66%); box-shadow: 0 0 10px rgb(20 33 61 / 0.6); animation: ring-spin 9s linear infinite; }
