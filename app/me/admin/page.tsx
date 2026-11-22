@@ -4,7 +4,7 @@ import { InquiryPhotos } from "@/components/InquiryPhotos";
 import { AppLoader } from "@/components/BrandLoader";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Award, ChevronRight, ImageOff, KeyRound, UserX } from "lucide-react";
+import { Award, ChevronRight, ImageOff, KeyRound, UserX, Users } from "lucide-react";
 import PrintArchiveLogo from "@/components/PrintArchiveLogo";
 import { ProfileAvatar } from "@/components/TitleBadge";
 import { Badge, Card, ErrorText, InputRow, PrimaryButton, SubHeader, inputCls } from "@/components/ui";
@@ -23,7 +23,7 @@ import {
 import { koreanError } from "@/lib/supabase";
 
 /**
- * 관리자 화면 — 프린트·칭호 관리(/me/admin/titles), 사진 검토, 계정 삭제, 복구 코드 대신 만들어 주기, 문의 답변.
+ * 관리자 화면 — 프린트·학생 관리(/me/admin/students)·칭호 관리(/me/admin/titles), 사진 검토, 계정 삭제, 복구 코드 대신 만들어 주기, 문의 답변.
  * 관리자 여부는 DB(admins 테이블)가 정한다. 이 화면을 열어도 관리자가 아니면 DB 함수가 모두 거절한다.
  */
 export default function AdminPage() {
@@ -50,6 +50,18 @@ export default function AdminPage() {
                 <div className="min-w-0 flex-1">
                   <PrintArchiveLogo width={140} />
                   <p className="mt-1.5 text-[13px] text-muted">프린트 올리기·지우기 (프린트 아카이브 화면 오른쪽 위 &quot;올리기&quot;)</p>
+                </div>
+                <ChevronRight size={20} className="text-faint" />
+              </Card>
+            </Link>
+            <Link href="/me/admin/students" className="block">
+              <Card className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
+                  <Users size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-semibold">학생 관리</p>
+                  <p className="text-[12px] text-muted">가입한 학생 목록 · 공부 시간·통계·기록 · 프로필 고치기</p>
                 </div>
                 <ChevronRight size={20} className="text-faint" />
               </Card>
