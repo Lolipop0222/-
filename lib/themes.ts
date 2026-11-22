@@ -16,7 +16,7 @@ export type ThemeChoice = ThemeId | "system";
  * subject: 과목 테마 — 그 과목 레벨(lib/levels.ts의 subjectLevel)이 THEME_SUBJECT_LEVEL 이상이면 열린다 (관리자는 언제나).
  * serif: 제목을 명조(Noto Serif KR)로 — 그 테마를 쓸 때만 글꼴을 불러온다 (components/ThemeProvider.tsx)
  */
-export type ThemeInfo = { id: ThemeId; name: string; desc: string; dark: boolean; bg: string; subject?: RankedSubject; serif?: boolean };
+export type ThemeInfo = { id: ThemeId; name: string; desc: string; dark: boolean; bg: string; subject?: RankedSubject; serif?: boolean; motto?: string };
 
 export const THEMES: readonly ThemeInfo[] = [
   { id: "dark", name: "기본 다크", desc: "야자실 불빛에 눈부시지 않게", dark: true, bg: "#0b0d12" },
@@ -32,12 +32,12 @@ export const THEMES: readonly ThemeInfo[] = [
   { id: "lunar-compass", name: "달빛 나침반", desc: "깊은 남색 밤하늘에 달빛 파랑", dark: true, bg: "#191e32" },
   { id: "mint-circuit", name: "민트 서킷", desc: "짙은 청록 바탕에 민트빛", dark: true, bg: "#182427" },
   { id: "amber-archive", name: "호박빛 서고", desc: "오래된 서고의 갈색과 호박색", dark: true, bg: "#251d1a" },
-  { id: "subj-kor", name: "한지와 먹", desc: "원고지 위에 먹으로 · 국어", dark: false, bg: "#f3eee2", subject: "국어", serif: true },
-  { id: "subj-eng", name: "서재의 밤", desc: "초록 가죽 서재와 줄 공책 · 영어", dark: true, bg: "#0f1c17", subject: "영어", serif: true },
-  { id: "subj-math", name: "청사진", desc: "모눈종이 위의 작도 · 수학", dark: true, bg: "#0d1b33", subject: "수학" },
-  { id: "subj-sci", name: "실험실", desc: "벤젠 고리와 원자 궤도 · 과학", dark: true, bg: "#0b1214", subject: "과학" },
-  { id: "subj-soc", name: "지도첩", desc: "등고선 지도와 나침반 · 사회", dark: false, bg: "#efe9dc", subject: "사회" },
-  { id: "subj-his", name: "궁궐의 밤", desc: "금빛 창살과 연화문 · 역사", dark: true, bg: "#1a1210", subject: "역사", serif: true },
+  { id: "subj-kor", name: "한지와 먹", desc: "원고지 위에 먹으로 · 국어", dark: false, bg: "#f2f0eb", subject: "국어", serif: true, motto: "먹을 갈고, 붓을 들어요" },
+  { id: "subj-eng", name: "서재의 밤", desc: "초록 가죽 서재와 줄 공책 · 영어", dark: true, bg: "#17211d", subject: "영어", serif: true, motto: "Turn the page — 서재의 불을 켜요" },
+  { id: "subj-math", name: "청사진", desc: "모눈종이 위의 작도 · 수학", dark: true, bg: "#1a2436", subject: "수학", motto: "컴퍼스를 펴고, 증명을 시작해요" },
+  { id: "subj-sci", name: "실험실", desc: "벤젠 고리와 원자 궤도 · 과학", dark: true, bg: "#121a1c", subject: "과학", motto: "가운을 입고, 실험을 시작해요" },
+  { id: "subj-soc", name: "지도첩", desc: "등고선 지도와 나침반 · 사회", dark: false, bg: "#efe9dc", subject: "사회", motto: "지도를 펼치고, 세상을 읽어요" },
+  { id: "subj-his", name: "궁궐의 밤", desc: "금빛 창살과 연화문 · 역사", dark: true, bg: "#1a1210", subject: "역사", serif: true, motto: "궁궐의 문이 열려요" },
   { id: "contrast", name: "고대비", desc: "글자가 가장 또렷하게 (접근성)", dark: true, bg: "#000000" },
 ];
 

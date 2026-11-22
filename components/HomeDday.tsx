@@ -12,7 +12,7 @@ export default function HomeDday() {
   const next = d.items.filter((i) => i.kind === "exam" || daysUntil(i.date, d.today) >= 0).slice(0, 2);
 
   return (
-    <Link href="/dday" className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 active:bg-surface-2">
+    <Link href="/dday" className="card flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 active:bg-surface-2">
       <ThemeIcon slot="dday" size={18} className="shrink-0 text-accent" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {!d.ready ? (

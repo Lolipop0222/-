@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Lock, MonitorSmartphone, Play } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
 import { useTheme } from "@/components/ThemeProvider";
@@ -22,14 +22,24 @@ export default function ThemePage() {
   const { level } = useMyLevel(study.version);
   const [admin, setAdmin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [equip, setEquip] = useState<ThemeInfo | null>(null);
+  const equipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let alive = true;
     isAdmin().then((v) => alive && setAdmin(v));
     return () => {
       alive = false;
+      if (equipTimer.current) clearTimeout(equipTimer.current);
     };
   }, []);
+
+  /** 과목 테마 장착 연출 (globals.css .equip) — 약 2초 뒤 저절로, 누르면 바로 닫힌다 */
+  function showEquip(t: ThemeInfo) {
+    if (equipTimer.current) clearTimeout(equipTimer.current);
+    setEquip(t);
+    equipTimer.current = setTimeout(() => setEquip(null), 2100);
+  }
 
   const base = THEMES.filter((t) => !t.subject);
   const subjects = THEMES.filter((t) => t.subject);
@@ -83,6 +93,7 @@ export default function ThemePage() {
                   onPick={() => {
                     if (open) {
                       setNotice(null);
+                      if (choice !== t.id) showEquip(t);
                       setChoice(t.id as ThemeChoice);
                     } else {
                       setNotice(`'${t.name}'은 ${t.subject} 레벨 ${THEME_SUBJECT_LEVEL}에 열려요. 지금 ${t.subject} 레벨은 ${subjLv(t)}이에요.`);
@@ -103,6 +114,15 @@ export default function ThemePage() {
           </div>
         </section>
       </div>
+
+      {equip && (
+        <div data-theme={equip.id} className="equip" role="status" onClick={() => setEquip(null)}>
+          <div className="equip-orn" aria-hidden />
+          <p className="equip-name">{equip.name}</p>
+          <p className="equip-motto">{equip.motto}</p>
+          <p className="equip-sub">{equip.subject} 테마를 꼈어요</p>
+        </div>
+      )}
     </>
   );
 }
@@ -124,7 +144,7 @@ function ThemeCard({ t, selected, locked = false, lockText, onPick }: { t: Theme
             <Play size={12} fill="currentColor" className="ml-0.5" />
           </div>
         </div>
-        <div className="mt-2 rounded-xl border border-line bg-surface p-2">
+        <div className="card mt-2 rounded-xl border border-line bg-surface p-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold">오늘 공부</span>
             <span className="rounded bg-accent-soft px-1 text-[9px] font-bold text-accent">3위</span>

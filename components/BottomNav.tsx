@@ -31,12 +31,13 @@ export default function BottomNav() {
             <li key={href}>
               <Link
                 href={href}
-                className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+                className={`relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
                   active ? "text-text" : "text-faint"
                 }`}
               >
                 <ThemeIcon slot={slot} size={22} strokeWidth={active ? 2.4 : 1.8} className={active ? "text-accent" : ""} />
                 {label}
+                {active && <span aria-hidden className="nav-mark" />}
               </Link>
             </li>
           );

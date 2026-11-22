@@ -20,7 +20,7 @@ export default function HomePlanner() {
   const next = p.tasks.find((t) => !t.done);
 
   return (
-    <Link href="/planner" className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 active:bg-surface-2">
+    <Link href="/planner" className="card flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 active:bg-surface-2">
       <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
         <ThemeIcon slot="planner" size={22} />
       </div>

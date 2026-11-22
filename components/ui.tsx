@@ -8,7 +8,7 @@ export function PageHeader({ title, sub, right }: { title: string; sub?: ReactNo
     <header className="flex items-end justify-between px-5 pb-4 pt-[calc(env(safe-area-inset-top)+20px)]">
       <div>
         {sub && <p className="mb-1 text-[13px] text-muted">{sub}</p>}
-        <h1 className="text-[26px] font-bold tracking-tight">{title}</h1>
+        <h1 className="page-title text-[26px] font-bold tracking-tight">{title}</h1>
       </div>
       {right}
     </header>
@@ -28,9 +28,9 @@ export function SubHeader({ title, back, right }: { title: string; back: string;
   );
 }
 
-/** flush: 안쪽 여백 없이 (목록을 꽉 채울 때) */
+/** flush: 안쪽 여백 없이 (목록을 꽉 채울 때). card·card-flush는 과목 테마의 카드 테두리 장식용 (globals.css) */
 export function Card({ children, className = "", flush }: { children: ReactNode; className?: string; flush?: boolean }) {
-  return <section className={`rounded-2xl border border-line bg-surface ${flush ? "overflow-hidden" : "p-4"} ${className}`}>{children}</section>;
+  return <section className={`card rounded-2xl border border-line bg-surface ${flush ? "card-flush overflow-hidden" : "p-4"} ${className}`}>{children}</section>;
 }
 
 export function SectionTitle({ children, href, action }: { children: ReactNode; href?: string; action?: string }) {
