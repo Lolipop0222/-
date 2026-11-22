@@ -184,14 +184,21 @@ export async function loadEtcSessions(sinceDays = 30): Promise<StudySession[]> {
   );
 }
 
-export async function addEtcSession(label: string, startedAt: number, endedAt: number): Promise<void> {
+export async function addEtcSession(label: string, startedAt: number, endedAt: number, taskId: string | null = null): Promise<void> {
   // sessions.user_id에는 기본값이 없어서(다른 표와 달리) 내 id를 직접 넣어야 RLS("기타 기록 추가")를 통과한다 — 2026-11-22 공개 전 점검에서 찾음
   const { data: auth } = await supabase().auth.getSession();
   const uid = auth.session?.user.id;
   if (!uid) throw new Error("로그인이 필요해요");
   const { error } = await supabase()
     .from("sessions")
-    .insert({ user_id: uid, subject: ETC, label: label.trim() || null, started_at: new Date(startedAt).toISOString(), ended_at: new Date(endedAt).toISOString() });
+    .insert({
+      user_id: uid,
+      subject: ETC,
+      label: label.trim() || null,
+      started_at: new Date(startedAt).toISOString(),
+      ended_at: new Date(endedAt).toISOString(),
+      ...(taskId ? { task_id: taskId } : {}),
+    });
   if (error) throw error;
 }
 
@@ -292,14 +299,24 @@ export const MANUAL_MESSAGE: Record<Exclude<ManualResult, "ok">, string> = {
 };
 
 /** 순위·레벨·칭호에 들어가는 6과목 (인강 표시 가능). 시작·끝은 ms */
-export async function addManualSession(subject: string, startedAt: number, endedAt: number, detail: string | null, lecture: boolean): Promise<ManualResult> {
-  const { data, error } = await supabase().rpc("add_manual_session", {
+/** taskId = 플래너 과제와 이어 붙이기 (그 과제 시간으로 쌓인다) */
+export async function addManualSession(
+  subject: string,
+  startedAt: number,
+  endedAt: number,
+  detail: string | null,
+  lecture: boolean,
+  taskId: string | null = null,
+): Promise<ManualResult> {
+  const args: Record<string, unknown> = {
     p_subject: subject,
     p_start: new Date(startedAt).toISOString(),
     p_end: new Date(endedAt).toISOString(),
     p_detail: detail,
     p_lecture: lecture,
-  });
+  };
+  if (taskId) args.p_task_id = taskId; // 과제 없으면 안 보낸다 → 11을 다시 실행하기 전 DB(예전 함수)에서도 된다
+  const { data, error } = await supabase().rpc("add_manual_session", args);
   if (error) throw error;
   return data as ManualResult;
 }

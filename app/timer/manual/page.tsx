@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Check, Clock3, PenLine, Plus, Trash2, X } from "lucide-react";
+import { Check, CircleCheck, Circle, Clock3, PenLine, Plus, Trash2, X } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { AppLoader } from "@/components/BrandLoader";
 import { useStudy } from "@/components/StudyProvider";
@@ -11,7 +11,9 @@ import { Badge, Card, ErrorText, PrimaryButton, Segmented, SubHeader } from "@/c
 import { hm } from "@/lib/format";
 import { MANUAL_MESSAGE, addEtcSession, addManualSession, deleteManualSession, loadSessionsSince, type StudySession } from "@/lib/study";
 import { ETC, SUBJECTS, SUBJECT_COLOR, subjectLabel } from "@/lib/subjects";
-import { MAX_PRESETS, loadPresets, newPresetId, savePresets, sortPresets, type TimePreset } from "@/lib/timePresets";
+import { MAX_PRESETS, addPreset, deletePreset, loadPresets, type PresetStore, type TimePreset } from "@/lib/timePresets";
+import { addTask, isPlannerMissing, loadTasks, secondsByTask, updateTask, type Task } from "@/lib/planner";
+import { requestTitleCheck } from "@/lib/titles";
 import { koreanError } from "@/lib/supabase";
 
 const KST = 9 * 3600_000;
@@ -36,7 +38,9 @@ type DayKey = (typeof DAYS)[number];
  * 공부 시간 직접 입력 (2026-11-22, 사용자: "대전고는 전자기기 금지라 몇 시 몇 분부터 몇 시 몇 분까지 입력하면 반영되게, 타이머는 그대로").
  * 서버 규칙(11-manual.sql): 오늘·어제만, 1분~4시간, 다른 기록과 안 겹치게, 하루 16시간까지. 기타는 기타 기록으로 들어간다(합계 제외).
  * 끝 시각이 시작보다 이르면 다음 날로 본다 (예: 23:00~01:00).
- * 내 일과(lib/timePresets.ts): 자주 쓰는 시간대를 저장해 두고 한 번에 채운다 — 그날 이미 기록된 일과는 ✓.
+ * 플래너 과제 (사용자: "일과 = 플래너에 적은 하루에 할 공부"): 그날 과제를 골라 이어 붙이면(task_id) 과목이 채워지고 플래너에 그 과제 시간이 쌓인다.
+ *   여기서 새 과제도 적을 수 있고, 기록하면서 완료로 표시할 수 있다.
+ * 내 일과(lib/timePresets.ts, 계정 저장): 자주 쓰는 시간대를 저장해 두고 한 번에 채운다 — 그날 이미 기록된 일과는 ✓.
  * 기타는 활동 이름(학원·독서 등)을 적을 수 있다 → 기타 기록 label.
  */
 export default function ManualEntryPage() {
@@ -56,33 +60,107 @@ export default function ManualEntryPage() {
   const [rows, setRows] = useState<StudySession[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [etcLabel, setEtcLabel] = useState("");
-  const [presets, setPresets] = useState<TimePreset[]>([]);
+  const [store, setStore] = useState<PresetStore | null>(null);
+  const presets = store?.list ?? [];
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  // 플래너 과제 (그날)
+  const [tasks, setTasks] = useState<Task[] | null | "missing">(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [markDone, setMarkDone] = useState(false);
+  const [newTask, setNewTask] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setNow(Date.now());
-      if (uid) setPresets(sortPresets(loadPresets(uid)));
-    }, 0);
+    const t = setTimeout(() => setNow(Date.now()), 0);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    loadPresets(uid).then(
+      (st) => alive && setStore(st),
+      () => alive && setStore({ list: [], where: "account" }),
+    );
+    return () => {
+      alive = false;
+    };
   }, [uid]);
 
-  function storePresets(list: TimePreset[]) {
-    const sorted = sortPresets(list);
-    setPresets(sorted);
-    if (uid && !savePresets(uid, sorted)) setMsg({ ok: false, text: "이 브라우저에서는 일과를 저장할 수 없어요." });
+  async function savePreset(p: Omit<TimePreset, "id">) {
+    if (!uid || !store) return;
+    try {
+      const list = await addPreset(uid, store, p);
+      setStore({ ...store, list });
+      setAdding(false);
+      applyPreset(p);
+    } catch (e) {
+      setMsg({ ok: false, text: koreanError(e) });
+    }
   }
 
-  function applyPreset(p: TimePreset) {
+  async function removePreset(id: string) {
+    if (!uid || !store) return;
+    try {
+      setStore({ ...store, list: await deletePreset(uid, store, id) });
+    } catch (e) {
+      setMsg({ ok: false, text: koreanError(e) });
+    }
+  }
+
+  function applyPreset(p: Omit<TimePreset, "id">) {
     setStart(p.start);
     setEnd(p.end);
-    if (p.subject && (SUBJECTS as readonly string[]).includes(p.subject)) setChoice({ subject: p.subject, detail: p.detail, lecture: false });
+    // 과목이 정해진 플래너 과제를 골라 뒀으면 과목은 과제 것 그대로 (일과는 시각만)
+    if (p.subject && !task?.subject && (SUBJECTS as readonly string[]).includes(p.subject)) setChoice({ subject: p.subject, detail: p.detail, lecture: false });
     setMsg(null);
   }
 
   const today0 = now === null ? null : kstMidnight(now);
   const day0 = today0 === null ? null : day === "오늘" ? today0 : today0 - DAY;
+  const dateStr = day0 === null ? null : new Date(day0 + KST).toISOString().slice(0, 10);
+
+  // 그날 플래너 과제 (루틴도 그날 과제로 넣어 둔다 — 플래너와 같음)
+  useEffect(() => {
+    if (!dateStr) return;
+    let alive = true;
+    loadTasks(dateStr).then(
+      (t) => alive && setTasks(t),
+      (e) => alive && setTasks(isPlannerMissing(e) ? "missing" : []),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [dateStr]);
+  const taskList = Array.isArray(tasks) ? tasks : [];
+  const taskSec = useMemo(() => (day0 !== null && rows ? secondsByTask(rows, day0, now ?? 0) : new Map<string, number>()), [rows, day0, now]);
+  const task = taskList.find((t) => t.id === taskId) ?? null;
+
+  function pickTask(t: Task) {
+    if (taskId === t.id) {
+      setTaskId(null);
+      return;
+    }
+    setTaskId(t.id);
+    setMarkDone(false);
+    if (t.subject) setChoice({ subject: t.subject, detail: t.detail, lecture: t.lecture });
+    setMsg(null);
+  }
+
+  async function createTask() {
+    const title = (newTask ?? "").trim();
+    if (!dateStr || !title) return;
+    try {
+      const sub = choice.subject;
+      const t = await addTask(dateStr, title.slice(0, 60), sub, { detail: choice.detail, lecture: choice.lecture });
+      setTasks((x) => (Array.isArray(x) ? [...x, t] : [t]));
+      setNewTask(null);
+      setTaskId(t.id);
+      setMarkDone(false);
+    } catch (e) {
+      setMsg({ ok: false, text: koreanError(e) });
+    }
+  }
 
   const reload = useCallback(async () => {
     if (today0 === null) return;
@@ -175,16 +253,29 @@ export default function ManualEntryPage() {
     setMsg(null);
     try {
       if (choice.subject === ETC) {
-        await addEtcSession(etcLabel.trim().slice(0, 20), range.s, range.e);
+        await addEtcSession(etcLabel.trim().slice(0, 20), range.s, range.e, taskId);
       } else {
-        const r = await addManualSession(choice.subject, range.s, range.e, choice.detail, choice.lecture);
+        const r = await addManualSession(choice.subject, range.s, range.e, choice.detail, choice.lecture, taskId);
         if (r !== "ok") {
           setMsg({ ok: false, text: MANUAL_MESSAGE[r] ?? "다시 확인해 주세요." });
           return;
         }
       }
-      const what = choice.subject === ETC && etcLabel.trim() ? `기타 · ${etcLabel.trim()}` : subjectLabel(choice.subject, choice.detail, choice.lecture);
-      setMsg({ ok: true, text: `${hhmm(range.s)}~${hhmm(range.e)} ${what} ${hm(range.sec)}을 기록했어요.` });
+      const what = task ? `「${task.title}」` : choice.subject === ETC && etcLabel.trim() ? `기타 · ${etcLabel.trim()}` : subjectLabel(choice.subject, choice.detail, choice.lecture);
+      let doneText = "";
+      if (task && markDone && !task.done) {
+        try {
+          await updateTask(task.id, { done: true });
+          setTasks((x) => (Array.isArray(x) ? x.map((t) => (t.id === task.id ? { ...t, done: true } : t)) : x));
+          requestTitleCheck(); // 과제 완료 → 칭호(계획의 달인) 판정
+          doneText = " 과제도 완료로 표시했어요.";
+        } catch {
+          doneText = " (과제 완료 표시는 플래너에서 해 주세요)";
+        }
+      }
+      setMsg({ ok: true, text: `${hhmm(range.s)}~${hhmm(range.e)} ${what} ${hm(range.sec)}을 기록했어요.${doneText}` });
+      setTaskId(null);
+      setMarkDone(false);
       setStart(end);
       setEnd("");
       await reload();
@@ -230,12 +321,89 @@ export default function ManualEntryPage() {
                 onChange={(d) => {
                   setDay(d);
                   setMsg(null);
+                  setTaskId(null);
+                  setTasks(null);
                 }}
               />
               <p className="mt-1.5 text-[11px] text-faint">
                 {day} {day0 !== null && mdText(day0)} · 오늘과 어제 것만 넣을 수 있어요
               </p>
             </div>
+
+            {tasks !== "missing" && (
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="text-[12px] font-semibold text-muted">플래너 과제 {dateStr && <span className="font-normal text-faint">· {mdText(day0 ?? 0)}</span>}</p>
+                  <Link href="/planner" className="text-[11px] font-semibold text-faint">
+                    플래너 열기
+                  </Link>
+                </div>
+                {tasks === null ? (
+                  <AppLoader size="inline" />
+                ) : (
+                  <div className="space-y-1.5">
+                    {taskList.map((t) => {
+                      const on = taskId === t.id;
+                      const sec = taskSec.get(t.id) ?? 0;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => pickTask(t)}
+                          aria-pressed={on}
+                          className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left ${on ? "border-accent bg-accent-soft" : "border-line"}`}
+                        >
+                          {t.done ? <CircleCheck size={17} className="shrink-0 text-live" /> : <Circle size={17} className="shrink-0 text-faint" />}
+                          <span className="min-w-0 flex-1">
+                            <span className={`block truncate text-[13px] font-semibold ${t.done ? "text-muted line-through" : ""}`}>{t.title}</span>
+                            <span className="flex items-center gap-1.5 text-[11px] text-muted">
+                              {t.subject && <span className="size-2 rounded-full" style={{ background: SUBJECT_COLOR[t.subject] }} />}
+                              {t.subject ? subjectLabel(t.subject, t.detail, t.lecture) : "과목 없음"}
+                              {sec > 0 && <span className="num text-faint">· {hm(sec)}</span>}
+                            </span>
+                          </span>
+                          {on && <Check size={16} className="shrink-0 text-accent" />}
+                        </button>
+                      );
+                    })}
+                    {newTask === null ? (
+                      <button
+                        type="button"
+                        onClick={() => setNewTask("")}
+                        className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-line py-2 text-[12px] font-semibold text-muted"
+                      >
+                        <Plus size={13} /> 이 날 할 공부 추가
+                      </button>
+                    ) : (
+                      <div className="flex gap-1.5">
+                        <input
+                          value={newTask}
+                          onChange={(e) => setNewTask(e.target.value.slice(0, 60))}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), createTask())}
+                          maxLength={60}
+                          autoFocus
+                          placeholder={choice.subject ? `할 공부 (${choice.subject})` : "할 공부 (예: 수특 3단원)"}
+                          className="h-10 min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 text-[13px] outline-none placeholder:text-faint focus:border-accent"
+                        />
+                        <button type="button" onClick={createTask} disabled={!newTask.trim()} className="h-10 shrink-0 rounded-xl bg-accent px-3 text-[13px] font-bold text-bg disabled:opacity-40">
+                          추가
+                        </button>
+                        <button type="button" onClick={() => setNewTask(null)} aria-label="취소" className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                    {taskList.length === 0 && newTask === null && <p className="text-[11px] text-faint">이 날 플래너에 적은 공부가 없어요. 적어 두면 골라서 시간을 이어 붙일 수 있어요.</p>}
+                    {task && !task.done && (
+                      <label className="flex items-center gap-2 px-1 pt-0.5 text-[12px] text-muted">
+                        <input type="checkbox" checked={markDone} onChange={(e) => setMarkDone(e.target.checked)} className="size-4 accent-[var(--accent)]" />
+                        기록하면서 이 과제를 완료로 표시
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <Label>과목</Label>
@@ -295,7 +463,7 @@ export default function ManualEntryPage() {
                       {editing && (
                         <button
                           type="button"
-                          onClick={() => storePresets(presets.filter((x) => x.id !== p.id))}
+                          onClick={() => removePreset(p.id)}
                           aria-label={`${p.name} 일과 지우기`}
                           className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-bg"
                         >
@@ -305,7 +473,7 @@ export default function ManualEntryPage() {
                     </span>
                   );
                 })}
-                {!editing && presets.length < MAX_PRESETS && (
+                {!editing && store && presets.length < MAX_PRESETS && (
                   <button
                     type="button"
                     onClick={() => setAdding((v) => !v)}
@@ -315,6 +483,7 @@ export default function ManualEntryPage() {
                   </button>
                 )}
               </div>
+              {store?.where === "device" && <p className="mt-1.5 text-[11px] text-warn">지금은 이 기기에만 저장돼요 (데이터베이스 업데이트 후 계정에 저장돼요).</p>}
               {presets.length === 0 && !adding && <p className="mt-1.5 text-[11px] text-faint">「야자 1교시 18:50~20:10」처럼 자주 쓰는 시간을 저장해 두면 한 번에 채워져요.</p>}
               {adding && (
                 <PresetForm
@@ -322,11 +491,7 @@ export default function ManualEntryPage() {
                   end={end}
                   choice={choice.subject && choice.subject !== ETC ? choice : null}
                   onCancel={() => setAdding(false)}
-                  onSave={(p) => {
-                    storePresets([...presets, p]);
-                    setAdding(false);
-                    applyPreset(p);
-                  }}
+                  onSave={savePreset}
                 />
               )}
             </div>
@@ -402,7 +567,7 @@ export default function ManualEntryPage() {
           <Link href="/timer/etc" className="underline underline-offset-2">
             기타 기록
           </Link>
-          에서 고쳐요. 내 일과는 이 기기에 저장돼요. 정직하게 적어 주세요 — 관리자가 기록을 확인할 수 있어요.
+          에서 고쳐요. 내 일과는 계정에 저장돼요. 정직하게 적어 주세요 — 관리자가 기록을 확인할 수 있어요.
         </p>
       </div>
     </>
@@ -421,7 +586,7 @@ function PresetForm({
   end: string;
   choice: SubjectChoice | null;
   onCancel: () => void;
-  onSave: (p: TimePreset) => void;
+  onSave: (p: Omit<TimePreset, "id">) => void;
 }) {
   const [name, setName] = useState("");
   const [s, setS] = useState(start);
@@ -457,7 +622,6 @@ function PresetForm({
           disabled={!ok}
           onClick={() =>
             onSave({
-              id: newPresetId(),
               name: name.trim(),
               start: s,
               end: e,
