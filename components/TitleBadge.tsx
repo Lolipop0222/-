@@ -5,6 +5,8 @@ import { Bird, Bot, Cat, Cherry, Clover, Coffee, Crown, Diamond, Dog, Earth, Eye
 import type { LucideIcon } from "lucide-react";
 import { photoPath, photoUrl } from "@/lib/photos";
 import { ensureSerifFont } from "@/lib/themes";
+import { LimitedAvatar } from "@/components/LimitedAvatar";
+import { limitedAvatarByCode } from "@/lib/subjectRewards";
 import { GRADE_LABEL, isGrade, parseAvatar, ringClass, signatureOf, type AvatarIcon, type Signature, type TitleGrade } from "@/lib/titles";
 
 /**
@@ -48,7 +50,7 @@ export function AvatarIconView({ icon, className }: { icon: AvatarIcon; classNam
 
 /**
  * 프로필 사진·그림 (동그라미). 대표 칭호 등급이 있으면 그 등급의 테두리를 두른다.
- * 사진('photo:…') > 그림('cat:s-math') > 닉네임 첫 글자 순. 사진을 못 불러오면 첫 글자로.
+ * 한정 프로필('lim:kor-1') > 사진('photo:…') > 그림('cat:s-math') > 닉네임 첫 글자 순. 사진을 못 불러오면 첫 글자로.
  */
 export function ProfileAvatar({
   avatar,
@@ -70,6 +72,14 @@ export function ProfileAvatar({
   const rc = ringClass(grade, titleCode);
   const ring = rc ? Math.max(2, Math.round(size / 18)) : 0;
   const inner = size - ring * 2;
+  if (limitedAvatarByCode(avatar)) {
+    // 한정 프로필 (과목 레벨 보상)
+    return (
+      <span className={`relative inline-grid shrink-0 place-items-center rounded-full ${rc}`} style={{ width: size, height: size }}>
+        <LimitedAvatar code={avatar!} size={inner} />
+      </span>
+    );
+  }
   if (photo && broken !== photo) {
     return (
       <span className={`relative inline-grid shrink-0 place-items-center rounded-full ${rc}`} style={{ width: size, height: size }}>

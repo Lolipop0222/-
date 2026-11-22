@@ -44,7 +44,7 @@ export const THEMES: readonly ThemeInfo[] = [
 export const THEME_KEY = "daego-theme";
 
 /** 과목 테마가 열리는 그 과목의 레벨 (레벨 보상표의 60) */
-export const THEME_SUBJECT_LEVEL = 60;
+export const THEME_SUBJECT_LEVEL = 90;
 /** 명조 제목 글꼴 (jsdelivr — CSP style-src·font-src에 허용됨). 버전은 고정 */
 export const SERIF_FONT_CSS = "https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-kr@5.2.5/700.css";
 /** 명조 제목 글꼴 CSS를 한 번만 불러온다 (명조 테마, 과목 전설 칭호 문장가·네이티브·사관 배지) */

@@ -5,14 +5,15 @@
  *  - 경험치 = 과목별 공부 시간 합(순위와 같은 기준: 기타·인강 제외, 한 기록 1초~4시간). 과목마다 만렙 시간까지만 센다.
  *  - 만렙 시간: 국어·영어·수학 각 500시간, 사회·과학(탐구) 각 300시간, 역사 150시간 → 합계 2,250시간
  *  - 레벨 = 1 + floor(98 × √(경험치 / 2,250시간))
- *  - 보상(LEVEL_REWARDS): 칭호 20·50·90, 프로필 사진 30, 테마 60, 닉네임 테두리 80 (사용자가 정한 표에서 캐릭터 스킨·표정은 2026-11-12 캐릭터를 빼면서 지움).
- *    칭호·프로필 사진·테마는 아직 준비 중.
+ *  - 보상(LEVEL_REWARDS): 대부분 과목 레벨로 열린다(2026-11-22) — 과목 칭호 10·40·70·99, 과목 테두리 20·60·80, 한정 프로필 30·50·80,
+ *    과목 테마 90 (lib/subjectRewards.ts). 전체 레벨 80에는 일반 닉네임 테두리 10종.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { notReady } from "@/lib/account";
 import { supabase } from "@/lib/supabase";
 import type { RankedSubject } from "@/lib/subjects";
+import { AVATAR_TIERS, FRAME_TIERS, subjectFrameByCode } from "@/lib/subjectRewards";
 
 export const MAX_LEVEL = 99;
 export const SUBJECT_CAP_HOURS: Record<RankedSubject, number> = { 국어: 500, 영어: 500, 수학: 500, 사회: 300, 과학: 300, 역사: 150 };
@@ -54,22 +55,34 @@ export const NAME_FRAMES: readonly NameFrame[] = [
   { code: "starlight", name: "별빛", minLevel: FRAME_LEVEL, desc: "밤하늘에 별이 반짝" },
   { code: "daepumta", name: "대품타", minLevel: FRAME_LEVEL, desc: "대품타 금장 · 왕관" },
 ];
-export const frameByCode = (code: string | null | undefined) => NAME_FRAMES.find((f) => f.code === code) ?? null;
+/** 일반 테두리 또는 과목 테두리(lib/subjectRewards.ts) */
+export const frameByCode = (code: string | null | undefined): NameFrame | null => {
+  const f = NAME_FRAMES.find((x) => x.code === code);
+  if (f) return f;
+  const s = subjectFrameByCode(code);
+  return s ? { code: s.code, name: `${s.subject} ${s.name}`, minLevel: s.level, desc: s.desc } : null;
+};
 
 // ───────────────────────── 보상 ─────────────────────────
 
 export type RewardKind = "title" | "photo" | "theme" | "frame";
-/** bySubject: 전체 레벨이 아니라 과목마다 그 과목 레벨로 열린다 (과목 테마) */
-export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean; bySubject?: boolean };
+/** bySubject: 전체 레벨이 아니라 과목마다 그 과목 레벨로 열린다. href: 보상을 쓰는 화면 */
+export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean; bySubject?: boolean; href?: string };
 
-/** 레벨 보상표 (사용자가 정한 표에서 캐릭터 스킨·표정을 뺀 것) */
+/** 레벨 보상표 (2026-11-22 사용자가 다시 정함). 과목 보상은 그 과목 레벨, 일반 테두리만 전체 레벨 */
 export const LEVEL_REWARDS: readonly Reward[] = [
-  { level: 20, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
-  { level: 30, kind: "photo", title: "프로필 사진 꾸미기", desc: "프로필 사진 보상", pending: true },
-  { level: 50, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
-  { level: 60, kind: "theme", title: "과목 테마", desc: "과목 레벨 60이 되면 그 과목 테마", bySubject: true },
-  { level: FRAME_LEVEL, kind: "frame", title: "닉네임 테두리", desc: `테두리 ${NAME_FRAMES.length}종 중 고르기` },
-  { level: 90, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
+  { level: 10, kind: "title", title: "과목 칭호 · 뉴비", desc: "「국어 뉴비」 같은 희귀 칭호", bySubject: true, href: "/me/titles" },
+  { level: FRAME_TIERS[0], kind: "frame", title: "과목 테두리 1단계", desc: "먹선 · 책갈피 · 모눈 · 비커 · 경위선 · 창살", bySubject: true, href: "/me/level#subject-frames" },
+  { level: AVATAR_TIERS[0], kind: "photo", title: "한정 프로필 1단계", desc: "먹 한 방울 · 펜촉 · π · 플라스크 · 나침반 · 엽전", bySubject: true, href: "/me/avatar" },
+  { level: 40, kind: "title", title: "과목 칭호 · 중수", desc: "초희귀 칭호", bySubject: true, href: "/me/titles" },
+  { level: AVATAR_TIERS[1], kind: "photo", title: "한정 프로필 2단계", desc: "붓과 먹 · 펼친 책 · 컴퍼스 · 이중 나선 · 지구본 · 연꽃 수막새", bySubject: true, href: "/me/avatar" },
+  { level: FRAME_TIERS[1], kind: "frame", title: "과목 테두리 2단계", desc: "낙관 · 가죽 장정 · 작도 · 분자 결합 · 지도 테두리 · 단청", bySubject: true, href: "/me/level#subject-frames" },
+  { level: 70, kind: "title", title: "과목 칭호 · 고수", desc: "영웅 칭호", bySubject: true, href: "/me/titles" },
+  { level: FRAME_TIERS[2], kind: "frame", title: "과목 테두리 3단계", desc: "일필휘지 · 채식 필사본 · 무한 · 플라스마 · 세계 일주 · 일월 (움직임)", bySubject: true, href: "/me/level#subject-frames" },
+  { level: AVATAR_TIERS[2], kind: "photo", title: "한정 프로필 3단계", desc: "일원상 · 깃펜과 잉크 · 황금 나선 · 원자 · 대항해 · 일월오봉도 (움직임)", bySubject: true, href: "/me/avatar" },
+  { level: 90, kind: "theme", title: "과목 테마", desc: "그 과목 테마 (타이머·플래너까지)", bySubject: true, href: "/me/theme" },
+  { level: 99, kind: "title", title: "과목 칭호 · 마스터", desc: "신화 칭호", bySubject: true, href: "/me/titles" },
+  { level: FRAME_LEVEL, kind: "frame", title: "닉네임 테두리 (전체 레벨)", desc: `일반 테두리 ${NAME_FRAMES.length}종 중 고르기`, href: "/me/level#frames" },
 ];
 
 // ───────────────────────── 서버 ─────────────────────────

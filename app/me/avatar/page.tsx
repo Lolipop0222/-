@@ -1,28 +1,51 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, TriangleAlert } from "lucide-react";
+import { Camera, ImagePlus, Lock, TriangleAlert } from "lucide-react";
 import { useAuth, useProfile } from "@/components/AuthProvider";
+import { LimitedAvatar } from "@/components/LimitedAvatar";
+import { useStudy } from "@/components/StudyProvider";
 import { AvatarIconView, ProfileAvatar, TitleBadge } from "@/components/TitleBadge";
 import { useMyTitles } from "@/components/TitlesProvider";
 import { ErrorText, InfoText, PrimaryButton, Segmented, SubHeader } from "@/components/ui";
 import { photoPath, removePhotoFile, squarePhoto, uploadPhoto } from "@/lib/photos";
 import { AVATAR_COLORS, AVATAR_ICONS, avatarString, parseAvatar, ringClass, saveAvatar, type AvatarValue } from "@/lib/titles";
 import { koreanError } from "@/lib/supabase";
+import { isAdmin } from "@/lib/account";
+import { subjectLevel, useMyLevel } from "@/lib/levels";
+import { LIMITED_AVATARS, limitedAvatarByCode, type SubjectReward } from "@/lib/subjectRewards";
+import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
-const TABS = ["사진", "그림"] as const;
+const TABS = ["사진", "그림", "한정"] as const;
 
 /**
  * 내정보 → 프로필 사진. 사진을 올리거나(320px로 줄여서 저장) 그림+색을 고른다.
  * 사진은 순위·스터디그룹에서 다른 학생에게 보인다. 부적절한 사진은 관리자가 내리거나 계정을 삭제할 수 있다.
  * 테두리는 대표 칭호 등급에 따라 달라진다.
+ * 한정: 과목 레벨 30·50·80에 열리는 과목별 그림(lib/subjectRewards.ts). 서버(08 profiles_avatar_reward_guard)도 레벨을 확인한다.
  */
 export default function AvatarPage() {
   const auth = useAuth();
   const profile = useProfile();
   const { titles } = useMyTitles();
   const equipped = titles?.find((t) => t.equipped) ?? null;
-  const [tab, setTab] = useState<(typeof TABS)[number]>(parseAvatar(profile.avatar) ? "그림" : "사진");
+  const [tab, setTab] = useState<(typeof TABS)[number]>(limitedAvatarByCode(profile.avatar) ? "한정" : parseAvatar(profile.avatar) ? "그림" : "사진");
+  const [pickedLim, setPickedLim] = useState<string>(limitedAvatarByCode(profile.avatar) ? profile.avatar! : "lim:kor-1");
+  const study = useStudy();
+  const { level } = useMyLevel(study.version);
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    isAdmin().then((v) => alive && setAdmin(v));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const subjLv = (s: string) => {
+    const x = level?.subjects.find((y) => y.subject === s);
+    return x ? subjectLevel(x.sec, x.cap) : 1;
+  };
+  const limOpen = (a: SubjectReward) => admin || subjLv(a.subject) >= a.level;
   const [picked, setPicked] = useState<AvatarValue>(parseAvatar(profile.avatar) ?? { icon: "cat", color: "s-math" });
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,7 +90,8 @@ export default function AvatarPage() {
     });
   }
 
-  const previewAvatar = tab === "사진" ? null : avatarString(picked);
+  const previewAvatar = tab === "사진" ? null : tab === "한정" ? pickedLim : avatarString(picked);
+  const lim = limitedAvatarByCode(pickedLim);
 
   return (
     <>
@@ -130,6 +154,56 @@ export default function AvatarPage() {
               {busy ? "올리는 중…" : "이 사진으로 바꾸기"}
             </PrimaryButton>
           </section>
+        ) : tab === "한정" ? (
+          <>
+            <p className="px-1 text-[12px] leading-relaxed text-muted">
+              과목 레벨 <b className="text-text">30 · 50 · 80</b>에 열리는 과목 한정 그림이에요. 단계가 오를수록 화려해지고, 80은 움직여요.
+              {admin && " (관리자는 미리 써 볼 수 있어요)"}
+            </p>
+            {RANKED_SUBJECTS.map((s) => (
+              <section key={s}>
+                <h2 className="mb-2 flex items-baseline gap-1.5 px-1 text-[14px] font-semibold">
+                  <span style={{ color: SUBJECT_COLOR[s] }}>{s}</span>
+                  <span className="num text-[11px] font-bold text-muted">Lv.{subjLv(s)}</span>
+                </h2>
+                <div className="grid grid-cols-3 gap-2">
+                  {LIMITED_AVATARS.filter((a) => a.subject === s).map((a) => {
+                    const on = pickedLim === a.code;
+                    const open = limOpen(a);
+                    return (
+                      <button
+                        key={a.code}
+                        type="button"
+                        aria-pressed={on}
+                        aria-label={`${a.subject} ${a.name}${open ? "" : " (잠김)"}`}
+                        onClick={() => (setPickedLim(a.code), setError(null), setSaved(null))}
+                        className={`flex flex-col items-center gap-1 rounded-2xl border px-1 py-2.5 ${on ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}
+                      >
+                        <span className={`relative ${open ? "" : "opacity-45 grayscale"}`}>
+                          <LimitedAvatar code={a.code} size={56} />
+                        </span>
+                        <span className="w-full truncate text-center text-[12px] font-semibold">{a.name}</span>
+                        <span className={`flex items-center gap-0.5 text-[10px] font-semibold ${open ? "text-live" : "text-faint"}`}>
+                          {!open && <Lock size={10} />}Lv.{a.level}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            {error && <ErrorText>{error}</ErrorText>}
+            {saved && <InfoText>{saved}</InfoText>}
+            {lim && !limOpen(lim) ? (
+              <p className="rounded-xl bg-surface-2 px-4 py-3 text-center text-[13px] text-muted">
+                {lim.subject} 레벨 {lim.level}에 열려요 · 지금 {lim.subject} Lv.{subjLv(lim.subject)}
+              </p>
+            ) : (
+              <PrimaryButton onClick={() => run(() => apply(pickedLim, "바꿨어요. 순위와 그룹에서도 이 그림으로 보여요."))} disabled={busy || pickedLim === profile.avatar}>
+                {busy ? "저장 중…" : "이 그림으로 바꾸기"}
+              </PrimaryButton>
+            )}
+          </>
         ) : (
           <>
             <section>

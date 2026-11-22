@@ -1757,6 +1757,7 @@ grant execute on function wm_save_quiz(int, text, int, int) to authenticated;
 -- 보상 (사용자가 정한 표, 2026-11-11 · 캐릭터는 2026-11-12에 뺌): 20·50·90 칭호 · 30 프로필 사진 · 60 테마 · 80 닉네임 테두리
 --   (칭호·프로필 사진·테마는 아직 준비 중)
 -- 닉네임 테두리 (디스코드 이름표 같은 것): 80레벨에 10종이 한꺼번에 열린다. name_frame_min_level()과 lib/levels.ts의 NAME_FRAMES를 같게.
+-- 과목 테두리·한정 프로필(과목 레벨 보상)은 아래 '과목 보상' — name_frame_allowed(), profiles_avatar_reward_guard().
 
 -- ───────────────────────── 닉네임 테두리 열 ─────────────────────────
 alter table profiles add column if not exists name_frame text;
@@ -1792,6 +1793,66 @@ create or replace function name_frame_min_level(p_code text) returns int
 language sql immutable set search_path = public as $$
   select case when p_code in ('sprout', 'wave', 'blossom', 'bronze', 'silver', 'gold', 'amethyst', 'aurora', 'starlight', 'daepumta') then 80 end
 $$;
+
+-- ───────────────────────── 과목 보상 (2026-11-22) ─────────────────────────
+-- 과목 레벨로 열리는 보상. 앱 lib/subjectRewards.ts와 숫자를 같게:
+--   과목 닉네임 테두리 '<과목>-<1|2|3>' = 과목 레벨 20·60·80, 한정 프로필 avatar 'lim:<과목>-<1|2|3>' = 과목 레벨 30·50·80
+--   (과목 칭호는 04, 과목 테마(90)는 기기 저장이라 앱에서만). 관리자는 모두 쓸 수 있다(미리 보기).
+create or replace function subject_of_key(p_key text) returns text
+language sql immutable set search_path = public as $$
+  select case p_key when 'kor' then '국어' when 'eng' then '영어' when 'math' then '수학'
+                    when 'soc' then '사회' when 'sci' then '과학' when 'his' then '역사' end
+$$;
+
+-- 한 학생의 과목 레벨 (내부용). 06의 subject_level()·순위와 같은 기준
+create or replace function subject_level_of(p_user uuid, p_subject text) returns int
+language sql stable security definer set search_path = public as $$
+  select subject_level((select sum(s.duration) from sessions s
+                        where s.user_id = p_user and s.subject = p_subject and not s.lecture and s.duration between 1 and 14400), p_subject)
+$$;
+
+-- 이 학생이 이 테두리를 쓸 수 있나 (p_level = 그 학생의 전체 레벨). 없는 테두리면 false
+create or replace function name_frame_allowed(p_user uuid, p_code text, p_level int) returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_known boolean := name_frame_min_level(p_code) is not null or coalesce(p_code ~ '^(kor|eng|math|soc|sci|his)-[123]$', false);
+begin
+  if p_code is null then
+    return true;
+  end if;
+  if not v_known then
+    return false;
+  end if;
+  if exists (select 1 from admins where user_id = p_user) then
+    return true;
+  end if;
+  if name_frame_min_level(p_code) is not null then
+    return p_level >= name_frame_min_level(p_code);
+  end if;
+  return subject_level_of(p_user, subject_of_key(split_part(p_code, '-', 1)))
+         >= (array[20, 60, 80])[split_part(p_code, '-', 2)::int];
+end;
+$$;
+
+-- 한정 프로필(avatar 'lim:…')을 고를 때 과목 레벨 확인. 04의 profiles_avatar_guard와 별도 트리거
+create or replace function profiles_avatar_reward_guard() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.avatar is distinct from old.avatar and new.avatar like 'lim:%' then
+    if new.avatar !~ '^lim:(kor|eng|math|soc|sci|his)-[123]$' then
+      raise exception '없는 프로필 그림이에요' using errcode = '22023';
+    end if;
+    if not exists (select 1 from admins where user_id = new.id)
+       and subject_level_of(new.id, subject_of_key(split_part(substr(new.avatar, 5), '-', 1)))
+           < (array[30, 50, 80])[split_part(new.avatar, '-', 2)::int] then
+      raise exception '아직 열리지 않은 프로필 그림이에요' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists profiles_avatar_reward_guard on profiles;
+create trigger profiles_avatar_reward_guard before update of avatar on profiles for each row execute function profiles_avatar_reward_guard();
 
 -- 학생 여럿의 경험치 (내부용 — 앱이 직접 부르지 못함)
 create or replace function level_xp_of(p_users uuid[])
@@ -1837,7 +1898,7 @@ begin
   select xp into v_xp from level_xp_of(array[v_uid]);
   select name_frame into v_frame from profiles where id = v_uid;
   -- 레벨이 내려가서(기록 삭제 등) 못 쓰게 된 테두리는 보여 주지 않는다
-  if v_frame is not null and coalesce(name_frame_min_level(v_frame), 999) > level_from_xp(v_xp) then
+  if not name_frame_allowed(v_uid, v_frame, level_from_xp(v_xp)) then
     v_frame := null;
   end if;
   return jsonb_build_object('level', level_from_xp(v_xp), 'xp', v_xp, 'max_xp', level_max_xp(), 'frame', v_frame, 'subjects', v_subjects);
@@ -1850,19 +1911,17 @@ returns text
 language plpgsql security definer set search_path = public as $$
 declare
   v_uid uuid := auth.uid();
-  v_need int;
   v_level int;
 begin
   if v_uid is null or not exists (select 1 from profiles where id = v_uid) then
     raise exception '로그인이 필요합니다' using errcode = '42501';
   end if;
   if p_code is not null then
-    v_need := name_frame_min_level(p_code);
-    if v_need is null then
+    if name_frame_min_level(p_code) is null and p_code !~ '^(kor|eng|math|soc|sci|his)-[123]$' then
       return 'invalid';
     end if;
     select level_from_xp(xp) into v_level from level_xp_of(array[v_uid]);
-    if v_level < v_need then
+    if not name_frame_allowed(v_uid, p_code, v_level) then
       return 'locked';
     end if;
   end if;
@@ -1890,7 +1949,7 @@ begin
       select x.user_id, level_from_xp(x.xp) as level from level_xp_of(array(select id from ps)) x
     )
     select ps.nickname, lv.level,
-           case when ps.name_frame is not null and coalesce(name_frame_min_level(ps.name_frame), 999) <= lv.level then ps.name_frame end
+           case when name_frame_allowed(ps.id, ps.name_frame, lv.level) then ps.name_frame end
     from ps join lv on lv.user_id = ps.id;
 end;
 $$;
@@ -1898,6 +1957,10 @@ $$;
 revoke execute on function level_max_xp() from public, anon;
 revoke execute on function level_from_xp(bigint) from public, anon;
 revoke execute on function name_frame_min_level(text) from public, anon;
+revoke execute on function subject_of_key(text) from public, anon;
+revoke execute on function subject_level_of(uuid, text) from public, anon, authenticated;
+revoke execute on function name_frame_allowed(uuid, text, int) from public, anon, authenticated;
+revoke execute on function profiles_avatar_reward_guard() from public, anon, authenticated;
 revoke execute on function level_xp_of(uuid[]) from public, anon, authenticated;
 revoke execute on function my_level() from public, anon;
 revoke execute on function set_name_frame(text) from public, anon;
@@ -1905,6 +1968,7 @@ revoke execute on function player_cards(text[]) from public, anon;
 grant execute on function level_max_xp() to authenticated;
 grant execute on function level_from_xp(bigint) to authenticated;
 grant execute on function name_frame_min_level(text) to authenticated;
+grant execute on function subject_of_key(text) to authenticated;
 grant execute on function my_level() to authenticated;
 grant execute on function set_name_frame(text) to authenticated;
 grant execute on function player_cards(text[]) to authenticated;

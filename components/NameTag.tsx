@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect } from "react";
 import { frameByCode } from "@/lib/levels";
+import { ensureSerifFont } from "@/lib/themes";
 
 /**
  * 닉네임 + 레벨 테두리 (디스코드 이름표처럼 닉네임을 감싼다). 모양은 app/globals.css의 .nf-*.
@@ -6,6 +10,10 @@ import { frameByCode } from "@/lib/levels";
  */
 export function NameTag({ name, frame, className = "" }: { name: string; frame?: string | null; className?: string }) {
   const f = frameByCode(frame);
+  const serif = !!f && /^(kor|eng|his)-/.test(f.code); // 국어·영어·역사 과목 테두리는 명조
+  useEffect(() => {
+    if (serif) ensureSerifFont();
+  }, [serif]);
   if (!f) return <span className={`truncate ${className}`}>{name}</span>;
   return (
     <span className={`nf nf-${f.code} ${className}`} title={`${f.name} 테두리`}>

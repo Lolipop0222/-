@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Lock } from "lucide-react";
 import { ThemeIcon } from "@/lib/themeIcons";
@@ -12,7 +12,9 @@ import { Card, ErrorText, SubHeader } from "@/components/ui";
 import { hm } from "@/lib/format";
 import { FRAME_LEVEL, LEVEL_REWARDS, MAX_LEVEL, NAME_FRAMES, levelFromXp, setNameFrame, subjectLevel, useMyLevel, xpForLevel } from "@/lib/levels";
 import { THEME_SUBJECT_LEVEL } from "@/lib/themes";
-import { SUBJECT_COLOR } from "@/lib/subjects";
+import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
+import { FRAME_TIERS, SUBJECT_FRAMES, SUBJECT_KEY } from "@/lib/subjectRewards";
+import { isAdmin } from "@/lib/account";
 import { koreanError } from "@/lib/supabase";
 
 /** 내정보 → 레벨: 진행도, 과목별 경험치, 10레벨마다 보상, 닉네임 테두리 고르기 */
@@ -22,6 +24,14 @@ export default function LevelPage() {
   const { level: me, available, reload } = useMyLevel(study.version);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    isAdmin().then((v) => alive && setAdmin(v));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   if (!available) {
     return (
@@ -45,6 +55,12 @@ export default function LevelPage() {
   }
 
   const lv = levelFromXp(me.xp);
+  // 보상표의 과목 테두리 미리보기는 내가 가장 많이 공부한 과목으로
+  const topKey = SUBJECT_KEY[[...me.subjects].sort((a, b) => b.sec / b.cap - a.sec / a.cap)[0]?.subject ?? "국어"];
+  const subjLv = (s: string) => {
+    const x = me.subjects.find((y) => y.subject === s);
+    return x ? subjectLevel(x.sec, x.cap) : 1;
+  };
   const cur = xpForLevel(lv);
   const next = lv >= MAX_LEVEL ? null : xpForLevel(lv + 1);
   const pct = next === null ? 100 : ((me.xp - cur) / (next - cur)) * 100;
@@ -99,7 +115,7 @@ export default function LevelPage() {
         {/* 과목별 */}
         <Card>
           <p className="text-[15px] font-semibold">과목별 경험치</p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-faint">과목마다 만렙에 필요한 시간까지만 경험치가 돼요. 골고루 공부해야 99레벨이에요. 과목 레벨 10·40·70·99에 과목 칭호, 60에 그 과목 테마가 열려요.</p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-faint">과목마다 만렙에 필요한 시간까지만 경험치가 돼요. 골고루 공부해야 99레벨이에요. 과목 레벨마다 그 과목 보상이 열려요 — 칭호(10·40·70·99), 테두리(20·60·80), 한정 프로필(30·50·80), 테마(90).</p>
           <ul className="mt-3 space-y-3">
             {me.subjects.map((s) => {
               const full = s.sec >= s.cap;
@@ -151,14 +167,14 @@ export default function LevelPage() {
             {LEVEL_REWARDS.map((r) => {
               const open = r.bySubject ? me.subjects.some((x) => subjectLevel(x.sec, x.cap) >= r.level) : lv >= r.level;
               return (
-                <li key={r.level} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 ${r.pending ? "opacity-70" : ""}`}>
+                <li key={`${r.level}-${r.kind}`} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 ${r.pending ? "opacity-70" : ""}`}>
                   <span className={`num grid size-11 shrink-0 place-items-center rounded-xl text-[13px] font-extrabold ${open ? "bg-accent text-bg" : "bg-surface-2 text-faint"}`}>
                     {r.level}
                   </span>
                   <div className="min-w-0 flex-1">
                     {r.kind === "frame" ? (
                       <div className={`flex min-w-0 text-[14px] font-semibold ${open ? "" : "opacity-50 grayscale"}`}>
-                        <NameTag name={r.title} frame="aurora" className="min-w-0" />
+                        <NameTag name={r.title} frame={r.bySubject ? `${topKey}-${FRAME_TIERS.indexOf(r.level as (typeof FRAME_TIERS)[number]) + 1}` : "aurora"} className="min-w-0" />
                       </div>
                     ) : (
                       <p className="text-[14px] font-semibold">{r.title}</p>
@@ -169,7 +185,7 @@ export default function LevelPage() {
                     </p>
                   </div>
                   {r.bySubject ? (
-                    <Link href="/me/theme" className="shrink-0 text-[12px] font-semibold text-accent">
+                    <Link href={r.href ?? "/me/level"} className="shrink-0 text-[12px] font-semibold text-accent">
                       {me.subjects.filter((x) => subjectLevel(x.sec, x.cap) >= r.level).length}/{me.subjects.length} 열림
                     </Link>
                   ) : r.pending ? (
@@ -185,13 +201,65 @@ export default function LevelPage() {
           </ul>
         </section>
 
+        {/* 과목 테두리 */}
+        <section id="subject-frames" className="scroll-mt-16">
+          <h2 className="mb-1 text-[15px] font-semibold">과목 테두리</h2>
+          <p className="mb-2 text-[12px] text-faint">
+            과목 레벨 20 · 60 · 80에 열려요. 단계가 오를수록 화려해지고, 80은 움직여요.{admin && " (관리자는 미리 써 볼 수 있어요)"}
+          </p>
+          {error && <ErrorText>{error}</ErrorText>}
+          <div className="space-y-3">
+            {RANKED_SUBJECTS.map((s) => (
+              <div key={s}>
+                <p className="mb-1.5 flex items-baseline gap-1.5 px-1 text-[13px] font-semibold">
+                  <span style={{ color: SUBJECT_COLOR[s] }}>{s}</span>
+                  <span className="num text-[11px] font-bold text-muted">Lv.{subjLv(s)}</span>
+                </p>
+                <ul className="grid grid-cols-1 gap-2">
+                  {SUBJECT_FRAMES.filter((f) => f.subject === s).map((f) => {
+                    const open = admin || subjLv(s) >= f.level;
+                    const worn = me.frame === f.code;
+                    return (
+                      <li key={f.code} className={`flex items-center gap-3 rounded-2xl border p-3 ${worn ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
+                        <div className="min-w-0 flex-1">
+                          <div className={`flex min-w-0 py-1 pl-1 text-[14px] ${open ? "" : "opacity-60"}`}>
+                            <NameTag name={profile.nickname} frame={f.code} className="min-w-0" />
+                          </div>
+                          <p className="mt-1 truncate text-[12px] text-muted">
+                            <b className="text-text">{f.name}</b> · {f.desc}
+                          </p>
+                        </div>
+                        {open ? (
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => wear(worn ? null : f.code)}
+                            className={`shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold ${worn ? "border border-line bg-surface text-muted" : "bg-accent text-bg"} disabled:opacity-50`}
+                          >
+                            {busy === (worn ? "none" : f.code) ? "…" : worn ? "떼기" : "달기"}
+                          </button>
+                        ) : (
+                          <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-faint">
+                            <Lock size={13} aria-label="잠김" />
+                            Lv.{f.level}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* 닉네임 테두리 */}
-        <section>
-          <h2 className="mb-1 text-[15px] font-semibold">닉네임 테두리</h2>
+        <section id="frames" className="scroll-mt-16">
+          <h2 className="mb-1 text-[15px] font-semibold">닉네임 테두리 (전체 레벨)</h2>
           <p className="mb-2 text-[12px] text-faint">
             {lv >= FRAME_LEVEL ? "순위·스터디그룹에서 친구들에게도 보여요." : `Lv.${FRAME_LEVEL}에 ${NAME_FRAMES.length}종이 한꺼번에 열려요. 미리 구경해 보세요.`}
           </p>
-          {error && <ErrorText>{error}</ErrorText>}
+          
           <ul className="grid grid-cols-1 gap-2">
             {NAME_FRAMES.map((f) => {
               const open = lv >= f.minLevel;

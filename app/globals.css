@@ -2071,3 +2071,370 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .nf-gold, .nf-amethyst, .nf-aurora, .nf-daepumta, .nf-starlight::after { animation: none; }
 }
+
+/* ───────────── 과목 닉네임 테두리 (과목 레벨 20·60·80, lib/subjectRewards.ts) ─────────────
+ * 모든 테마에서 같은 색(자기 바탕색을 가짐). 1단계 = 정갈하게, 2단계 = 장식이 붙음, 3단계 = 움직임·빛.
+ * 국어·영어·역사는 명조(NameTag가 ensureSerifFont로 불러옴). */
+.nf-kor-1, .nf-kor-2, .nf-kor-3, .nf-eng-1, .nf-eng-2, .nf-eng-3, .nf-math-1, .nf-math-2, .nf-math-3,
+.nf-sci-1, .nf-sci-2, .nf-sci-3, .nf-soc-1, .nf-soc-2, .nf-soc-3, .nf-his-1, .nf-his-2, .nf-his-3 {
+  position: relative;
+  font-weight: 700;
+}
+.nf-kor-1, .nf-kor-2, .nf-kor-3, .nf-eng-1, .nf-eng-2, .nf-eng-3, .nf-his-1, .nf-his-2, .nf-his-3 {
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+}
+
+/* 국어 — 한지와 먹 */
+.nf-kor-1 {
+  color: #1d1a17;
+  background: #f5efe2;
+  border: 2px solid #1d1a17;
+  border-radius: 3px 10px 4px 9px;
+  box-shadow: 1.5px 1.5px 0 rgb(29 26 23 / 0.35);
+}
+.nf-kor-2 {
+  color: #1d1a17;
+  background: radial-gradient(circle at 8% 110%, rgb(29 26 23 / 0.16), transparent 40%), #f5efe2;
+  border: 2px solid #1d1a17;
+  border-radius: 3px 10px 4px 9px;
+  padding-right: 14px;
+  box-shadow: inset 0 0 0 1.5px #f5efe2, inset 0 0 0 2.5px rgb(29 26 23 / 0.35);
+}
+.nf-kor-2::after,
+.nf-kor-3::after {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+  content: "印";
+  font-family: "Noto Serif KR", serif;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  color: #f5efe2;
+  background: #b3362c;
+  transform: rotate(-8deg);
+  box-shadow: inset 0 0 0 1px rgb(245 239 226 / 0.55), 0 0 0 1px rgb(245 239 226 / 0.8);
+}
+.nf-kor-3 {
+  color: #1d1a17;
+  border: 3px solid transparent;
+  border-radius: 4px 12px 5px 11px;
+  padding-right: 15px;
+  background:
+    linear-gradient(100deg, transparent 35%, rgb(29 26 23 / 0.14) 48%, transparent 62%) padding-box,
+    radial-gradient(circle at 6% 120%, rgb(29 26 23 / 0.2), transparent 42%) padding-box,
+    linear-gradient(#f5efe2, #f5efe2) padding-box,
+    conic-gradient(from var(--nf-angle, 0deg), #1d1a17 0 62%, rgb(29 26 23 / 0.35) 72%, #1d1a17 90%) border-box;
+  background-size: 260% 100%, 100% 100%, 100% 100%, 100% 100%;
+  box-shadow: 0 0 10px rgb(29 26 23 / 0.35), 0 0 0 1px #f5efe2;
+  animation: nf-spin 5s linear infinite, nf-kor-wash 4.5s ease-in-out infinite;
+}
+@keyframes nf-kor-wash {
+  0% { background-position: 120% 0, 0 0, 0 0, 0 0; }
+  70%, 100% { background-position: -40% 0, 0 0, 0 0, 0 0; }
+}
+
+/* 영어 — 서재·책 */
+.nf-eng-1 {
+  color: #13294b;
+  background: #f4ecd8;
+  border: 1.5px solid #13294b;
+  border-radius: 4px;
+  padding-right: 14px;
+}
+.nf-eng-1::after,
+.nf-eng-3::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: 4px;
+  width: 6px;
+  height: calc(100% + 6px);
+  background: #c8102e;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+}
+.nf-eng-2 {
+  color: #f4ecd8;
+  background: radial-gradient(circle at 20% 20%, rgb(255 255 255 / 0.08), transparent 50%), #1f3b2d;
+  border: 2px solid #12261c;
+  border-radius: 6px;
+  padding: 1px 9px;
+  outline: 1px dashed rgb(201 169 110 / 0.85);
+  outline-offset: -5px;
+}
+.nf-eng-3 {
+  color: #2b1b0e;
+  border: 3px solid transparent;
+  border-radius: 6px;
+  padding: 1px 16px 1px 8px;
+  background:
+    linear-gradient(#f1e4c6, #f1e4c6) padding-box,
+    linear-gradient(110deg, #8a6a2a 0%, #f3d27a 30%, #fff3c4 45%, #c9a96e 60%, #8a6a2a 100%) border-box;
+  background-size: 100% 100%, 260% 100%;
+  box-shadow: 0 0 0 1px #13294b, 0 0 0 3px #c8102e, 0 0 12px rgb(201 169 110 / 0.55);
+  animation: nf-eng-gild 3.6s ease-in-out infinite;
+}
+.nf-eng-3 .nf-name::first-letter {
+  font-size: 1.35em;
+  color: #c8102e;
+  text-shadow: 0 0 1px #8a6a2a, 1px 1px 0 #f3d27a;
+}
+@keyframes nf-eng-gild {
+  0% { background-position: 0 0, 100% 0; }
+  60%, 100% { background-position: 0 0, -60% 0; }
+}
+
+/* 수학 — 모눈·청사진 */
+.nf-math-1 {
+  color: #0f2a5c;
+  border: 1.5px solid #3d7bff;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(0deg, rgb(61 123 255 / 0.18) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, rgb(61 123 255 / 0.18) 0 1px, transparent 1px 5px),
+    #eef4ff;
+}
+.nf-math-2 {
+  color: #ffffff;
+  border: 1.5px dashed rgb(255 255 255 / 0.85);
+  border-radius: 2px;
+  padding: 1px 10px;
+  background:
+    linear-gradient(#ffd36b, #ffd36b) left 2px top 2px / 5px 1px no-repeat,
+    linear-gradient(#ffd36b, #ffd36b) left 2px top 2px / 1px 5px no-repeat,
+    linear-gradient(#ffd36b, #ffd36b) right 2px bottom 2px / 5px 1px no-repeat,
+    linear-gradient(#ffd36b, #ffd36b) right 2px bottom 2px / 1px 5px no-repeat,
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.13) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.13) 0 1px, transparent 1px 6px),
+    #1747a6;
+  box-shadow: 0 0 8px rgb(61 123 255 / 0.45);
+}
+.nf-math-3 {
+  color: #ffffff;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 1px 20px 1px 9px;
+  background:
+    repeating-linear-gradient(0deg, rgb(120 170 255 / 0.12) 0 1px, transparent 1px 6px) padding-box,
+    repeating-linear-gradient(90deg, rgb(120 170 255 / 0.12) 0 1px, transparent 1px 6px) padding-box,
+    linear-gradient(#0b1b3f, #0b1b3f) padding-box,
+    conic-gradient(from var(--nf-angle, 0deg), #3d7bff, #7ee0ff, #ffffff, #3d7bff 40%, #1747a6 70%, #3d7bff) border-box;
+  box-shadow: 0 0 12px rgb(61 123 255 / 0.65);
+  animation: nf-spin 3s linear infinite;
+}
+.nf-math-3::after {
+  content: "∞";
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-54%);
+  font-size: 1.05em;
+  font-weight: 800;
+  color: #7ee0ff;
+  text-shadow: 0 0 6px #3d7bff;
+}
+
+/* 과학 — 실험실 */
+.nf-sci-1 {
+  color: #0b3d33;
+  border: 1.5px solid #1fae8a;
+  border-radius: 4px 4px 9px 9px;
+  background:
+    radial-gradient(circle, rgb(31 174 138 / 0.35) 0 1px, transparent 1.6px) 3px 6px / 9px 8px,
+    linear-gradient(transparent 55%, rgb(45 226 176 / 0.28) 55%),
+    #e8fbf5;
+}
+.nf-sci-2 {
+  color: #8dffd6;
+  border: 1.5px solid #2de2b0;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: #06211f;
+  box-shadow: 0 0 8px rgb(45 226 176 / 0.45);
+}
+.nf-sci-2::before,
+.nf-sci-2::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at 35% 35%, #ffffff, #2de2b0 55%, #0e8f6f);
+  box-shadow: 0 0 6px #2de2b0;
+}
+.nf-sci-2::before { left: -5px; }
+.nf-sci-2::after { right: -5px; background: radial-gradient(circle at 35% 35%, #ffffff, #00b3ff 55%, #0a5f8a); box-shadow: 0 0 6px #00b3ff; }
+.nf-sci-3 {
+  color: #b6ffe6;
+  text-shadow: 0 0 6px rgb(45 226 176 / 0.9);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  padding: 0 11px;
+  background:
+    radial-gradient(circle, rgb(141 255 214 / 0.5) 0 1px, transparent 1.6px) 0 0 / 10px 8px padding-box,
+    linear-gradient(#041816, #041816) padding-box,
+    conic-gradient(from var(--nf-angle, 0deg), #2de2b0, #00b3ff, #a78bfa, #2de2b0) border-box;
+  animation: nf-spin 2.6s linear infinite, nf-sci-pulse 2s ease-in-out infinite, nf-sci-rise 3s linear infinite;
+}
+@keyframes nf-sci-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgb(45 226 176 / 0.45); }
+  50% { box-shadow: 0 0 18px rgb(45 226 176 / 0.85), 0 0 4px rgb(167 139 250 / 0.6); }
+}
+@keyframes nf-sci-rise {
+  to { background-position: 0 -16px, 0 0, 0 0; }
+}
+
+/* 사회 — 지도첩 */
+.nf-soc-1 {
+  color: #123a40;
+  border: 1.5px solid #1f6f7a;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(90deg, rgb(31 111 122 / 0.16) 0 1px, transparent 1px 10px),
+    linear-gradient(rgb(31 111 122 / 0.16), rgb(31 111 122 / 0.16)) center / 100% 1px no-repeat,
+    #eef6f3;
+}
+.nf-soc-2 {
+  color: #1f2a2e;
+  border: 0;
+  border-radius: 0;
+  padding: 4px 12px;
+  /* 지도 가장자리: 안쪽 선 + 흑백 축척 띠 (위·아래·양옆) + 바깥 선 */
+  background:
+    linear-gradient(#f4efe2, #f4efe2) center / calc(100% - 8px) calc(100% - 8px) no-repeat,
+    repeating-linear-gradient(90deg, #1f2a2e 0 7px, #f4efe2 7px 14px) top / 100% 4px no-repeat,
+    repeating-linear-gradient(90deg, #f4efe2 0 7px, #1f2a2e 7px 14px) bottom / 100% 4px no-repeat,
+    repeating-linear-gradient(0deg, #1f2a2e 0 5px, #f4efe2 5px 10px) left / 4px 100% no-repeat,
+    repeating-linear-gradient(0deg, #f4efe2 0 5px, #1f2a2e 5px 10px) right / 4px 100% no-repeat;
+  box-shadow: 0 0 0 1px #1f2a2e, inset 0 0 0 4px transparent, inset 0 0 0 5px rgb(31 42 46 / 0.6);
+}
+.nf-soc-3 {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  border: 2.5px solid transparent;
+  border-radius: 8px;
+  padding: 0 16px 0 9px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.18) 0 1px, transparent 1px 12px) padding-box,
+    linear-gradient(#0c3b4a, #0c3b4a) padding-box,
+    conic-gradient(from var(--nf-angle, 0deg), #0e6b8a, #1d9a8a, #5f9e48, #c9a45e, #1d9a8a, #0e6b8a) border-box;
+  background-size: 120px 100%, 100% 100%, 100% 100%;
+  box-shadow: 0 0 10px rgb(29 154 138 / 0.55);
+  animation: nf-spin 6s linear infinite, nf-soc-pan 6s linear infinite;
+}
+.nf-soc-3::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50% 50% 50% 0;
+  transform: translateY(-65%) rotate(-45deg);
+  background: radial-gradient(circle, #ffffff 0 1.6px, #e2452f 2px);
+  box-shadow: 0 0 6px rgb(226 69 47 / 0.8);
+}
+@keyframes nf-soc-pan {
+  to { background-position: -120px 0, 0 0, 0 0; }
+}
+
+/* 역사 — 궁궐 */
+.nf-his-1 {
+  color: #f1e3c4;
+  border: 2px solid #8a5a2b;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgb(224 177 62 / 0.14) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, rgb(224 177 62 / 0.14) 0 1px, transparent 1px 8px),
+    #2a1a14;
+}
+.nf-his-2 {
+  color: #f6d98a;
+  border: 2px solid #2f7d5b;
+  border-radius: 4px;
+  padding: 2px 9px;
+  background:
+    repeating-linear-gradient(90deg, #2f7d5b 0 6px, #2b5ea8 6px 10px, #e0b13e 10px 12px, #c73a2c 12px 18px) top / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, #c73a2c 0 6px, #e0b13e 6px 8px, #2b5ea8 8px 12px, #2f7d5b 12px 18px) bottom / 100% 2px no-repeat,
+    linear-gradient(180deg, #8c2a22, #6a1c17);
+  box-shadow: 0 0 8px rgb(199 58 44 / 0.45);
+}
+.nf-his-3 {
+  color: #f6d98a;
+  border: 2.5px solid transparent;
+  border-radius: 6px;
+  padding: 0 19px;
+  background:
+    radial-gradient(circle at 50% 160%, rgb(47 125 91 / 0.55), transparent 60%) padding-box,
+    linear-gradient(#13233f, #13233f) padding-box,
+    conic-gradient(from var(--nf-angle, 0deg), #e0b13e, #fff3c4, #c73a2c, #e0b13e, #2f7d5b, #e0b13e) border-box;
+  box-shadow: 0 0 12px rgb(224 177 62 / 0.55);
+  animation: nf-spin 5s linear infinite;
+}
+.nf-his-3::before,
+.nf-his-3::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  animation: nf-his-glow 3s ease-in-out infinite;
+}
+.nf-his-3::before { left: 5px; background: #e2452f; box-shadow: 0 0 6px #e2452f; }
+.nf-his-3::after { right: 5px; background: #f4efe2; box-shadow: 0 0 6px #f4efe2; animation-delay: 1.5s; }
+@keyframes nf-his-glow {
+  50% { box-shadow: 0 0 12px currentColor, 0 0 4px #fff3c4; filter: brightness(1.25); }
+}
+
+/* ───────────── 한정 프로필 그림 색 (components/LimitedAvatar.tsx) ───────────── */
+.la { display: block; overflow: hidden; }
+.la-kor { --la-paper: #f3ecdc; --la-ink: #1d1a17; --la-wash: #d9cdb4; --la-seal: #b3362c; --la-wood: #6b4a2b; }
+.la-eng { --la-ivory: #f4ecd8; --la-page: #ebe0c4; --la-navy: #13294b; --la-red: #c8102e; --la-gold: #c9a96e; --la-leather: #1f3b2d; --la-ink2: #0b1424; }
+.la-math { --la-paper: #eef4ff; --la-line: #3d7bff; --la-navy: #0b1b3f; --la-blue: #1747a6; --la-white: #ffffff; --la-gold: #ffd36b; }
+.la-sci { --la-light: #e8fbf5; --la-dark: #06211f; --la-mint: #2de2b0; --la-cyan: #00b3ff; --la-violet: #a78bfa; --la-white: #ffffff; }
+.la-soc { --la-paper: #f4efe2; --la-ink: #1f2a2e; --la-red: #e2452f; --la-ocean: #0e6b8a; --la-land: #5f9e48; --la-sand: #c9a45e; --la-deep: #0a2f3b; --la-white: #ffffff; }
+.la-his { --la-wood: #2a1a14; --la-gold: #e0b13e; --la-brass: #8a5a1b; --la-red: #8c2a22; --la-tile: #6f6259; --la-tile2: #9a8b7f; --la-tile3: #4d433c; --la-night: #13233f; --la-sun: #e2452f; --la-moon: #f4efe2; --la-peak: #2f7d5b; --la-peak2: #2b5ea8; }
+.la-serif { font-family: "Noto Serif KR", "Nanum Myeongjo", serif; }
+.la-enso { stroke-dasharray: 0 100; animation: la-enso 5s ease-in-out infinite; }
+@keyframes la-enso {
+  0% { stroke-dasharray: 0 100; }
+  45%, 85% { stroke-dasharray: 86 100; }
+  100% { stroke-dasharray: 86 100; opacity: 0; }
+}
+.la-draw { stroke-dasharray: 0 100; animation: la-draw 5s ease-in-out infinite; }
+@keyframes la-draw {
+  0% { stroke-dasharray: 0 100; }
+  55%, 90% { stroke-dasharray: 100 100; }
+  100% { stroke-dasharray: 100 100; opacity: 0.2; }
+}
+.la-breathe, .la-glow, .la-glint, .la-twinkle, .la-sway, .la-orbit, .la-spinland, .la-wave { transform-box: fill-box; transform-origin: center; }
+.la-breathe { animation: la-breathe 3s ease-in-out infinite; }
+@keyframes la-breathe { 50% { transform: scale(1.08); opacity: 0.6; } }
+.la-glow { animation: la-glow 2.6s ease-in-out infinite; }
+@keyframes la-glow { 50% { filter: brightness(1.35) drop-shadow(0 0 4px currentColor); transform: scale(1.08); } }
+.la-glint { animation: la-glint 2.2s ease-in-out infinite; }
+@keyframes la-glint { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+.la-twinkle { animation: la-glint 2.4s ease-in-out infinite; }
+.la-sway { transform-origin: 46px 70px; transform-box: view-box; animation: la-sway 3.2s ease-in-out infinite; }
+@keyframes la-sway { 50% { transform: rotate(-7deg); } }
+.la-orbit { transform-box: view-box; transform-origin: 50px 50px; animation: la-orbit 3s linear infinite; }
+@keyframes la-orbit { to { transform: rotate(360deg); } }
+.la-spinland { transform-box: view-box; animation: la-spinland 7s linear infinite; }
+@keyframes la-spinland { to { transform: translateX(-70px); } }
+.la-wave { transform-box: view-box; animation: la-wave 3s linear infinite; }
+@keyframes la-wave { to { transform: translateX(30px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-kor-3, .nf-eng-3, .nf-math-3, .nf-sci-3, .nf-soc-3, .nf-his-3, .nf-his-3::before, .nf-his-3::after,
+  .la-enso, .la-draw, .la-breathe, .la-glow, .la-glint, .la-twinkle, .la-sway, .la-orbit, .la-spinland, .la-wave { animation: none; }
+  .la-enso, .la-draw { stroke-dasharray: 86 100; }
+}
