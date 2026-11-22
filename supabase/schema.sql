@@ -866,7 +866,7 @@ alter table profiles add column if not exists title_code text;
 create table if not exists title_defs (
   code        text primary key check (code ~ '^[a-z0-9_]{2,40}$'),
   name        text not null,
-  grade       text not null check (grade in ('common', 'rare', 'epic', 'legendary', 'hidden')),  -- hidden = 얻기 전엔 이름·조건 비공개
+  grade       text not null,  -- 등급 목록은 아래 title_defs_grade_check. hidden = 얻기 전엔 이름·조건 비공개
   category    text not null,
   description text not null,
   metric      text not null,   -- title_stats()가 돌려주는 값 이름
@@ -879,6 +879,10 @@ create table if not exists title_defs (
 -- (고친 칭호는 이 파일을 다시 실행해도 아래 기본 목록으로 덮어쓰지 않는다)
 alter table title_defs add column if not exists custom boolean not null default false;
 alter table title_defs add column if not exists edited boolean not null default false;
+-- 등급 (2026-11-22 사용자 요청: 초희귀·신화 추가): 일반 < 희귀 < 초희귀 < 영웅 < 신화 < 전설, 그리고 히든
+alter table title_defs drop constraint if exists title_defs_grade_check;
+alter table title_defs add constraint title_defs_grade_check
+  check (grade in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'hidden'));
 alter table title_defs enable row level security;
 revoke all on title_defs from anon, authenticated;  -- 히든 칭호 이름이 새지 않게 직접 읽기 금지 (my_titles로만)
 
@@ -899,28 +903,37 @@ alter table profiles add constraint profiles_title_code_fkey foreign key (title_
 
 -- 학생이 프로필에서 직접 고칠 수 있는 열(열 권한)은 06-subjects.sql에서 정한다 (계열 열이 거기서 생기므로)
 
+-- 등급 올리기 (2026-11-22, 한 번만): 일반 → 희귀, 희귀 → 초희귀. app_settings의 표시로 다시 실행해도 또 오르지 않게 한다
+do $$
+begin
+  if not exists (select 1 from app_settings where key = 'title_grades_v2') then
+    update title_defs set grade = case grade when 'rare' then 'superrare' else 'rare' end where grade in ('common', 'rare');
+    insert into app_settings (key, value) values ('title_grades_v2', 'done');
+  end if;
+end $$;
+
 insert into title_defs (code, name, grade, category, description, metric, goal, unit, sort) values
-  ('first_page',    '첫 페이지',        'common',    '누적 공부', '첫 공부 기록(1분 이상)을 남기기',                        'first_record',   1,       'flag',  10),
-  ('study_10h',     '공부 입문자',      'common',    '누적 공부', '누적 공부 10시간',                                      'total_sec',      36000,   'hour',  11),
-  ('study_50h',     '반백 시간',        'rare',      '누적 공부', '누적 공부 50시간',                                      'total_sec',      180000,  'hour',  12),
+  ('first_page',    '첫 페이지',        'rare',    '누적 공부', '첫 공부 기록(1분 이상)을 남기기',                        'first_record',   1,       'flag',  10),
+  ('study_10h',     '공부 입문자',      'rare',    '누적 공부', '누적 공부 10시간',                                      'total_sec',      36000,   'hour',  11),
+  ('study_50h',     '반백 시간',        'superrare',      '누적 공부', '누적 공부 50시간',                                      'total_sec',      180000,  'hour',  12),
   ('study_100h',    '백 시간 클럽',     'epic',      '누적 공부', '누적 공부 100시간',                                     'total_sec',      360000,  'hour',  13),
   ('study_500h',    '서울대의 자질',    'legendary', '누적 공부', '누적 공부 500시간',                                     'total_sec',      1800000, 'hour',  14),
-  ('day_3h',        '오늘도 열공',      'common',    '하루 공부', '하루에 3시간 공부',                                     'max_day_sec',    10800,   'hour',  20),
-  ('day_6h',        '하루를 바친 자',   'rare',      '하루 공부', '하루에 6시간 공부',                                     'max_day_sec',    21600,   'hour',  21),
+  ('day_3h',        '오늘도 열공',      'rare',    '하루 공부', '하루에 3시간 공부',                                     'max_day_sec',    10800,   'hour',  20),
+  ('day_6h',        '하루를 바친 자',   'superrare',      '하루 공부', '하루에 6시간 공부',                                     'max_day_sec',    21600,   'hour',  21),
   ('day_10h',       '열 시간의 영웅',   'epic',      '하루 공부', '하루에 10시간 공부',                                    'max_day_sec',    36000,   'hour',  22),
-  ('focus_2h',      '부동자세',         'rare',      '집중',      '한 번에 2시간 이상, 앱을 한 번도 벗어나지 않고 공부',      'focus_2h',       1,       'flag',  30),
-  ('streak_3',      '작심삼일 돌파',    'common',    '연속 출석', '하루 30분 이상 공부한 날 3일 연속',                      'max_streak',     3,       'day',   40),
-  ('streak_7',      '일주일 개근',      'rare',      '연속 출석', '하루 30분 이상 공부한 날 7일 연속',                      'max_streak',     7,       'day',   41),
+  ('focus_2h',      '부동자세',         'superrare',      '집중',      '한 번에 2시간 이상, 앱을 한 번도 벗어나지 않고 공부',      'focus_2h',       1,       'flag',  30),
+  ('streak_3',      '작심삼일 돌파',    'rare',    '연속 출석', '하루 30분 이상 공부한 날 3일 연속',                      'max_streak',     3,       'day',   40),
+  ('streak_7',      '일주일 개근',      'superrare',      '연속 출석', '하루 30분 이상 공부한 날 7일 연속',                      'max_streak',     7,       'day',   41),
   ('streak_30',     '한 달의 끈기',     'epic',      '연속 출석', '하루 30분 이상 공부한 날 30일 연속',                     'max_streak',     30,      'day',   42),
   ('streak_100',    '백일의 기적',      'legendary', '연속 출석', '하루 30분 이상 공부한 날 100일 연속',                    'max_streak',     100,     'day',   43),
-  ('subj_kor',      '독해 장인',        'rare',      '과목',      '국어 누적 50시간',                                      'sub_kor',        180000,  'hour',  50),
-  ('subj_eng',      '99프로 미국인',    'rare',      '과목',      '영어 누적 50시간',                                      'sub_eng',        180000,  'hour',  51),
-  ('subj_math',     '수학 괴물',        'rare',      '과목',      '수학 누적 50시간',                                      'sub_math',       180000,  'hour',  52),
-  ('subj_sci',      '실험실 주인',      'rare',      '과목',      '과학 누적 50시간',                                      'sub_sci',        180000,  'hour',  53),
-  ('subj_soc',      '사회 박사',        'rare',      '과목',      '사회 누적 50시간',                                      'sub_soc',        180000,  'hour',  54),
-  ('subj_his',      '역사 지킴이',      'rare',      '과목',      '역사 누적 50시간',                                    'sub_his',        180000,  'hour',  55),
-  ('all_rounder',   '올라운더',         'rare',      '골고루',    '하루에 서로 다른 5과목을 각각 20분 이상',                 'allround',       1,       'flag',  60),
-  ('week_class',    '우리 반 에이스',   'rare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 70),
+  ('subj_kor',      '독해 장인',        'superrare',      '과목',      '국어 누적 50시간',                                      'sub_kor',        180000,  'hour',  50),
+  ('subj_eng',      '99프로 미국인',    'superrare',      '과목',      '영어 누적 50시간',                                      'sub_eng',        180000,  'hour',  51),
+  ('subj_math',     '수학 괴물',        'superrare',      '과목',      '수학 누적 50시간',                                      'sub_math',       180000,  'hour',  52),
+  ('subj_sci',      '실험실 주인',      'superrare',      '과목',      '과학 누적 50시간',                                      'sub_sci',        180000,  'hour',  53),
+  ('subj_soc',      '사회 박사',        'superrare',      '과목',      '사회 누적 50시간',                                      'sub_soc',        180000,  'hour',  54),
+  ('subj_his',      '역사 지킴이',      'superrare',      '과목',      '역사 누적 50시간',                                    'sub_his',        180000,  'hour',  55),
+  ('all_rounder',   '올라운더',         'superrare',      '골고루',    '하루에 서로 다른 5과목을 각각 20분 이상',                 'allround',       1,       'flag',  60),
+  ('week_class',    '우리 반 에이스',   'superrare',      '주간 순위', '반 주간 1위 (그 주 5시간 이상, 반에 기록 있는 학생 3명 이상)',   'week_class_top',  1, 'flag', 70),
   ('week_grade',    '학년 1짱',         'epic',      '주간 순위', '학년 주간 1위 (그 주 5시간 이상, 학년에 기록 있는 학생 3명 이상)', 'week_grade_top',  1, 'flag', 71),
   ('week_school',   '대고 일품인',      'legendary', '주간 순위', '전교 주간 1위 (그 주 5시간 이상, 기록 있는 학생 3명 이상)',     'week_school_top', 1, 'flag', 72),
   ('planner_100',   '계획의 달인',      'epic',      '플래너·야자', '플래너 과제 누적 100개 완료',                          'tasks_done',     100,     'count', 80),
@@ -1888,7 +1901,7 @@ begin
   if char_length(p_description) not between 1 and 100 then
     raise exception '설명은 1~100자로 써 주세요' using errcode = '22023';
   end if;
-  if p_grade not in ('common', 'rare', 'epic', 'legendary', 'hidden') then
+  if p_grade not in ('common', 'rare', 'superrare', 'epic', 'mythic', 'legendary', 'hidden') then
     raise exception '등급이 올바르지 않아요' using errcode = '22023';
   end if;
   if v_unit is null then

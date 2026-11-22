@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
  * 앱은 결과만 받아 그린다 — 히든 칭호는 얻기 전까지 서버가 이름을 '???'로 보내 준다.
  */
 
-export type TitleGrade = "common" | "rare" | "epic" | "legendary" | "hidden";
+export type TitleGrade = "common" | "rare" | "superrare" | "epic" | "mythic" | "legendary" | "hidden";
 export type TitleUnit = "flag" | "hour" | "day" | "count";
 
 export type MyTitle = {
@@ -27,16 +27,21 @@ export type MyTitle = {
 
 export type NewTitle = { code: string; name: string; grade: TitleGrade };
 
-/** 등급 이름과 화면에 보여 줄 순서 (전설부터, 히든은 맨 끝) */
+/**
+ * 등급 이름과 화면에 보여 줄 순서 (높은 것부터, 히든은 맨 끝).
+ * 2026-11-22 사용자 요청: 전설 밑에 신화(붉은색), 초희귀 추가 → 일반 < 희귀 < 초희귀 < 영웅 < 신화 < 전설
+ */
 export const GRADES: { id: TitleGrade; label: string }[] = [
   { id: "legendary", label: "전설" },
+  { id: "mythic", label: "신화" },
   { id: "epic", label: "영웅" },
+  { id: "superrare", label: "초희귀" },
   { id: "rare", label: "희귀" },
   { id: "common", label: "일반" },
   { id: "hidden", label: "히든" },
 ];
 export const GRADE_LABEL: Record<TitleGrade, string> = Object.fromEntries(GRADES.map((g) => [g.id, g.label])) as Record<TitleGrade, string>;
-export const GRADE_RANK: Record<TitleGrade, number> = { common: 1, rare: 2, epic: 3, legendary: 4, hidden: 4 };
+export const GRADE_RANK: Record<TitleGrade, number> = { common: 1, rare: 2, superrare: 3, epic: 4, mythic: 5, legendary: 6, hidden: 5 };
 
 export function isGrade(v: unknown): v is TitleGrade {
   return typeof v === "string" && v in GRADE_LABEL;
