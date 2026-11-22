@@ -131,13 +131,13 @@ export default function PlannerPage() {
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <p className="mb-1.5 border-b border-line pb-1 text-[10px] font-semibold tracking-[0.12em] text-faint">{children}</p>;
+  return <p className="planner-label mb-1.5 border-b border-line pb-1 text-[10px] font-semibold tracking-[0.12em] text-faint">{children}</p>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold tracking-[0.12em] text-faint">{label}</p>
+      <p className="planner-label text-[10px] font-semibold tracking-[0.12em] text-faint">{label}</p>
       <div className="mt-1 border-b border-line pb-1.5">{children}</div>
     </div>
   );
@@ -170,7 +170,7 @@ function MemoInput({ value, disabled, onSave }: { value: string; disabled: boole
       onChange={(e) => setV(e.target.value)}
       onBlur={() => v !== value && onSave(v)}
       placeholder="메모"
-      className="w-full resize-none bg-[repeating-linear-gradient(transparent,transparent_27px,var(--line)_27px,var(--line)_28px)] bg-transparent text-[14px] leading-[28px] outline-none placeholder:text-faint disabled:opacity-50"
+      className="memo-paper w-full resize-none bg-[repeating-linear-gradient(transparent,transparent_27px,var(--line)_27px,var(--line)_28px)] bg-transparent text-[14px] leading-[28px] outline-none placeholder:text-faint disabled:opacity-50"
     />
   );
 }
@@ -217,12 +217,13 @@ function TaskList({ p, byTask, isToday }: { p: PlannerState; byTask: Map<string,
               <button
                 aria-label={t.done ? `${t.title} 완료 취소` : `${t.title} 완료`}
                 onClick={() => p.update(t.id, { done: !t.done })}
-                className={`grid size-5 shrink-0 place-items-center rounded border ${t.done ? "border-accent bg-accent text-bg" : "border-dashed border-faint"}`}
+                data-done={t.done || undefined}
+                className={`task-check grid size-5 shrink-0 place-items-center rounded border ${t.done ? "border-accent bg-accent text-bg" : "border-dashed border-faint"}`}
               >
                 {t.done && <Check size={14} strokeWidth={3} />}
               </button>
               <button onClick={() => (setNeedSubject(false), setEditing(t))} className="min-w-0 flex-1 text-left">
-                <p className={`line-clamp-2 text-[14px] leading-snug ${t.done ? "text-faint line-through" : ""}`}>{t.title}</p>
+                <p className={`line-clamp-2 text-[14px] leading-snug ${t.done ? "task-done text-faint line-through" : ""}`}>{t.title}</p>
                 <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted">
                   {t.subject ? (
                     <span className="flex min-w-0 items-center gap-1">

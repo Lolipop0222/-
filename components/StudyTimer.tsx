@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import { ClipboardList, Eye, MonitorPlay, Play, Square } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { useTheme } from "@/components/ThemeProvider";
+import TimerScene, { HourMarks, hasTimerScene } from "@/components/TimerScene";
 import { useStudy } from "@/components/StudyProvider";
 import { kstToday } from "@/lib/dday";
 import { hm, hms } from "@/lib/format";
@@ -17,6 +19,8 @@ import { usePlanner } from "@/lib/usePlanner";
 export default function StudyTimer() {
   const study = useStudy();
   const auth = useAuth();
+  const { theme } = useTheme();
+  const scene = hasTimerScene(theme); // 과목 테마면 그 과목다운 시계 판
   const track = auth.status === "ready" ? auth.profile.track ?? null : null;
   const grade = auth.status === "ready" ? auth.profile.grade : null;
   const [picked, setPicked] = useState<Subject>("수학");
@@ -144,14 +148,27 @@ export default function StudyTimer() {
       )}
 
       {/* 큰 숫자 */}
-      <div className="py-12 text-center">
+      <div className={`${scene ? "pb-6 pt-5" : "py-12"} text-center`}>
         <p className="text-[14px] font-medium" style={{ color: SUBJECT_COLOR[subject] }}>
           {subject}
           {detail && <span> · {detail}</span>}
           {lecture && <span className="text-muted"> · 인강</span>}
           {running && runningTask && <span className="text-muted"> · {runningTask.title}</span>}
         </p>
-        <p className="num mt-2 text-[64px] font-bold leading-none text-stage-text">{hms(study.elapsed)}</p>
+        {scene ? (
+          <>
+            <div className="relative mx-auto mt-3 aspect-square w-[min(256px,66vw)]">
+              <TimerScene theme={theme} sec={study.elapsed} running={running} />
+              {running && <span key={study.running?.id} className="ts-burst" aria-hidden />}
+              <div className="absolute inset-0 grid place-items-center">
+                <p className="ts-digits num rounded-2xl bg-stage/85 px-3 py-1 text-[clamp(32px,10.4vw,42px)] font-bold leading-none text-stage-text">{hms(study.elapsed)}</p>
+              </div>
+            </div>
+            <HourMarks theme={theme} hours={Math.floor(study.elapsed / 3600)} />
+          </>
+        ) : (
+          <p className="num mt-2 text-[64px] font-bold leading-none text-stage-text">{hms(study.elapsed)}</p>
+        )}
         <p className="mt-4 flex items-center justify-center gap-1 text-[13px] text-faint">
           <Eye size={14} /> 이탈 {running ? study.awayCount : 0}회 · 30초 넘게 벗어나면 자동 정지
         </p>
@@ -174,7 +191,7 @@ export default function StudyTimer() {
             onClick={() => study.stop()}
             disabled={study.busy}
             aria-label="정지"
-            className="grid size-24 place-items-center rounded-full bg-danger text-bg shadow-[0_0_0_10px_var(--danger-soft)] active:scale-95 disabled:opacity-50"
+            className="timer-btn is-stop grid size-24 place-items-center rounded-full bg-danger text-bg shadow-[0_0_0_10px_var(--danger-soft)] active:scale-95 disabled:opacity-50"
           >
             <Square size={30} fill="currentColor" />
           </button>
@@ -183,7 +200,7 @@ export default function StudyTimer() {
             onClick={() => study.start(picked, { taskId, detail: details.includes(pickedDetail ?? "") ? pickedDetail : null, lecture: pickedLecture && canLecture(picked) })}
             disabled={study.busy || !study.ready}
             aria-label="시작"
-            className="grid size-24 place-items-center rounded-full bg-text text-bg shadow-[0_0_0_10px_color-mix(in_srgb,var(--text)_10%,transparent)] active:scale-95 disabled:opacity-50"
+            className="timer-btn is-start grid size-24 place-items-center rounded-full bg-text text-bg shadow-[0_0_0_10px_color-mix(in_srgb,var(--text)_10%,transparent)] active:scale-95 disabled:opacity-50"
           >
             <Play size={34} fill="currentColor" className="ml-1" />
           </button>

@@ -720,7 +720,8 @@ h2 {
 
 /* ───────────── 과목 테마 디테일 (2026-11-22) ─────────────
  * 카드 테두리(.card — components/ui.tsx Card·홈 카드), 아래 탭 표시(.nav-mark — BottomNav), 탭 화면 제목 장식(.page-title — PageHeader),
- * 장착 연출(.equip — 테마 화면에서 과목 테마를 고를 때). 기본 테마에서는 아무 일도 안 한다. */
+ * 장착 연출(.equip — 테마 화면에서 과목 테마를 고를 때), 타이머 판·시작 단추·다 채운 시간(.ts-*, .timer-btn, .hour-mark),
+ * 플래너 완료 표시·MEMO 종이·칸 이름(.task-check, .memo-paper, .planner-label), 워마 카드 면(.wm-face). 기본 테마에서는 아무 일도 안 한다. */
 .nav-mark {
   display: none;
 }
@@ -952,7 +953,310 @@ h2 {
     animation: none;
   }
 }
+/* ── 타이머 판 (components/TimerScene.tsx) ── */
+.ts-serif {
+  font-family: var(--font-display, inherit);
+}
+[data-theme="subj-kor"] .ts-digits,
+[data-theme="subj-eng"] .ts-digits,
+[data-theme="subj-his"] .ts-digits {
+  font-family: var(--font-display, inherit);
+  letter-spacing: 0;
+}
+.ts-tick {
+  transition: transform 0.28s cubic-bezier(0.4, 2.2, 0.6, 1);
+}
+.ts-ink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ts-ink 2.4s ease-in-out infinite;
+}
+@keyframes ts-ink {
+  50% { transform: scale(1.35); opacity: 0.7; }
+}
+.ts-glow {
+  animation: ts-glow 2.4s ease-in-out infinite;
+}
+@keyframes ts-glow {
+  50% { opacity: 0.45; }
+}
+.ts-wobble {
+  animation: ts-wobble 3.2s ease-in-out infinite;
+}
+@keyframes ts-wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+/* 시작하는 순간 한 번 퍼지는 고리 */
+.ts-burst {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  animation: ts-burst 1s ease-out forwards;
+}
+@keyframes ts-burst {
+  from { opacity: 0.9; transform: scale(0.35); }
+  to { opacity: 0; transform: scale(1.12); }
+}
+[data-theme="subj-kor"] .ts-burst {
+  border: 0;
+  background: radial-gradient(circle, color-mix(in srgb, var(--stage-text) 30%, transparent), transparent 62%);
+}
+[data-theme="subj-math"] .ts-burst { border-style: dashed; }
+[data-theme="subj-soc"] .ts-burst { border-style: dotted; border-width: 3px; }
+[data-theme="subj-sci"] .ts-burst,
+[data-theme="subj-his"] .ts-burst {
+  box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 60%, transparent), inset 0 0 30px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* 다 채운 시간: 국어 낙관(한자 숫자) · 영어 책갈피(로마 숫자) · 수학 Q.E.D. 네모 · 과학 육각 분자 · 사회 지도 핀 · 역사 엽전 */
+.hour-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 3px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--bg);
+  background: var(--accent);
+  animation: hm-in 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes hm-in {
+  from { opacity: 0; scale: 1.9; }
+}
+[data-theme="subj-kor"] .hour-mark {
+  border-radius: 3px;
+  rotate: -5deg;
+  font-family: var(--font-display, inherit);
+  font-size: 13px;
+}
+[data-theme="subj-eng"] .hour-mark {
+  min-width: 18px;
+  height: 27px;
+  padding-bottom: 7px;
+  font-family: var(--font-display, inherit);
+  font-size: 9px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
+[data-theme="subj-sci"] .hour-mark {
+  min-width: 25px;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+[data-theme="subj-soc"] .hour-mark {
+  min-width: 18px;
+  width: 18px;
+  height: 18px;
+  margin: 0 2px 4px;
+  border-radius: 50% 50% 50% 0;
+  rotate: -45deg;
+  background: radial-gradient(circle, var(--stage) 0 3px, var(--danger) 3.5px);
+}
+[data-theme="subj-his"] .hour-mark {
+  width: 22px;
+  border-radius: 50%;
+  background: linear-gradient(var(--stage), var(--stage)) center / 7px 7px no-repeat, var(--accent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 65%, black), 0 0 8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* 시작·정지 단추 */
+[data-theme="subj-kor"] .timer-btn {
+  border-radius: 28px;
+  rotate: -3deg;
+}
+[data-theme="subj-kor"] .timer-btn.is-start {
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 0 9px var(--accent-soft), inset 0 0 0 4px color-mix(in srgb, var(--bg) 35%, transparent);
+}
+[data-theme="subj-eng"] .timer-btn.is-start {
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 65%, white), var(--accent) 55%, color-mix(in srgb, var(--accent) 65%, black));
+  color: var(--bg);
+  box-shadow: 0 0 0 5px var(--stage), 0 0 0 7px color-mix(in srgb, var(--accent) 55%, transparent), 0 12px 26px -10px rgb(0 0 0 / 0.7);
+}
+[data-theme="subj-math"] .timer-btn.is-start {
+  background:
+    linear-gradient(color-mix(in srgb, var(--accent) 35%, transparent), color-mix(in srgb, var(--accent) 35%, transparent)) center / 1px 100% no-repeat,
+    linear-gradient(color-mix(in srgb, var(--accent) 35%, transparent), color-mix(in srgb, var(--accent) 35%, transparent)) center / 100% 1px no-repeat,
+    var(--stage);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+[data-theme="subj-sci"] .timer-btn.is-start {
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 16%, transparent), 0 0 34px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+[data-theme="subj-sci"] .timer-btn.is-stop {
+  animation: ts-glow 2.4s ease-in-out infinite;
+}
+[data-theme="subj-soc"] .timer-btn.is-start {
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 0 6px var(--stage), 0 0 0 8px var(--accent);
+  outline: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 13px;
+}
+[data-theme="subj-his"] .timer-btn.is-start {
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, white), var(--accent) 58%, color-mix(in srgb, var(--accent) 65%, black));
+  color: var(--bg);
+  box-shadow: 0 0 0 4px var(--stage), 0 0 0 6px var(--accent), 0 0 30px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ── 플래너 (app/planner/page.tsx) ── */
+[data-theme^="subj-"] .planner-label {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+[data-theme="subj-kor"] .planner-label,
+[data-theme="subj-eng"] .planner-label,
+[data-theme="subj-his"] .planner-label {
+  font-family: var(--font-display, inherit);
+  letter-spacing: 0.2em;
+}
+/* 완료 표시: 국어 「完」 도장 · 영어 펜 체크 · 수학 Q.E.D. · 과학 빛나는 체크 · 사회 핀 · 역사 엽전 */
+[data-theme^="subj-"] .task-check[data-done] {
+  animation: chk-in 0.38s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes chk-in {
+  from { opacity: 0; scale: 1.8; }
+}
+[data-theme="subj-kor"] .task-check[data-done],
+[data-theme="subj-math"] .task-check[data-done],
+[data-theme="subj-soc"] .task-check[data-done],
+[data-theme="subj-his"] .task-check[data-done] {
+  color: transparent;
+}
+[data-theme="subj-kor"] .task-check[data-done] svg,
+[data-theme="subj-math"] .task-check[data-done] svg,
+[data-theme="subj-soc"] .task-check[data-done] svg,
+[data-theme="subj-his"] .task-check[data-done] svg {
+  display: none;
+}
+[data-theme="subj-kor"] .task-check[data-done] {
+  border-radius: 3px;
+  rotate: -7deg;
+}
+[data-theme="subj-kor"] .task-check[data-done]::after {
+  content: "完";
+  color: var(--bg);
+  font-family: var(--font-display, inherit);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+[data-theme="subj-eng"] .task-check[data-done] {
+  background: transparent;
+  color: var(--accent);
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  rotate: -8deg;
+}
+[data-theme="subj-math"] .task-check[data-done] {
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  border-radius: 1px;
+}
+[data-theme="subj-math"] .task-check[data-done]::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+}
+[data-theme="subj-sci"] .task-check[data-done] {
+  border-radius: 50%;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+[data-theme="subj-soc"] .task-check[data-done] {
+  background: transparent;
+  border-color: transparent;
+}
+[data-theme="subj-soc"] .task-check[data-done]::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-bottom: 4px;
+  border-radius: 50% 50% 50% 0;
+  rotate: -45deg;
+  background: radial-gradient(circle, var(--bg) 0 2.5px, var(--danger) 3px);
+}
+[data-theme="subj-his"] .task-check[data-done] {
+  border-radius: 50%;
+  border-color: color-mix(in srgb, var(--accent) 65%, black);
+  background: linear-gradient(var(--bg), var(--bg)) center / 6px 6px no-repeat, var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+[data-theme^="subj-"] .task-done {
+  text-decoration-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  text-decoration-thickness: 1.5px;
+}
+[data-theme="subj-kor"] .task-done {
+  text-decoration-color: color-mix(in srgb, var(--text) 55%, transparent);
+  text-decoration-thickness: 3px;
+}
+/* MEMO 종이: 국어 원고지 · 영어 빨간 여백선 줄 공책 · 수학 모눈 · 과학 실험 노트 점격자 · 사회 점선 · 역사 금빛 두 줄 */
+[data-theme="subj-kor"] .memo-paper {
+  background-image:
+    repeating-linear-gradient(transparent 0 27px, color-mix(in srgb, var(--accent) 32%, transparent) 27px 28px),
+    repeating-linear-gradient(90deg, transparent 0 27px, color-mix(in srgb, var(--accent) 14%, transparent) 27px 28px);
+}
+[data-theme="subj-eng"] .memo-paper {
+  padding-left: 18px;
+  background-image:
+    linear-gradient(90deg, transparent 9px, color-mix(in srgb, var(--danger) 55%, transparent) 9px 10px, transparent 10px),
+    repeating-linear-gradient(transparent 0 27px, color-mix(in srgb, var(--accent) 22%, transparent) 27px 28px);
+}
+[data-theme="subj-math"] .memo-paper {
+  background-image:
+    repeating-linear-gradient(transparent 0 13px, color-mix(in srgb, var(--text) 9%, transparent) 13px 14px),
+    repeating-linear-gradient(90deg, transparent 0 13px, color-mix(in srgb, var(--text) 9%, transparent) 13px 14px);
+}
+[data-theme="subj-sci"] .memo-paper {
+  background-image:
+    radial-gradient(circle, color-mix(in srgb, var(--accent) 45%, transparent) 1px, transparent 1.6px),
+    repeating-linear-gradient(transparent 0 27px, color-mix(in srgb, var(--accent) 16%, transparent) 27px 28px);
+  background-size: 14px 14px, auto;
+  background-position: 7px 0, 0 0;
+}
+[data-theme="subj-soc"] .memo-paper {
+  background-image:
+    repeating-linear-gradient(90deg, var(--bg) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(transparent 0 27px, color-mix(in srgb, var(--accent) 45%, transparent) 27px 28px);
+}
+[data-theme="subj-his"] .memo-paper {
+  background-image: repeating-linear-gradient(
+    transparent 0 24px,
+    color-mix(in srgb, var(--accent) 28%, transparent) 24px 25px,
+    transparent 25px 27px,
+    color-mix(in srgb, var(--accent) 28%, transparent) 27px 28px
+  );
+}
+
+/* ── 워마 암기 카드: 카드 면에 그 과목 종이 무늬 ── */
+[data-theme^="subj-"] .wm-face {
+  background-image: var(--stage-texture);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-ink,
+  .ts-glow,
+  .ts-wobble,
+  .ts-burst,
+  .hour-mark,
+  [data-theme^="subj-"] .task-check[data-done],
+  [data-theme="subj-sci"] .timer-btn.is-stop {
+    animation: none;
+  }
+  .ts-tick {
+    transition: none;
+  }
+}
 /* ───────────── 과목 테마 디테일 끝 ───────────── */
+
 
 
 
