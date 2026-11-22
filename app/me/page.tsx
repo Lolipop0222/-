@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, ChartNoAxesColumnIncreasing, Files, GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Palette, Shield, ShieldCheck, Smile, Trash2, Users } from "lucide-react";
+import { GraduationCap, KeyRound, LogOut, MessageCircleQuestion, Shield, ShieldCheck, Smile, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth, useProfile } from "@/components/AuthProvider";
 import { useStudy } from "@/components/StudyProvider";
@@ -14,6 +14,7 @@ import { Badge, Card, ListRow, PageHeader } from "@/components/ui";
 import { isAdmin } from "@/lib/account";
 import { hm } from "@/lib/format";
 import { themeName } from "@/lib/themes";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { RANKED_SUBJECTS, SUBJECT_COLOR } from "@/lib/subjects";
 
 export default function MePage() {
@@ -79,12 +80,12 @@ export default function MePage() {
 
         <Card flush className="[&>*+*]:border-t [&>*+*]:border-line">
           <ListRow icon={<GraduationCap size={20} />} label="학년·반·계열" value={`${profile.grade}학년 ${profile.class_no}반${profile.grade === 2 ? ` · ${profile.track ?? "계열 고르기"}` : ""}`} href="/me/track" />
-          <ListRow icon={<Users size={20} />} label="스터디그룹" href="/groups" />
-          <ListRow icon={<Palette size={20} />} label="테마" value={themeLabel} href="/me/theme" />
-          <ListRow icon={<ChartNoAxesColumnIncreasing size={20} />} label="레벨" value={!levelOn ? "준비 중" : myLevel ? `Lv.${myLevel.level}` : undefined} href="/me/level" />
-          <ListRow icon={<Award size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
-          <ListRow icon={<Smile size={20} />} label="프로필 사진" href="/me/avatar" />
-          <ListRow icon={<Files size={20} />} label="프린트 아카이브" href="/prints" />
+          <ListRow icon={<ThemeIcon slot="groups" size={20} />} label="스터디그룹" href="/groups" />
+          <ListRow icon={<ThemeIcon slot="theme" size={20} />} label="테마" value={themeLabel} href="/me/theme" />
+          <ListRow icon={<ThemeIcon slot="level" size={20} />} label="레벨" value={!levelOn ? "준비 중" : myLevel ? `Lv.${myLevel.level}` : undefined} href="/me/level" />
+          <ListRow icon={<ThemeIcon slot="titles" size={20} />} label="칭호" value={!titlesOn ? "준비 중" : titles ? `${earned}/${titles.length}` : undefined} href="/me/titles" />
+          <ListRow icon={<ThemeIcon slot="avatar" size={20} />} label="프로필 사진" href="/me/avatar" />
+          <ListRow icon={<ThemeIcon slot="prints" size={20} />} label="프린트 아카이브" href="/prints" />
           <ListRow icon={<MessageCircleQuestion size={20} />} label="문의함" href="/me/inquiry" />
           <ListRow icon={<KeyRound size={20} />} label="비밀번호·복구 코드" href="/me/security" />
           <ListRow icon={<Shield size={20} />} label="개인정보 처리방침" href="/me/privacy" />

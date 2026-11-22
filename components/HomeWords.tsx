@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useProfile } from "@/components/AuthProvider";
 import { Card } from "@/components/ui";
 import { dayStats, dueIds, nextDay, useWordStore } from "@/lib/wordProgress";
@@ -18,7 +19,7 @@ export default function HomeWords() {
     <Link href={href} className="block">
       <Card className="flex items-center gap-4">
         <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-live-soft text-live">
-          <BookOpen size={22} />
+          <ThemeIcon slot="words" size={22} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-muted">워마 · 쉬는 시간 10분이면 끝</p>

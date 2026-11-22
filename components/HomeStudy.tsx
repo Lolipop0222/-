@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Play, Trophy } from "lucide-react";
+import { Play } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { useStudy } from "@/components/StudyProvider";
 import { Badge, Card } from "@/components/ui";
 import { hm, hms } from "@/lib/format";
@@ -106,7 +107,7 @@ export default function HomeStudy() {
         <Link href="/timer#ranking">
           <Card className="h-full">
             <p className="flex items-center gap-1 text-[13px] text-muted">
-              <Trophy size={14} className="text-warn" /> 전교 순위
+              <ThemeIcon slot="rank" size={14} className="text-warn" /> 전교 순위
             </p>
             {rank ? (
               <>

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Flag } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { daysUntil, ddayLabel } from "@/lib/dday";
 import { useDdays } from "@/lib/useDdays";
 
@@ -12,7 +13,7 @@ export default function HomeDday() {
 
   return (
     <Link href="/dday" className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 active:bg-surface-2">
-      <Flag size={18} className="shrink-0 text-accent" />
+      <ThemeIcon slot="dday" size={18} className="shrink-0 text-accent" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {!d.ready ? (
           <span className="text-[14px] text-faint">디데이</span>

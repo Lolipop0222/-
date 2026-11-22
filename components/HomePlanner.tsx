@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronRight, ClipboardList } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { kstToday } from "@/lib/dday";
 import { SUBJECT_COLOR } from "@/lib/subjects";
 import { usePlanner } from "@/lib/usePlanner";
@@ -21,7 +22,7 @@ export default function HomePlanner() {
   return (
     <Link href="/planner" className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 active:bg-surface-2">
       <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
-        <ClipboardList size={22} />
+        <ThemeIcon slot="planner" size={22} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] text-muted">

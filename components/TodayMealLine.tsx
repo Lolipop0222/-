@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Utensils } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { ThemeIcon } from "@/lib/themeIcons";
 import { ymd } from "@/lib/format";
 import { MEAL_LABEL } from "@/lib/meals";
 import { useMonthMeals } from "@/lib/useMonthly";
@@ -21,7 +22,7 @@ export default function TodayMealLine() {
 
   return (
     <Link href="/calendar" className="flex items-center gap-3 rounded-2xl bg-surface-2 px-4 py-3">
-      <Utensils size={18} className="shrink-0 text-warn" />
+      <ThemeIcon slot="meal" size={18} className="shrink-0 text-warn" />
       <p className="min-w-0 flex-1 truncate text-[14px]">
         {!month ? (
           <span className="invisible">급식</span>
