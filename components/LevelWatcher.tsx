@@ -32,7 +32,7 @@ export default function LevelWatcher() {
           const seen = readSeenLevel(uid);
           writeSeenLevel(uid, me.level);
           if (seen === null || me.level <= seen) return;
-          const rewards = LEVEL_REWARDS.filter((r) => r.level > seen && r.level <= me.level);
+          const rewards = LEVEL_REWARDS.filter((r) => !r.bySubject && !r.pending && r.level > seen && r.level <= me.level);
           setToast({ level: me.level, rewards });
           setTimeout(() => alive && setToast(null), 6000);
         },

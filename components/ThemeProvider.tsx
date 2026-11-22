@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useSyncExternalStore, type ReactNode } from "react";
-import { THEMES, THEME_KEY, isThemeChoice, resolveTheme, type ThemeChoice, type ThemeId } from "@/lib/themes";
+import { SERIF_FONT_CSS, THEMES, THEME_KEY, isThemeChoice, resolveTheme, type ThemeChoice, type ThemeId } from "@/lib/themes";
 
 /**
  * 테마 상태. 고른 테마는 이 기기의 localStorage에 저장한다 (기기마다 다르게 써도 되는 설정이라 계정에 올리지 않는다).
@@ -62,6 +62,14 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
       (window as CapacitorWindow).Capacitor?.Plugins?.SystemBars?.setStyle?.({ style: info.dark ? "DARK" : "LIGHT" })?.catch?.(() => {});
     } catch {
       // 웹 브라우저에서는 없음
+    }
+    // 명조 제목을 쓰는 테마(국어·영어·역사)일 때만 글꼴 CSS를 한 번 불러온다
+    if (info.serif && !document.getElementById("serif-font")) {
+      const link = document.createElement("link");
+      link.id = "serif-font";
+      link.rel = "stylesheet";
+      link.href = SERIF_FONT_CSS;
+      document.head.appendChild(link);
     }
   }, [theme]);
 

@@ -22,6 +22,14 @@ export function levelFromXp(xp: number): number {
   return Math.min(MAX_LEVEL, 1 + Math.floor(98 * Math.sqrt(Math.max(0, xp) / MAX_XP)));
 }
 
+/** 과목 레벨 — 같은 식을 그 과목의 만렙 시간에 적용 (과목 테마 같은 과목별 보상용, 화면에서만 계산) */
+export function subjectLevel(sec: number, cap: number): number {
+  if (cap <= 0) return 1;
+  return Math.min(MAX_LEVEL, 1 + Math.floor(98 * Math.sqrt(Math.max(0, Math.min(sec, cap)) / cap)));
+}
+/** 과목 레벨 L이 되는 데 필요한 그 과목 공부 시간(초) */
+export const subjectSecForLevel = (level: number, cap: number) => (level <= 1 ? 0 : Math.ceil(cap * ((Math.min(level, MAX_LEVEL) - 1) / 98) ** 2));
+
 /** 그 레벨이 되는 데 필요한 경험치(초) — 서버 식을 거꾸로 푼 것 (반올림 오차로 1초 모자라지 않게 올림) */
 export function xpForLevel(level: number): number {
   if (level <= 1) return 0;
@@ -51,14 +59,15 @@ export const frameByCode = (code: string | null | undefined) => NAME_FRAMES.find
 // ───────────────────────── 보상 ─────────────────────────
 
 export type RewardKind = "title" | "photo" | "theme" | "frame";
-export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean };
+/** bySubject: 전체 레벨이 아니라 과목마다 그 과목 레벨로 열린다 (과목 테마) */
+export type Reward = { level: number; kind: RewardKind; title: string; desc: string; pending?: boolean; bySubject?: boolean };
 
 /** 레벨 보상표 (사용자가 정한 표에서 캐릭터 스킨·표정을 뺀 것) */
 export const LEVEL_REWARDS: readonly Reward[] = [
   { level: 20, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
   { level: 30, kind: "photo", title: "프로필 사진 꾸미기", desc: "프로필 사진 보상", pending: true },
   { level: 50, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
-  { level: 60, kind: "theme", title: "테마", desc: "레벨 전용 앱 테마", pending: true },
+  { level: 60, kind: "theme", title: "과목 테마", desc: "과목 레벨 60이 되면 그 과목 테마", bySubject: true },
   { level: FRAME_LEVEL, kind: "frame", title: "닉네임 테두리", desc: `테두리 ${NAME_FRAMES.length}종 중 고르기` },
   { level: 90, kind: "title", title: "칭호", desc: "레벨 칭호", pending: true },
 ];

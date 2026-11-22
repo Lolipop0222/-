@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, Gift, Lock } from "lucide-react";
 import { AppLoader } from "@/components/BrandLoader";
 import { useProfile } from "@/components/AuthProvider";
@@ -8,7 +9,8 @@ import { LevelBadge, NameTag } from "@/components/NameTag";
 import { useStudy } from "@/components/StudyProvider";
 import { Card, ErrorText, SubHeader } from "@/components/ui";
 import { hm } from "@/lib/format";
-import { FRAME_LEVEL, LEVEL_REWARDS, MAX_LEVEL, NAME_FRAMES, levelFromXp, setNameFrame, useMyLevel, xpForLevel } from "@/lib/levels";
+import { FRAME_LEVEL, LEVEL_REWARDS, MAX_LEVEL, NAME_FRAMES, levelFromXp, setNameFrame, subjectLevel, useMyLevel, xpForLevel } from "@/lib/levels";
+import { THEME_SUBJECT_LEVEL } from "@/lib/themes";
 import { SUBJECT_COLOR } from "@/lib/subjects";
 import { koreanError } from "@/lib/supabase";
 
@@ -96,15 +98,23 @@ export default function LevelPage() {
         {/* 과목별 */}
         <Card>
           <p className="text-[15px] font-semibold">과목별 경험치</p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-faint">과목마다 만렙에 필요한 시간까지만 경험치가 돼요. 골고루 공부해야 99레벨이에요.</p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-faint">과목마다 만렙에 필요한 시간까지만 경험치가 돼요. 골고루 공부해야 99레벨이에요. 과목 레벨이 60이 되면 그 과목 테마가 열려요.</p>
           <ul className="mt-3 space-y-3">
             {me.subjects.map((s) => {
               const full = s.sec >= s.cap;
               return (
                 <li key={s.subject}>
                   <div className="flex items-baseline justify-between gap-2 text-[13px]">
-                    <span className="font-semibold" style={{ color: SUBJECT_COLOR[s.subject] }}>
-                      {s.subject}
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="font-semibold" style={{ color: SUBJECT_COLOR[s.subject] }}>
+                        {s.subject}
+                      </span>
+                      <span className="num text-[11px] font-bold text-muted">Lv.{subjectLevel(s.sec, s.cap)}</span>
+                      {subjectLevel(s.sec, s.cap) >= THEME_SUBJECT_LEVEL && (
+                        <Link href="/me/theme" className="text-[10px] font-semibold text-accent">
+                          테마 열림
+                        </Link>
+                      )}
                     </span>
                     <span className="num text-muted">
                       {full ? (
@@ -138,7 +148,7 @@ export default function LevelPage() {
           </h2>
           <ul className="space-y-2">
             {LEVEL_REWARDS.map((r) => {
-              const open = lv >= r.level;
+              const open = r.bySubject ? me.subjects.some((x) => subjectLevel(x.sec, x.cap) >= r.level) : lv >= r.level;
               return (
                 <li key={r.level} className={`flex items-center gap-3 rounded-2xl border border-line bg-surface p-3 ${r.pending ? "opacity-70" : ""}`}>
                   <span className={`num grid size-11 shrink-0 place-items-center rounded-xl text-[13px] font-extrabold ${open ? "bg-accent text-bg" : "bg-surface-2 text-faint"}`}>
@@ -157,7 +167,11 @@ export default function LevelPage() {
                       {r.pending && " · 준비 중"}
                     </p>
                   </div>
-                  {r.pending ? (
+                  {r.bySubject ? (
+                    <Link href="/me/theme" className="shrink-0 text-[12px] font-semibold text-accent">
+                      {me.subjects.filter((x) => subjectLevel(x.sec, x.cap) >= r.level).length}/{me.subjects.length} 열림
+                    </Link>
+                  ) : r.pending ? (
                     <span className="shrink-0 text-[11px] text-faint">준비 중</span>
                   ) : open ? (
                     <span className="shrink-0 text-[12px] font-semibold text-live">받음</span>
