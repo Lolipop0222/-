@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ErrorText, InputRow, PrimaryButton, Segmented, inputCls } from "@/components/ui";
 import { MIN_PASSWORD } from "@/lib/account";
 import { Emblem } from "@/components/BrandLoader";
+import InstallHint from "@/components/InstallHint";
 import { TIME_QUOTES } from "@/lib/quotes";
 import { TRACKS, needsTrack, type Track } from "@/lib/subjects";
 import { koreanError, saveTrack, supabase } from "@/lib/supabase";
@@ -99,6 +100,8 @@ export default function LoginPage() {
           <figcaption className="mt-1 text-[12px] text-faint">— {quote.who}</figcaption>
         </figure>
       )}
+
+      {!profileOnly && <InstallHint className="mt-6" />}
 
       {!profileOnly && (
         <div className="mt-8">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { useStudy } from "@/components/StudyProvider";
+import { captureInstallPrompt } from "@/lib/device";
 
 /**
  * 새 배포를 열려 있는 앱에 바로 반영한다 (웹·홈 화면 앱·안드로이드 APK 모두).
@@ -50,6 +51,9 @@ export default function UpdateWatcher() {
   const [next, setNext] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const running = useRef(false);
+  // 안드로이드 Chrome "앱 설치" 창은 페이지를 열 때 한 번만 와서 앱 전체에서 미리 받아 둔다 (/install에서 씀)
+  useEffect(() => captureInstallPrompt(), []);
+
   useEffect(() => {
     running.current = !!study.running;
   }, [study.running]);

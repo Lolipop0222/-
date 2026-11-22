@@ -17,6 +17,8 @@ Next.js 16 주의사항(학습 데이터와 다름 — 코드 쓰기 전에 `nod
 | 안드로이드 | Capacitor 8 (`android/`). APK는 배포 주소를 여는 껍데기라 웹을 다시 배포하면 앱도 바뀐다. **켜 둔 앱도 `UpdateWatcher`가 새 배포를 감지해 반영**(아래). APK를 다시 나눠 줘야 하는 건 아이콘·시작 화면·이름·권한·플러그인·주소가 바뀔 때뿐 |
 | 학교 데이터 | NEIS 오픈 API (급식·학사일정) — 서버에서만 호출 |
 
+**아이폰 (2026-11-22, 사용자: "아이폰은 APK를 못 받는다, 빨리 대책")**: 아이폰은 Safari **홈 화면에 추가**(PWA — `app/manifest.ts`, layout `appleWebApp`, `app/apple-icon.png`)로 쓴다. 친구들에게는 **`/install` 주소 하나**를 보낸다 — 로그인 없이 열리고(AuthProvider `PUBLIC_PATHS`), 기기를 알아봐(`lib/device.ts`) 아이폰 5단계 그림 안내 / 안드로이드 Chrome "앱 설치"(`beforeinstallprompt`를 `UpdateWatcher`가 미리 받아 둠) / 카카오톡 안 브라우저면 한 번 자동으로 `kakaotalk://web/openExternal?url=`로 Safari·Chrome에 넘기고 버튼도 보여 줌 / 다른 앱 안 브라우저는 ⋯ → 다른 브라우저로 열기 안내. 홈 화면 앱·APK로 열었으면 "이미 앱으로 열었어요". 로그인 화면·홈에 `InstallHint`(홈은 X로 닫기, localStorage `daego-install-hint-hidden`). 홈 화면 앱은 Safari와 저장소가 따로라 한 번 더 로그인해야 한다. 같이 고친 것: `SubHeader` 등 sticky 머리가 `h-14`에 `pt-[safe-area]`를 같이 써서 노치 있는 아이폰 홈 화면 앱(black-translucent)에서 높이가 눌렸다 → `h-[calc(3.5rem+env(safe-area-inset-top))]`.
+
 **APK 만들기**: GitHub Actions `.github/workflows/apk.yml` — `main`에서 `android/**`·`android-shell/**`·`capacitor.config.ts`·`scripts/build-apk.mjs`·워크플로가 바뀌면 자동 빌드, Actions 탭 "Run workflow"로도(기본 브랜치가 main일 때만 버튼 보임). 결과는 실행의 Artifacts `daego-ilpumta-apk`(30일). 디버그 서명이라 **실행마다 서명 키가 달라** 새 APK를 깔 때 예전 앱을 지워야 한다 → 고정하려면 저장소 Secret `ANDROID_DEBUG_KEYSTORE_BASE64`(debug.keystore를 base64로) 추가. 이 클라우드 환경에는 Android SDK가 없고 받을 수도 없어 여기서는 못 만든다.
 
 **자동 업데이트 (2026-11-06, 사용자 요청: "패치할 때마다 APK를 받게 하기 번거롭다")**

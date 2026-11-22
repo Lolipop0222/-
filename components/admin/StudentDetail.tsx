@@ -83,7 +83,7 @@ export default function StudentDetail({ nickname, onBack, onRenamed }: { nicknam
   }, [today, data]);
 
   const header = (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-bg/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 bg-bg/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
       <button type="button" onClick={onBack} aria-label="학생 목록으로" className="grid size-10 place-items-center rounded-full text-muted active:bg-surface-2">
         <ArrowLeft size={22} />
       </button>

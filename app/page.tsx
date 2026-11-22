@@ -4,6 +4,7 @@ import HomePrints from "@/components/HomePrints";
 import HomeRecoveryNudge from "@/components/HomeRecoveryNudge";
 import HomeStudy from "@/components/HomeStudy";
 import HomeWords from "@/components/HomeWords";
+import InstallHint from "@/components/InstallHint";
 import TodayLabel from "@/components/TodayLabel";
 import TodayMealLine from "@/components/TodayMealLine";
 import { PageHeader } from "@/components/ui";
@@ -18,6 +19,8 @@ export default function HomePage() {
         <TodayMealLine />
 
         <HomeDday />
+
+        <InstallHint dismissible />
 
         <HomeRecoveryNudge />
 

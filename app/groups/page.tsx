@@ -492,7 +492,7 @@ function Chip({ active, onClick, label, color }: { active: boolean; onClick: () 
 
 function Header({ title, back }: { title: string; back: ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-bg/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 bg-bg/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
       {back}
       <h1 className="flex-1 truncate text-[17px] font-semibold">{title}</h1>
     </header>

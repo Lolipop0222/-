@@ -18,7 +18,7 @@ export function PageHeader({ title, sub, right }: { title: string; sub?: ReactNo
 /** 하위 화면 상단 (뒤로가기) */
 export function SubHeader({ title, back, right }: { title: string; back: string; right?: ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-bg/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 bg-bg/90 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-lg">
       <Link href={back} aria-label="뒤로" className="grid size-10 place-items-center rounded-full text-muted active:bg-surface-2">
         <ArrowLeft size={22} />
       </Link>

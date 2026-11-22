@@ -35,7 +35,7 @@ const INTRO_KEY = "daego-intro-seen";
 const PROFILE_COLUMNS = ["id, nickname, grade, class_no, avatar, title_code, track", "id, nickname, grade, class_no, avatar, title_code", "id, nickname, grade, class_no"];
 
 // 로그인하지 않아도 볼 수 있는 화면
-const PUBLIC_PATHS = ["/login", "/login/reset", "/me/privacy"];
+const PUBLIC_PATHS = ["/login", "/login/reset", "/me/privacy", "/install"];
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: "loading" });
